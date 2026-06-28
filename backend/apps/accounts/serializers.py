@@ -1,7 +1,16 @@
 from django.contrib.auth import authenticate
 from rest_framework import serializers
-from .models import User
+from .models import User, AccessRequest
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
+from django.conf import settings
+from django.utils.http import urlsafe_base64_decode
+from django.utils.encoding import force_str
+
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -97,3 +106,134 @@ class LogoutSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 {"detail": "Invalid or expired refresh token."}
             )
+        
+
+class ForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        if not User.objects.filter(email=value).exists():
+            raise serializers.ValidationError(
+                "No account found with this email."
+            )
+        return value
+
+    def save(self):
+        user = User.objects.get(email=self.validated_data["email"])
+
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = PasswordResetTokenGenerator().make_token(user)
+
+        reset_link = (
+            f"http://localhost:3000/reset-password/{uid}/{token}/"
+        )
+
+        subject = "Reset Your Password"
+
+        message = f"""
+Hello,
+
+You requested to reset your password.
+
+Click the link below to reset your password:
+
+{reset_link}
+
+If you did not request this, please ignore this email.
+
+Thank you,
+Auto Market Team
+"""
+
+        send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [user.email],
+            fail_silently=False,
+        )
+
+
+
+
+class ResetPasswordSerializer(serializers.Serializer):
+    uid = serializers.CharField()
+    token = serializers.CharField()
+    password = serializers.CharField(min_length=8, write_only=True)
+    confirm_password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        if attrs["password"] != attrs["confirm_password"]:
+            raise serializers.ValidationError(
+                {"confirm_password": "Passwords do not match."}
+            )
+
+        try:
+            uid = force_str(urlsafe_base64_decode(attrs["uid"]))
+            user = User.objects.get(pk=uid)
+        except Exception:
+            raise serializers.ValidationError(
+                {"detail": "Invalid reset link."}
+            )
+
+        if not PasswordResetTokenGenerator().check_token(
+            user, attrs["token"]
+        ):
+            raise serializers.ValidationError(
+                {"detail": "Invalid or expired token."}
+            )
+
+        attrs["user"] = user
+        return attrs
+
+    def save(self):
+        user = self.validated_data["user"]
+        user.set_password(self.validated_data["password"])
+        user.save()
+
+class RequestAccessSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AccessRequest
+        fields = [
+            "full_name",
+            "email",
+            "department",
+            "designation",
+            "reason",
+        ]
+
+    def validate_email(self, value):
+        # Check if the user already exists
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError(
+                "An account with this email already exists."
+            )
+
+        # Check if an access request is already pending
+        if AccessRequest.objects.filter(
+            email=value,
+            status="PENDING"
+        ).exists():
+            raise serializers.ValidationError(
+                "An access request is already pending for this email."
+            )
+
+        return value
+
+    def create(self, validated_data):
+        return AccessRequest.objects.create(**validated_data)
+    
+class AccessRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AccessRequest
+        fields = [
+            "id",
+            "full_name",
+            "email",
+            "department",
+            "designation",
+            "reason",
+            "status",
+            "created_at",
+        ]
+        read_only_fields = fields

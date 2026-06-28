@@ -3,9 +3,10 @@ from rest_framework.permissions import AllowAny,IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import User
-from .serializers import LoginSerializer, RegisterSerializer , ProfileSerializer , LogoutSerializer
+from .models import User , AccessRequest
+from .serializers import LoginSerializer, RegisterSerializer , ProfileSerializer , LogoutSerializer,ForgotPasswordSerializer,ResetPasswordSerializer , RequestAccessSerializer , AccessRequestSerializer
 from django.utils import timezone
+from .permissions import IsAdminOrSuperAdmin
 
 
 class RegisterView(generics.CreateAPIView):
@@ -74,3 +75,68 @@ class LogoutView(generics.GenericAPIView):
             },
             status=status.HTTP_200_OK,
         )
+    
+class ForgotPasswordView(generics.GenericAPIView):
+    serializer_class = ForgotPasswordSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        serializer.save()
+
+        return Response(
+            {
+                "success": True,
+                "message": "Password reset link has been sent to your email."
+            },
+            status=status.HTTP_200_OK,
+        )
+    
+class ResetPasswordView(generics.GenericAPIView):
+    serializer_class = ResetPasswordSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        serializer.save()
+
+        return Response(
+            {
+                "success": True,
+                "message": "Password reset successfully."
+            },
+            status=status.HTTP_200_OK,
+        )
+    
+class RequestAccessView(generics.CreateAPIView):
+    serializer_class = RequestAccessSerializer
+    permission_classes = [AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(
+            {
+                "success": True,
+                "message": (
+                    "Your access request has been submitted successfully. "
+                    "Please wait for administrator approval."
+                ),
+            },
+            status=status.HTTP_201_CREATED,
+        )
+    
+class AccessRequestListView(generics.ListAPIView):
+    serializer_class = AccessRequestSerializer
+    permission_classes = [IsAdminOrSuperAdmin]
+
+    def get_queryset(self):
+        return AccessRequest.objects.filter(
+            status="PENDING"
+        ).order_by("-created_at")
