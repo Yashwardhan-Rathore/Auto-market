@@ -156,6 +156,7 @@ Auto Market Team
 
 
 
+
 class ResetPasswordSerializer(serializers.Serializer):
     uid = serializers.CharField()
     token = serializers.CharField()
@@ -246,3 +247,39 @@ class ApproveAccessRequestSerializer(serializers.Serializer):
             ("ADMIN", "Admin"),
         ]
     )
+
+class ApprovedUserSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    email = serializers.EmailField()
+    role = serializers.CharField()
+
+
+class ApprovedAccessRequestSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    status = serializers.CharField()
+    approved_by = serializers.EmailField()
+    approved_at = serializers.DateTimeField()
+
+
+class ApproveAccessRequestResponseSerializer(serializers.Serializer):
+    message = serializers.CharField()
+    user = ApprovedUserSerializer()
+    access_request = ApprovedAccessRequestSerializer()
+
+class RejectAccessRequestSerializer(serializers.Serializer):
+    reason = serializers.CharField(
+        max_length=500,
+        trim_whitespace=True,
+    )
+
+class RejectedAccessRequestSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    status = serializers.CharField()
+    rejection_reason = serializers.CharField()
+    processed_by = serializers.EmailField()
+    processed_at = serializers.DateTimeField()
+
+
+class RejectAccessRequestResponseSerializer(serializers.Serializer):
+    message = serializers.CharField()
+    access_request = RejectedAccessRequestSerializer()

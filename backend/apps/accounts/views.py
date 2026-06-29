@@ -4,14 +4,14 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import User , AccessRequest
-from .serializers import LoginSerializer, RegisterSerializer , ProfileSerializer , LogoutSerializer,ForgotPasswordSerializer,ResetPasswordSerializer , RequestAccessSerializer , AccessRequestSerializer , ApproveAccessRequestSerializer
+from .serializers import LoginSerializer, RegisterSerializer , ProfileSerializer , LogoutSerializer,ForgotPasswordSerializer,ResetPasswordSerializer , RequestAccessSerializer , AccessRequestSerializer , ApproveAccessRequestSerializer , ApproveAccessRequestResponseSerializer ,    RejectAccessRequestSerializer,RejectAccessRequestResponseSerializer
 from django.utils import timezone
 from .permissions import IsAdminOrSuperAdmin
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .services import approve_access_request
+from .services import approve_access_request,reject_access_request
 
 
 class RegisterView(generics.CreateAPIView):
@@ -153,17 +153,67 @@ class ApproveAccessRequestView(APIView):
         serializer = ApproveAccessRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        access_request = approve_access_request(
+        result = approve_access_request(
             request_id=pk,
             role=serializer.validated_data["role"],
             approved_by=request.user,
         )
 
-        return Response(
-            {
-                "message": "Validation successful.",
-                "request_id": access_request.id,
-                "role": serializer.validated_data["role"],
+        response_data = {
+            "message": "Access request approved successfully.",
+            "user": {
+                "id": result["user"].id,
+                "email": result["user"].email,
+                "role": result["user"].role,
             },
+            "access_request": {
+                "id": result["access_request"].id,
+                "status": result["access_request"].status,
+                "approved_by": request.user.email,
+                "approved_at": result["access_request"].approved_at,
+            },
+        }
+
+        response_serializer = ApproveAccessRequestResponseSerializer(
+            response_data
+        )
+
+        return Response(
+            response_serializer.data,
+            status=status.HTTP_200_OK,
+        )
+
+class RejectAccessRequestView(APIView):
+    permission_classes = [IsAdminOrSuperAdmin]
+
+    def post(self, request, pk):
+        serializer = RejectAccessRequestSerializer(
+            data=request.data
+        )
+        serializer.is_valid(raise_exception=True)
+
+        access_request = reject_access_request(
+            request_id=pk,
+            reason=serializer.validated_data["reason"],
+            rejected_by=request.user,
+        )
+
+        response_data = {
+            "message": "Access request rejected successfully.",
+            "access_request": {
+                "id": access_request.id,
+                "status": access_request.status,
+                "rejection_reason": access_request.rejection_reason,
+                "processed_by": request.user.email,
+                "processed_at": access_request.approved_at,
+            },
+        }
+
+        response_serializer = RejectAccessRequestResponseSerializer(
+            response_data
+        )
+
+        return Response(
+            response_serializer.data,
             status=status.HTTP_200_OK,
         )
