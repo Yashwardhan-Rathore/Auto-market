@@ -4,9 +4,14 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import User , AccessRequest
-from .serializers import LoginSerializer, RegisterSerializer , ProfileSerializer , LogoutSerializer,ForgotPasswordSerializer,ResetPasswordSerializer , RequestAccessSerializer , AccessRequestSerializer
+from .serializers import LoginSerializer, RegisterSerializer , ProfileSerializer , LogoutSerializer,ForgotPasswordSerializer,ResetPasswordSerializer , RequestAccessSerializer , AccessRequestSerializer , ApproveAccessRequestSerializer
 from django.utils import timezone
 from .permissions import IsAdminOrSuperAdmin
+from django.shortcuts import get_object_or_404
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .services import approve_access_request
 
 
 class RegisterView(generics.CreateAPIView):
@@ -140,3 +145,25 @@ class AccessRequestListView(generics.ListAPIView):
         return AccessRequest.objects.filter(
             status="PENDING"
         ).order_by("-created_at")
+    
+class ApproveAccessRequestView(APIView):
+    permission_classes = [IsAdminOrSuperAdmin]
+
+    def post(self, request, pk):
+        serializer = ApproveAccessRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        access_request = approve_access_request(
+            request_id=pk,
+            role=serializer.validated_data["role"],
+            approved_by=request.user,
+        )
+
+        return Response(
+            {
+                "message": "Validation successful.",
+                "request_id": access_request.id,
+                "role": serializer.validated_data["role"],
+            },
+            status=status.HTTP_200_OK,
+        )

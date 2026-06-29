@@ -237,3 +237,12 @@ class AccessRequestSerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = fields
+
+
+class ApproveAccessRequestSerializer(serializers.Serializer):
+    role = serializers.ChoiceField(
+        choices=[
+            ("USER", "User"),
+            ("ADMIN", "Admin"),
+        ]
+    )
