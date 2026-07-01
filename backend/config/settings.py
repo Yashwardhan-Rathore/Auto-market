@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     # Local Apps
     "apps.accounts",
     "apps.tasks",
+    "apps.forms",
     'rest_framework',
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
