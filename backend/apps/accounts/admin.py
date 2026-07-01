@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import User
+from .models import PasswordResetOTP, User
 
 
 @admin.register(User)
@@ -50,3 +50,17 @@ class CustomUserAdmin(UserAdmin):
             },
         ),
     )
+
+
+@admin.register(PasswordResetOTP)
+class PasswordResetOTPAdmin(admin.ModelAdmin):
+    list_display = (
+        "user",
+        "otp",
+        "expires_at",
+        "is_used",
+        "created_at",
+    )
+    list_filter = ("is_used", "created_at", "expires_at")
+    search_fields = ("user__email", "otp")
+    readonly_fields = ("created_at",)
