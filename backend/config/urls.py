@@ -32,5 +32,10 @@ urlpatterns = [
         "api/forms/",
         include("apps.forms.urls")
     ),
+
+    path(
+        "api/automations/",
+        include("apps.automation.api.urls"),
+    ),
 ]
 

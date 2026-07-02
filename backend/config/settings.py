@@ -34,11 +34,14 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.postgres",
 
     # Local Apps
     "apps.accounts",
     "apps.tasks",
     "apps.forms",
+    'apps.automation',
+    'corsheaders',
     'rest_framework',
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
@@ -177,3 +180,23 @@ EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
+
+
+
+CELERY_BROKER_URL = os.getenv(
+    "REDIS_URL"
+)
+
+CELERY_RESULT_BACKEND = os.getenv(
+    "REDIS_URL"
+)
+
+CELERY_ACCEPT_CONTENT = [
+    "json"
+]
+
+CELERY_TASK_SERIALIZER = "json"
+
+CELERY_RESULT_SERIALIZER = "json"
+
+CELERY_TIMEZONE = "Asia/Kolkata"
