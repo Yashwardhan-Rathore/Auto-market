@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CustomerUpload
+from ..models import CustomerUpload,Campaign
 
 class CustomerUploadSerializer(serializers.Serializer):
     file = serializers.FileField()
@@ -31,4 +31,14 @@ class CustomerUploadListSerializer(serializers.ModelSerializer):
             "imported_records",
             "failed_records",
             "status",
+        ]
+
+class CampaignCreateSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Campaign
+        fields = [
+            "task",
+            "name",
+            "description",
         ]

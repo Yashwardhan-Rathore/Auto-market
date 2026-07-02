@@ -18,8 +18,35 @@ from django.contrib import admin
 from django.urls import path,include
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path("api/auth/", include("apps.accounts.urls")),
-    path("api/campaigns/", include("apps.campaigns.urls")),
+    path("admin/", admin.site.urls),
 
+    path("api/auth/", include("apps.accounts.urls")),
+
+    path("api/tasks/", include("apps.tasks.urls")),
+
+    path(
+        "api/customers/",
+        include("apps.campaigns.urls.customers"),
+    ),
+
+    path(
+        "api/audiences/",
+        include("apps.campaigns.urls.audiences"),
+    ),
+
+    path(
+        "api/campaigns/",
+        include("apps.campaigns.urls.campaigns"),
+    ),
+
+    path(
+        "api/channels/",
+        include("apps.campaigns.urls.channels"),
+    ),
+
+    path(
+        "api/forms/",
+        include("apps.forms.urls"),
+    ),
 ]
+

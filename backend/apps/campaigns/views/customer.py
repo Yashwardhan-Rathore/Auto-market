@@ -1,9 +1,9 @@
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .models import CustomerUpload
-from .serializers import CustomerUploadSerializer , CustomerUploadListSerializer
-from .services import CustomerImportService
+from apps.campaigns.models import CustomerUpload
+from ..serializers import CustomerUploadSerializer,CustomerUploadListSerializer, CampaignCreateSerializer
+from ..services import CustomerImportService , CampaignService
 
 
 class CustomerUploadAPIView(APIView):
@@ -38,3 +38,28 @@ class CustomerUploadListAPIView(APIView):
         )
 
         return Response(serializer.data)
+    
+class CampaignCreateAPIView(APIView):
+
+    def post(self, request):
+
+        serializer = CampaignCreateSerializer(
+            data=request.data
+        )
+
+        serializer.is_valid(raise_exception=True)
+
+        campaign = CampaignService.create_campaign(
+            serializer.validated_data,
+            request.user,
+        )
+
+        return Response(
+            {
+                "id": campaign.id,
+                "name": campaign.name,
+                "status": campaign.status,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+    

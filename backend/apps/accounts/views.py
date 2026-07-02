@@ -2,7 +2,6 @@ from rest_framework import generics, status
 from rest_framework.permissions import AllowAny,IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-
 from .models import User , AccessRequest
 from .serializers import LoginSerializer, RegisterSerializer , ProfileSerializer , LogoutSerializer,ForgotPasswordSerializer,ResetPasswordSerializer , RequestAccessSerializer , AccessRequestSerializer , ApproveAccessRequestSerializer , ApproveAccessRequestResponseSerializer ,    RejectAccessRequestSerializer,RejectAccessRequestResponseSerializer
 from django.utils import timezone
@@ -94,7 +93,7 @@ class ForgotPasswordView(generics.GenericAPIView):
         return Response(
             {
                 "success": True,
-                "message": "Password reset link has been sent to your email."
+                "message": "Password reset OTP has been sent to your email."
             },
             status=status.HTTP_200_OK,
         )

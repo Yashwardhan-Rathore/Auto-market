@@ -1,0 +1,54 @@
+[33mcommit 222a89404d7184c2545495f642d4f21ffb28028a[m[33m ([m[1;31morigin/feature/accounts[m[33m)[m
+Author: Yashwardhan Rathore <yashwardhan2027@gmail.com>
+Date:   Fri Jun 26 16:46:37 2026 +0530
+
+    Implement custom user model and update settings for authentication
+
+[33mcommit 4eda4807fc7bd1f320e66c18215e42349fc9c895[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature/dashboard[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m
+Author: Sushant <sushant.malviya.dev@gmail.com>
+Date:   Fri Jun 26 12:11:40 2026 +0530
+
+    created two apps
+
+[33mcommit 7fb4d09b1f8eb64839ff898a8972d33b3a211a36[m
+Author: Sushant <sushant.malviya.dev@gmail.com>
+Date:   Fri Jun 26 11:45:29 2026 +0530
+
+    configure
+
+[33mcommit 2a95a71c9cf0aef47640d7a4a5a0ce5e12cebad2[m
+Merge: b1650de 0a99171
+Author: Sushant <sushant.malviya.dev@gmail.com>
+Date:   Fri Jun 26 11:26:29 2026 +0530
+
+    Merge branch 'main' of https://github.com/Yashwardhan-Rathore/Auto-market
+
+[33mcommit b1650de9174ddbc1af55133b8471286c402b7a7a[m
+Author: Sushant <sushant.malviya.dev@gmail.com>
+Date:   Fri Jun 26 11:18:47 2026 +0530
+
+    dir setup
+
+[33mcommit 0a991718f84b3b91e73ee32994c1ad7de6e92308[m
+Author: Yashwardhan Rathore <yashwardhan2027@gmail.com>
+Date:   Fri Jun 26 10:11:55 2026 +0530
+
+    yash commit
+
+[33mcommit 7dda5d0185c8aefbbbf30abd6c8ab8484ccf846f[m
+Author: Yashwardhan Rathore <yashwardhan2027@gmail.com>
+Date:   Fri Jun 26 10:11:39 2026 +0530
+
+    yash test commit
+
+[33mcommit 7067076a5d8283b5ce3bfc4dfe487dc186684925[m
+Author: Sushant <sushant.malviya.dev@gmail.com>
+Date:   Fri Jun 26 10:05:36 2026 +0530
+
+    test change
+
+[33mcommit a89078e6b710fcde05ca8299f2f420d4148cf2c7[m
+Author: Sushant <sushant.malviya.dev@gmail.com>
+Date:   Thu Jun 25 23:11:15 2026 +0530
+
+    test commit
