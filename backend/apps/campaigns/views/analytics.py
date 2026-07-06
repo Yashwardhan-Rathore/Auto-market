@@ -33,7 +33,7 @@ class CampaignAnalyticsAPIView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        analytics = AnalyticsService.get_campaign_summary(
+        analytics = AnalyticsService.get_campaign_analytics(
             campaign=campaign,
         )
 

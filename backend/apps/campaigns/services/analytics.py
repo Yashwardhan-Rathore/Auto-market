@@ -124,14 +124,12 @@ class AnalyticsService:
     # ==========================================================
 
     @staticmethod
-    def _get_channel_summary(
-        deliveries,
-    ):
+    def _get_channel_summary(deliveries):
         """
         Channel-wise analytics.
         """
 
-        return list(
+        rows = (
             deliveries.values(
                 "channel__id",
                 "channel__name",
@@ -140,31 +138,36 @@ class AnalyticsService:
                 total=Count("id"),
                 sent=Count(
                     "id",
-                    filter=Q(
-                        status=CampaignDelivery.Status.SENT,
-                    ),
+                    filter=Q(status=CampaignDelivery.Status.SENT),
                 ),
                 failed=Count(
                     "id",
-                    filter=Q(
-                        status=CampaignDelivery.Status.FAILED,
-                    ),
+                    filter=Q(status=CampaignDelivery.Status.FAILED),
                 ),
                 pending=Count(
                     "id",
-                    filter=Q(
-                        status=CampaignDelivery.Status.PENDING,
-                    ),
+                    filter=Q(status=CampaignDelivery.Status.PENDING),
                 ),
                 delivered=Count(
                     "id",
-                    filter=Q(
-                        status=CampaignDelivery.Status.DELIVERED,
-                    ),
+                    filter=Q(status=CampaignDelivery.Status.DELIVERED),
                 ),
             )
             .order_by("channel__name")
         )
+
+        return [
+        {
+            "id": row["channel__id"],
+            "name": row["channel__name"],
+            "total": row["total"],
+            "sent": row["sent"],
+            "failed": row["failed"],
+            "pending": row["pending"],
+            "delivered": row["delivered"],
+        }
+        for row in rows
+    ]
 
     # ==========================================================
     # Recent Deliveries
@@ -179,7 +182,7 @@ class AnalyticsService:
         Return recent delivery history.
         """
 
-        return list(
+        rows = (
             deliveries.select_related(
                 "customer",
                 "channel",
@@ -195,6 +198,21 @@ class AnalyticsService:
                 "sent_at",
             )[:limit]
         )
+
+        return [
+            {
+                "id": row["id"],
+                "customer": {
+                    "id": row["customer__id"],
+                    "data": row["customer__data"],
+                },
+                "channel": row["channel__name"],
+                "status": row["status"],
+                "provider_message_id": row["provider_message_id"],
+                "sent_at": row["sent_at"],
+            }
+            for row in rows
+        ]
 
     # ==========================================================
     # Calculations
