@@ -19,6 +19,7 @@ from .serializers import (
     TaskAssignmentSerializer,
     UpdateTaskStatusSerializer,
     ApprovalSerializer,
+    MyTaskSerializer,
 )
 
 from .permissions import (
@@ -46,34 +47,37 @@ class CreateTaskView(APIView):
     def post(self, request):
 
         serializer = CreateTaskSerializer(
-            data=request.data
+            data=request.data,
         )
 
         serializer.is_valid(
-            raise_exception=True
+            raise_exception=True,
         )
 
         task = create_task(
-    title=serializer.validated_data["title"],
+            title=serializer.validated_data["title"],
 
-    description=serializer.validated_data.get(
-        "description"
-    ),
+            description=serializer.validated_data.get(
+                "description",
+            ),
 
-    instructions=serializer.validated_data.get(
-        "instructions"
-    ),
+            instructions=serializer.validated_data.get(
+                "instructions",
+            ),
 
-    audience=serializer.validated_data["audience"],
+            audience=serializer.validated_data["audience"],
 
-    priority=serializer.validated_data["priority"],
+            channels=serializer.validated_data["channels"],   # NEW
 
-    due_date=serializer.validated_data["due_date"],
+            priority=serializer.validated_data["priority"],
 
-    created_by=request.user,
+            due_date=serializer.validated_data["due_date"],
 
-    users=serializer.validated_data["users"],
-)
+            created_by=request.user,
+
+            users=serializer.validated_data["users"],
+        )
+
         return Response(
             TaskSerializer(task).data,
             status=status.HTTP_201_CREATED,
@@ -92,7 +96,7 @@ class MyTasksView(APIView):
         )
 
         serializer = (
-            TaskAssignmentSerializer(
+            MyTaskSerializer(
                 tasks,
                 many=True,
             )

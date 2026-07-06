@@ -48,5 +48,9 @@ urlpatterns = [
         "api/forms/",
         include("apps.forms.urls"),
     ),
+
+    path(
+    "api/templates/",
+    include("apps.campaigns.urls.templates")),
 ]
 

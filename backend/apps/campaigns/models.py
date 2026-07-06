@@ -112,6 +112,21 @@ class Campaign(models.Model):
         auto_now=True,
     )
 
+    scheduled_at = models.DateTimeField(
+    null=True,
+    blank=True,
+)
+
+    started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
     class Meta:
         db_table = "campaigns"
         ordering = ["-created_at"]
@@ -289,3 +304,166 @@ class Audience(models.Model):
 
     def __str__(self):
         return self.name
+    
+class Template(models.Model):
+
+    class Status(models.TextChoices):
+        DRAFT = "DRAFT", "Draft"
+        ACTIVE = "ACTIVE", "Active"
+        ARCHIVED = "ARCHIVED", "Archived"
+
+    name = models.CharField(
+        max_length=255,
+    )
+
+    channel = models.ForeignKey(
+        Channel,
+        on_delete=models.PROTECT,
+        related_name="templates",
+    )
+
+    subject = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+    )
+
+    body = models.TextField()
+
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.DRAFT,
+    )
+
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="templates",
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        db_table = "templates"
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+    
+class CampaignTemplate(models.Model):
+
+    campaign = models.ForeignKey(
+        Campaign,
+        on_delete=models.CASCADE,
+        related_name="campaign_templates",
+    )
+
+    channel = models.ForeignKey(
+        Channel,
+        on_delete=models.PROTECT,
+        related_name="campaign_templates",
+    )
+
+    template = models.ForeignKey(
+        Template,
+        on_delete=models.PROTECT,
+        related_name="campaign_templates",
+    )
+
+    assigned_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["campaign", "channel"],
+                name="unique_campaign_channel_template",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.campaign.name} - {self.channel.name}"
+    
+
+class CampaignDelivery(models.Model):
+
+    class Status(models.TextChoices):
+        PENDING = "PENDING", "Pending"
+        SENT = "SENT", "Sent"
+        DELIVERED = "DELIVERED", "Delivered"
+        FAILED = "FAILED", "Failed"
+
+    campaign = models.ForeignKey(
+        Campaign,
+        on_delete=models.CASCADE,
+        related_name="deliveries",
+    )
+
+    customer = models.ForeignKey(
+        CustomerRecord,
+        on_delete=models.CASCADE,
+        related_name="deliveries",
+    )
+
+    channel = models.ForeignKey(
+        Channel,
+        on_delete=models.CASCADE,
+        related_name="deliveries",
+    )
+
+    rendered_message = models.TextField()
+
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+
+    provider_message_id = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+    )
+
+    error_message = models.TextField(
+        blank=True,
+        null=True,
+    )
+
+    sent_at = models.DateTimeField(
+        blank=True,
+        null=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    class Meta:
+        db_table = "campaign_delivery"
+
+        indexes = [
+            models.Index(fields=["campaign"]),
+            models.Index(fields=["customer"]),
+            models.Index(fields=["status"]),
+            models.Index(fields=["channel"]),
+        ]
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "campaign",
+                    "customer",
+                    "channel",
+                ],
+                name="unique_campaign_customer_channel",
+            ),
+        ]

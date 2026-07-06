@@ -16,6 +16,7 @@ def create_task(
     description,
     instructions,
     audience,
+    channels,
     priority,
     due_date,
     created_by,
@@ -25,31 +26,34 @@ def create_task(
     Create task and assign users.
     """
 
+    # Create task
     task = Task.objects.create(
-    title=title,
-    description=description,
-    instructions=instructions,
-    audience=audience,
-    priority=priority,
-    due_date=due_date,
-    created_by=created_by,
-)
+        title=title,
+        description=description,
+        instructions=instructions,
+        audience=audience,
+        priority=priority,
+        due_date=due_date,
+        created_by=created_by,
+    )
 
-    assignments = []
+    # Assign allowed channels
+    task.channels.set(channels)
 
-    for user_id in users:
+    # Fetch all users in one query
+    user_objects = User.objects.filter(
+        id__in=users,
+    )
 
-        user = User.objects.get(id=user_id)
-
-        assignments.append(
+    # Create assignments
+    TaskAssignment.objects.bulk_create(
+        [
             TaskAssignment(
                 task=task,
                 user=user,
             )
-        )
-
-    TaskAssignment.objects.bulk_create(
-        assignments
+            for user in user_objects
+        ]
     )
 
     return task

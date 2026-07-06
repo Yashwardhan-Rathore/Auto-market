@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from apps.campaigns.models import Audience
+from apps.campaigns.models import Audience,Channel
 
 from .models import (
     Task,
@@ -124,12 +124,19 @@ class CreateTaskSerializer(serializers.ModelSerializer):
         write_only=True,
     )
 
+    channels = serializers.PrimaryKeyRelatedField(
+        queryset=Channel.objects.filter(
+            is_active=True,
+        ),
+        many=True,
+    )
+
     instructions = serializers.CharField(
         required=False,
         allow_blank=True,
         allow_null=True,
     )
-
+    
     audience = serializers.PrimaryKeyRelatedField(
         queryset=Audience.objects.filter(
             is_active=True,
@@ -147,7 +154,7 @@ class CreateTaskSerializer(serializers.ModelSerializer):
             "instructions",
 
             "audience",
-
+            "channels",
             "priority",
             "due_date",
 
@@ -164,6 +171,11 @@ class TaskSerializer(serializers.ModelSerializer):
 
     audience_name = serializers.CharField(
         source="audience.name",
+        read_only=True,
+    )
+
+    channels = serializers.PrimaryKeyRelatedField(
+        many=True,
         read_only=True,
     )
 
@@ -184,7 +196,7 @@ class TaskSerializer(serializers.ModelSerializer):
 
             "audience",
             "audience_name",
-
+            "channels",
             "priority",
 
             "due_date",
@@ -220,3 +232,42 @@ class ApprovalSerializer(serializers.Serializer):
         required=False,
         allow_blank=True,
     )
+
+class TaskSummarySerializer(serializers.ModelSerializer):
+
+    audience_name = serializers.CharField(
+        source="audience.name",
+        read_only=True,
+    )
+
+    class Meta:
+        model = Task
+        fields = [
+            "id",
+            "title",
+            "description",
+            "instructions",
+            "audience",
+            "audience_name",
+            "priority",
+            "due_date",
+        ]
+
+class MyTaskSerializer(serializers.ModelSerializer):
+
+    task = TaskSummarySerializer(
+        read_only=True,
+    )
+
+    class Meta:
+        model = TaskAssignment
+        fields = [
+            "id",
+            "task",
+            "status",
+            "remarks",
+            "submitted_at",
+            "created_at",
+            "updated_at",
+        ]
+

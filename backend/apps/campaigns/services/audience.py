@@ -29,13 +29,13 @@ class AudienceService:
         )
 
     @staticmethod
-    def preview_audience(
+    def get_customers(
         *,
         customer_upload,
         audience_definition,
     ):
         """
-        Return matching customers for the supplied audience definition.
+        Return customers matching the supplied audience definition.
         """
 
         queryset = CustomerRecord.objects.filter(
@@ -85,3 +85,18 @@ class AudienceService:
                 )
 
         return queryset.filter(query)
+
+    @staticmethod
+    def preview_audience(
+        *,
+        customer_upload,
+        audience_definition,
+    ):
+        """
+        Return matching customers for the supplied audience definition.
+        """
+
+        return AudienceService.get_customers(
+            customer_upload=customer_upload,
+            audience_definition=audience_definition,
+        )
