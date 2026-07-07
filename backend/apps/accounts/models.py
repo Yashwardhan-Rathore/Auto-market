@@ -1,12 +1,17 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-
 from .managers import UserManager
 
 
 class User(AbstractUser):
     username = None
-
+    # user_id = models.ForeignKey(
+    #     User,
+    #     on_delete=models.SET_NULL,
+    #     null=True,
+    #     blank=True,
+    #     related_name="user",
+    # )
     ROLE_CHOICES = [
         ("SUPER_ADMIN", "Super Admin"),
         ("ADMIN", "Admin"),
