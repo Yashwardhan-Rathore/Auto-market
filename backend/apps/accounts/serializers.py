@@ -1,15 +1,14 @@
 from django.contrib.auth import authenticate
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
-from .models import User, AccessRequest
+from .models import User, AccessRequest, PasswordResetOTP
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.mail import send_mail
-from django.template.loader import render_to_string
-from django.utils.encoding import force_bytes
-from django.utils.http import urlsafe_base64_encode
 from django.conf import settings
-from django.utils.http import urlsafe_base64_decode
-from django.utils.encoding import force_str
+from django.utils import timezone
+from datetime import timedelta
+import random
 
 
 
@@ -121,23 +120,29 @@ class ForgotPasswordSerializer(serializers.Serializer):
     def save(self):
         user = User.objects.get(email=self.validated_data["email"])
 
-        uid = urlsafe_base64_encode(force_bytes(user.pk))
-        token = PasswordResetTokenGenerator().make_token(user)
+        PasswordResetOTP.objects.filter(
+            user=user,
+            is_used=False,
+        ).update(is_used=True)
 
-        reset_link = (
-            f"http://localhost:3000/reset-password/{uid}/{token}/"
+        otp = f"{random.SystemRandom().randint(100000, 999999)}"
+        PasswordResetOTP.objects.create(
+            user=user,
+            otp=otp,
+            expires_at=timezone.now() + timedelta(minutes=10),
         )
 
-        subject = "Reset Your Password"
-
+        subject = "Your Password Reset OTP"
         message = f"""
 Hello,
 
 You requested to reset your password.
 
-Click the link below to reset your password:
+Use this OTP to reset your password:
 
-{reset_link}
+{otp}
+
+This OTP will expire in 10 minutes.
 
 If you did not request this, please ignore this email.
 
@@ -156,9 +161,13 @@ Auto Market Team
 
 
 
+
 class ResetPasswordSerializer(serializers.Serializer):
-    uid = serializers.CharField()
-    token = serializers.CharField()
+    email = serializers.EmailField()
+    otp = serializers.RegexField(
+        regex=r"^\d{6}$",
+        error_messages={"invalid": "OTP must be a 6 digit code."},
+    )
     password = serializers.CharField(min_length=8, write_only=True)
     confirm_password = serializers.CharField(write_only=True)
 
@@ -169,27 +178,47 @@ class ResetPasswordSerializer(serializers.Serializer):
             )
 
         try:
-            uid = force_str(urlsafe_base64_decode(attrs["uid"]))
-            user = User.objects.get(pk=uid)
-        except Exception:
+            user = User.objects.get(email=attrs["email"])
+        except User.DoesNotExist:
             raise serializers.ValidationError(
-                {"detail": "Invalid reset link."}
+                {"email": "No account found with this email."}
             )
 
-        if not PasswordResetTokenGenerator().check_token(
-            user, attrs["token"]
-        ):
+        otp = PasswordResetOTP.objects.filter(
+            user=user,
+            otp=attrs["otp"],
+            is_used=False,
+        ).order_by("-created_at").first()
+
+        if not otp:
             raise serializers.ValidationError(
-                {"detail": "Invalid or expired token."}
+                {"otp": "Invalid OTP."}
+            )
+
+        if otp.expires_at < timezone.now():
+            raise serializers.ValidationError(
+                {"otp": "OTP has expired."}
+            )
+
+        try:
+            validate_password(attrs["password"], user=user)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(
+                {"password": list(exc.messages)}
             )
 
         attrs["user"] = user
+        attrs["password_reset_otp"] = otp
         return attrs
 
     def save(self):
         user = self.validated_data["user"]
         user.set_password(self.validated_data["password"])
         user.save()
+
+        otp = self.validated_data["password_reset_otp"]
+        otp.is_used = True
+        otp.save(update_fields=["is_used"])
 
 class RequestAccessSerializer(serializers.ModelSerializer):
     class Meta:
@@ -237,3 +266,48 @@ class AccessRequestSerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = fields
+
+
+class ApproveAccessRequestSerializer(serializers.Serializer):
+    role = serializers.ChoiceField(
+        choices=[
+            ("USER", "User"),
+            ("ADMIN", "Admin"),
+        ]
+    )
+
+class ApprovedUserSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    email = serializers.EmailField()
+    role = serializers.CharField()
+
+
+class ApprovedAccessRequestSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    status = serializers.CharField()
+    approved_by = serializers.EmailField()
+    approved_at = serializers.DateTimeField()
+
+
+class ApproveAccessRequestResponseSerializer(serializers.Serializer):
+    message = serializers.CharField()
+    user = ApprovedUserSerializer()
+    access_request = ApprovedAccessRequestSerializer()
+
+class RejectAccessRequestSerializer(serializers.Serializer):
+    reason = serializers.CharField(
+        max_length=500,
+        trim_whitespace=True,
+    )
+
+class RejectedAccessRequestSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    status = serializers.CharField()
+    rejection_reason = serializers.CharField()
+    processed_by = serializers.EmailField()
+    processed_at = serializers.DateTimeField()
+
+
+class RejectAccessRequestResponseSerializer(serializers.Serializer):
+    message = serializers.CharField()
+    access_request = RejectedAccessRequestSerializer()

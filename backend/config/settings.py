@@ -46,9 +46,15 @@ INSTALLED_APPS = [
     "apps.communications",
     "apps.analytics",
     'corsheaders',
+    'apps.campaigns',
+    'apps.dashboard',
+    'apps.forms',
+    'apps.tasks',
     'rest_framework',
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
+    
+
 ]
 
 # --------------------------------------------------
@@ -190,31 +196,18 @@ EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True") == "True"
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL",EMAIL_HOST_USER)
 
-
-
-CELERY_BROKER_URL = os.getenv(
-    "REDIS_URL"
-)
-
-CELERY_RESULT_BACKEND = os.getenv(
-    "REDIS_URL"
-)
-
-CELERY_ACCEPT_CONTENT = [
-    "json"
-]
-
-CELERY_TASK_SERIALIZER = "json"
-
-CELERY_RESULT_SERIALIZER = "json"
-
-CELERY_TIMEZONE = "Asia/Kolkata"
-
-CELERY_BEAT_SCHEDULE = {
-    "resume-waiting-automation-executions": {
-        "task": "apps.automation.tasks_resume.resume_workflows",
-        "schedule": 60.0,
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
     },
 }
