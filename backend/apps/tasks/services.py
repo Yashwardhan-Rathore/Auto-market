@@ -14,12 +14,9 @@ def create_task(
     *,
     title,
     description,
-<<<<<<< HEAD
-=======
     instructions,
     audience,
     channels,
->>>>>>> feature/dashboard
     priority,
     due_date,
     created_by,
@@ -29,32 +26,17 @@ def create_task(
     Create task and assign users.
     """
 
-<<<<<<< HEAD
-    task = Task.objects.create(
-        title=title,
-        description=description,
-=======
     # Create task
     task = Task.objects.create(
         title=title,
         description=description,
         instructions=instructions,
         audience=audience,
->>>>>>> feature/dashboard
         priority=priority,
         due_date=due_date,
         created_by=created_by,
     )
 
-<<<<<<< HEAD
-    assignments = []
-
-    for user_id in users:
-
-        user = User.objects.get(id=user_id)
-
-        assignments.append(
-=======
     # Assign allowed channels
     task.channels.set(channels)
 
@@ -66,20 +48,12 @@ def create_task(
     # Create assignments
     TaskAssignment.objects.bulk_create(
         [
->>>>>>> feature/dashboard
             TaskAssignment(
                 task=task,
                 user=user,
             )
-<<<<<<< HEAD
-        )
-
-    TaskAssignment.objects.bulk_create(
-        assignments
-=======
             for user in user_objects
         ]
->>>>>>> feature/dashboard
     )
 
     return task

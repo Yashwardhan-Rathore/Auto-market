@@ -1,10 +1,6 @@
 from django.db import models
 from django.conf import settings
 
-<<<<<<< HEAD
-
-=======
->>>>>>> feature/dashboard
 class Task(models.Model):
     """
     Main task entity.
@@ -19,18 +15,11 @@ class Task(models.Model):
 
     title = models.CharField(
         max_length=255,
-<<<<<<< HEAD
-        db_index=True
-=======
         db_index=True,
->>>>>>> feature/dashboard
     )
 
     description = models.TextField(
         blank=True,
-<<<<<<< HEAD
-        null=True
-=======
         null=True,
     )
 
@@ -53,50 +42,22 @@ class Task(models.Model):
         "campaigns.Channel",
         related_name="tasks",
         blank=True,
->>>>>>> feature/dashboard
     )
 
     priority = models.CharField(
         max_length=20,
         choices=Priority.choices,
         default=Priority.MEDIUM,
-<<<<<<< HEAD
-        db_index=True
-    )
-
-    due_date = models.DateTimeField(
-        db_index=True
-=======
         db_index=True,
     )
 
     due_date = models.DateTimeField(
         db_index=True,
->>>>>>> feature/dashboard
     )
 
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-<<<<<<< HEAD
-        related_name="created_tasks"
-    )
-
-    is_active = models.BooleanField(
-        default=True
-    )
-
-    is_deleted = models.BooleanField(
-        default=False
-    )
-
-    created_at = models.DateTimeField(
-        auto_now_add=True
-    )
-
-    updated_at = models.DateTimeField(
-        auto_now=True
-=======
         related_name="created_tasks",
     )
 
@@ -114,7 +75,6 @@ class Task(models.Model):
 
     updated_at = models.DateTimeField(
         auto_now=True,
->>>>>>> feature/dashboard
     )
 
     class Meta:
@@ -274,9 +234,5 @@ class TaskAttachment(models.Model):
         ordering = ["-uploaded_at"]
 
     def __str__(self):
-<<<<<<< HEAD
-        return self.file.name
-=======
         return self.file.name
     
->>>>>>> feature/dashboard

@@ -1,7 +1,12 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import PasswordResetOTP, User
+from .models import (
+    User,
+    MAUser,
+    PasswordResetOTP,
+    AccessRequest,
+)
 
 
 @admin.register(User)
@@ -10,15 +15,25 @@ class CustomUserAdmin(UserAdmin):
 
     list_display = (
         "email",
+        "username",
         "is_staff",
         "is_superuser",
         "is_active",
     )
 
-    search_fields = ("email",)
+    search_fields = ("email", "username")
 
     fieldsets = (
-        (None, {"fields": ("email", "password")}),
+        (None, {"fields": ("email", "username", "password")}),
+        (
+            "Personal Info",
+            {
+                "fields": (
+                    "first_name",
+                    "last_name",
+                )
+            },
+        ),
         (
             "Permissions",
             {
@@ -31,7 +46,15 @@ class CustomUserAdmin(UserAdmin):
                 )
             },
         ),
-        ("Important dates", {"fields": ("last_login",)}),
+        (
+            "Important dates",
+            {
+                "fields": (
+                    "last_login",
+                    "date_joined",
+                )
+            },
+        ),
     )
 
     add_fieldsets = (
@@ -41,6 +64,7 @@ class CustomUserAdmin(UserAdmin):
                 "classes": ("wide",),
                 "fields": (
                     "email",
+                    "username",
                     "password1",
                     "password2",
                     "is_staff",
@@ -49,6 +73,50 @@ class CustomUserAdmin(UserAdmin):
                 ),
             },
         ),
+    )
+
+
+@admin.register(MAUser)
+class MAUserAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "user_id",
+        "role",
+        "created_at",
+    )
+
+    list_filter = (
+        "role",
+        "created_at",
+    )
+
+    search_fields = (
+        "user_id__email",
+        "user_id__username",
+    )
+
+
+@admin.register(AccessRequest)
+class AccessRequestAdmin(admin.ModelAdmin):
+    list_display = (
+        "full_name",
+        "email",
+        "department",
+        "designation",
+        "status",
+        "approved_by",
+        "created_at",
+    )
+
+    list_filter = (
+        "status",
+        "department",
+        "created_at",
+    )
+
+    search_fields = (
+        "full_name",
+        "email",
     )
 
 
@@ -61,6 +129,16 @@ class PasswordResetOTPAdmin(admin.ModelAdmin):
         "is_used",
         "created_at",
     )
-    list_filter = ("is_used", "created_at", "expires_at")
-    search_fields = ("user__email", "otp")
+
+    list_filter = (
+        "is_used",
+        "created_at",
+        "expires_at",
+    )
+
+    search_fields = (
+        "user__email",
+        "otp",
+    )
+
     readonly_fields = ("created_at",)

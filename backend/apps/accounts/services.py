@@ -2,8 +2,7 @@ from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 import secrets
-
-from .models import AccessRequest
+from .models import AccessRequest,MAUser
 from django.db import transaction
 
 from django.conf import settings
@@ -16,8 +15,13 @@ User = get_user_model()
 
 @transaction.atomic
 def approve_access_request(request_id,role,approved_by):
-    access_request = get_object_or_404(AccessRequest,pk=request_id,status="PENDING")
+    access_request = get_object_or_404(
+        AccessRequest,
+        pk=request_id,status="PENDING"
+        )
+    
     temporary_password = secrets.token_urlsafe(8)
+
     if User.objects.filter(email=access_request.email).exists():
         raise ValidationError(
             {
@@ -28,12 +32,16 @@ def approve_access_request(request_id,role,approved_by):
     email=access_request.email,
     password=temporary_password,
 )
-    user.role = role
-    user.save()
+    ma_user = MAUser.objects.create(
+    user_id=user,
+    role=role,
+)
+
     access_request.status = "APPROVED"
     access_request.approved_by = approved_by
     access_request.approved_at = timezone.now()
     access_request.save()
+
     send_welcome_email(
     email=user.email,
     temporary_password=temporary_password,
@@ -41,11 +49,9 @@ def approve_access_request(request_id,role,approved_by):
     return {
         "access_request": access_request,
         "user": user,
+        "ma_user": ma_user,
         "temporary_password": temporary_password,
     }
-
-
-
 
 def send_welcome_email(email, temporary_password):
     subject = "Welcome to Auto Market"

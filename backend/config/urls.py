@@ -58,5 +58,6 @@ urlpatterns = [
     "api/dashboard/",
     include("apps.dashboard.urls"),
 ),
+
 ]
 

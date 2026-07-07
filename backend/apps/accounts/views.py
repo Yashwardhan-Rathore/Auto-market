@@ -2,8 +2,8 @@ from rest_framework import generics, status
 from rest_framework.permissions import AllowAny,IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import User , AccessRequest
-from .serializers import LoginSerializer, RegisterSerializer , ProfileSerializer , LogoutSerializer,ForgotPasswordSerializer,ResetPasswordSerializer , RequestAccessSerializer , AccessRequestSerializer , ApproveAccessRequestSerializer , ApproveAccessRequestResponseSerializer ,    RejectAccessRequestSerializer,RejectAccessRequestResponseSerializer
+from .models import User , MAUser,AccessRequest
+from .serializers import LoginSerializer, RegisterSerializer , ProfileSerializer , LogoutSerializer,ForgotPasswordSerializer,ResetPasswordSerializer , RequestAccessSerializer , AccessRequestSerializer , ApproveAccessRequestSerializer , ApproveAccessRequestResponseSerializer ,    RejectAccessRequestSerializer,RejectAccessRequestResponseSerializer,CreateSuperAdminSerializer
 from django.utils import timezone
 from .permissions import IsAdminOrSuperAdmin
 from django.shortcuts import get_object_or_404
@@ -32,7 +32,7 @@ class LoginView(generics.GenericAPIView):
         user.last_login = timezone.now()
         user.save(update_fields=["last_login"])
 
-        
+        ma_user = MAUser.objects.filter(user_id=user).first()
         refresh = RefreshToken.for_user(user)
 
         return Response(
@@ -42,10 +42,11 @@ class LoginView(generics.GenericAPIView):
                 "data": {
                     "access": str(refresh.access_token),
                     "refresh": str(refresh),
+                    
                     "user": {
                         "id": user.id,
                         "email": user.email,
-                        "role": user.role,
+                        "role": ma_user.role if ma_user else None,
                         "is_active": user.is_active,
                         "last_login": user.last_login,
                     },
@@ -163,7 +164,7 @@ class ApproveAccessRequestView(APIView):
             "user": {
                 "id": result["user"].id,
                 "email": result["user"].email,
-                "role": result["user"].role,
+                "role": result["ma_user"].role,
             },
             "access_request": {
                 "id": result["access_request"].id,
@@ -215,4 +216,34 @@ class RejectAccessRequestView(APIView):
         return Response(
             response_serializer.data,
             status=status.HTTP_200_OK,
+        )
+    
+# accounts/views.py
+
+class CreateSuperAdminView(generics.CreateAPIView):
+    serializer_class = CreateSuperAdminSerializer
+    permission_classes = [AllowAny]   # Change later
+
+    def create(self, request, *args, **kwargs):
+
+        serializer = self.get_serializer(
+            data=request.data
+        )
+
+        serializer.is_valid(
+            raise_exception=True
+        )
+
+        user = serializer.save()
+
+        return Response(
+            {
+                "success": True,
+                "message": "Super Admin created successfully.",
+                "data": {
+                    "id": user.id,
+                    "email": user.email,
+                },
+            },
+            status=status.HTTP_201_CREATED,
         )

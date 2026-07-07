@@ -1,10 +1,6 @@
 from rest_framework import serializers
 
-<<<<<<< HEAD
-=======
 from apps.campaigns.models import Audience,Channel
-
->>>>>>> feature/dashboard
 from .models import (
     Task,
     TaskAssignment,
@@ -12,23 +8,14 @@ from .models import (
     TaskAttachment,
 )
 
-<<<<<<< HEAD
-=======
-
->>>>>>> feature/dashboard
 class TaskAttachmentSerializer(serializers.ModelSerializer):
 
     uploaded_by_name = serializers.CharField(
         source="uploaded_by.email",
-<<<<<<< HEAD
-        read_only=True
-=======
-        read_only=True,
->>>>>>> feature/dashboard
-    )
 
+        read_only=True,
+    )
     class Meta:
-        model = TaskAttachment
 
         fields = [
             "id",
@@ -48,11 +35,7 @@ class TaskCommentSerializer(serializers.ModelSerializer):
 
     created_by_name = serializers.CharField(
         source="created_by.email",
-<<<<<<< HEAD
-        read_only=True
-=======
         read_only=True,
->>>>>>> feature/dashboard
     )
 
     class Meta:
@@ -76,20 +59,12 @@ class TaskAssignmentSerializer(serializers.ModelSerializer):
 
     user_name = serializers.CharField(
         source="user.email",
-<<<<<<< HEAD
-        read_only=True
-=======
         read_only=True,
->>>>>>> feature/dashboard
     )
 
     approved_by_name = serializers.CharField(
         source="approved_by.email",
-<<<<<<< HEAD
-        read_only=True
-=======
         read_only=True,
->>>>>>> feature/dashboard
     )
 
     comments = TaskCommentSerializer(
@@ -146,8 +121,6 @@ class CreateTaskSerializer(serializers.ModelSerializer):
         write_only=True,
     )
 
-<<<<<<< HEAD
-=======
     channels = serializers.PrimaryKeyRelatedField(
         queryset=Channel.objects.filter(
             is_active=True,
@@ -167,7 +140,6 @@ class CreateTaskSerializer(serializers.ModelSerializer):
         )
     )
 
->>>>>>> feature/dashboard
     class Meta:
         model = Task
 
@@ -176,13 +148,10 @@ class CreateTaskSerializer(serializers.ModelSerializer):
 
             "title",
             "description",
-<<<<<<< HEAD
-=======
             "instructions",
 
             "audience",
             "channels",
->>>>>>> feature/dashboard
             "priority",
             "due_date",
 
@@ -194,9 +163,6 @@ class TaskSerializer(serializers.ModelSerializer):
 
     created_by_name = serializers.CharField(
         source="created_by.email",
-<<<<<<< HEAD
-        read_only=True
-=======
         read_only=True,
     )
 
@@ -208,7 +174,6 @@ class TaskSerializer(serializers.ModelSerializer):
     channels = serializers.PrimaryKeyRelatedField(
         many=True,
         read_only=True,
->>>>>>> feature/dashboard
     )
 
     assignments = TaskAssignmentSerializer(
@@ -224,15 +189,11 @@ class TaskSerializer(serializers.ModelSerializer):
 
             "title",
             "description",
-<<<<<<< HEAD
-
-=======
             "instructions",
 
             "audience",
             "audience_name",
             "channels",
->>>>>>> feature/dashboard
             "priority",
 
             "due_date",
@@ -246,10 +207,6 @@ class TaskSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-<<<<<<< HEAD
-=======
-
->>>>>>> feature/dashboard
 class UpdateTaskStatusSerializer(serializers.Serializer):
 
     status = serializers.ChoiceField(
@@ -272,8 +229,6 @@ class ApprovalSerializer(serializers.Serializer):
         allow_blank=True,
     )
 
-<<<<<<< HEAD
-=======
 class TaskSummarySerializer(serializers.ModelSerializer):
 
     audience_name = serializers.CharField(
@@ -312,4 +267,3 @@ class MyTaskSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
->>>>>>> feature/dashboard

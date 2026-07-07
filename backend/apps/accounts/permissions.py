@@ -1,4 +1,5 @@
 from rest_framework.permissions import BasePermission
+from .models import MAUser
 
 
 class IsAdminOrSuperAdmin(BasePermission):
@@ -7,7 +8,12 @@ class IsAdminOrSuperAdmin(BasePermission):
     """
 
     def has_permission(self, request, view):
-        return (
-            request.user.is_authenticated
-            and request.user.role in ["ADMIN", "SUPER_ADMIN"]
-        )
+        if not request.user.is_authenticated:
+            return False
+
+        ma_user = MAUser.objects.filter(user_id=request.user).first()
+
+        if not ma_user:
+            return False
+
+        return ma_user.role in ["ADMIN", "SUPER_ADMIN"]

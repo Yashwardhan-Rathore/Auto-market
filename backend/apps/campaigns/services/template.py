@@ -1,5 +1,5 @@
 from rest_framework.exceptions import ValidationError
-
+from apps.accounts.models import MAUser
 from apps.tasks.models import TaskAssignment
 from apps.campaigns.models import (
     Template,
@@ -17,7 +17,11 @@ class TemplateService:
         validated_data,
         user,
     ):
-        if user.role != "USER":
+        ma_user = MAUser.objects.filter(
+            user_id=user
+        ).first()
+
+        if not ma_user or ma_user.role != "USER":
             raise ValidationError(
                 "Only users can create templates."
             )
@@ -36,12 +40,16 @@ class TemplateService:
         *,
         user,
     ):
-        if user.role == "USER":
+        ma_user = MAUser.objects.filter(
+            user_id=user
+        ).first()
+
+        if ma_user and ma_user.role == "USER":
             return Template.objects.filter(
                 created_by=user,
                 status=Template.Status.ACTIVE,
             ).order_by("name")
-
+        
         return Template.objects.filter(
             status=Template.Status.ACTIVE,
         ).order_by("name")

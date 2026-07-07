@@ -2,7 +2,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
-from .models import User, AccessRequest, PasswordResetOTP
+from .models import User,MAUser, AccessRequest, PasswordResetOTP
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.mail import send_mail
 from django.conf import settings
@@ -29,7 +29,14 @@ class RegisterSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        return User.objects.create_user(**validated_data)
+        user = User.objects.create_user(**validated_data)
+
+        MAUser.objects.create(
+            user_id=user,
+            role="USER",
+        )
+
+        return user
 
 
 class LoginSerializer(serializers.Serializer):
@@ -76,18 +83,29 @@ class LoginSerializer(serializers.Serializer):
         return attrs
     
 class ProfileSerializer(serializers.ModelSerializer):
+
+    role = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = [
             "id",
             "email",
-            "role",
+            "username",
+            "first_name",
+            "last_name",
             "is_active",
+            "is_staff",
+            "is_superuser",
             "last_login",
-            "created_at",
-            "updated_at",
+            "date_joined",
+            "role",
         ]
         read_only_fields = fields
+
+    def get_role(self, obj):
+        ma_user = obj.ma_users.first()
+        return ma_user.role if ma_user else None
 
 
 
@@ -311,3 +329,32 @@ class RejectedAccessRequestSerializer(serializers.Serializer):
 class RejectAccessRequestResponseSerializer(serializers.Serializer):
     message = serializers.CharField()
     access_request = RejectedAccessRequestSerializer()
+
+
+
+class CreateSuperAdminSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(
+        write_only=True,
+        min_length=8,
+    )
+
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError(
+                "User with this email already exists."
+            )
+        return value
+
+    def create(self, validated_data):
+        user = User.objects.create_superuser(
+            email=validated_data["email"],
+            password=validated_data["password"],
+        )
+
+        MAUser.objects.create(
+            user=user,
+            role="SUPER_ADMIN",
+        )
+
+        return user

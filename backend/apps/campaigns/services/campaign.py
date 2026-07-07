@@ -7,9 +7,8 @@ from apps.campaigns.models import (
     CampaignAudience,
     CampaignChannel,
 )
-
+from apps.accounts.models import MAUser
 from apps.campaigns.services.audience import AudienceService
-
 
 class CampaignService:
 
@@ -20,8 +19,12 @@ class CampaignService:
     ):
         task = validated_data["task"]
 
+        ma_user = MAUser.objects.filter(
+            user_id=user
+        ).first()
+
         # Only USER can create campaign
-        if user.role != "USER":
+        if not ma_user or ma_user.role != "USER":
             raise PermissionDenied(
                 "Only marketing users can create campaigns."
             )

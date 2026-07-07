@@ -7,7 +7,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-
+from apps.accounts.models import MAUser
 from .models import (
     Task,
     TaskAssignment,
@@ -19,10 +19,7 @@ from .serializers import (
     TaskAssignmentSerializer,
     UpdateTaskStatusSerializer,
     ApprovalSerializer,
-<<<<<<< HEAD
-=======
     MyTaskSerializer,
->>>>>>> feature/dashboard
 )
 
 from .permissions import (
@@ -50,37 +47,6 @@ class CreateTaskView(APIView):
     def post(self, request):
 
         serializer = CreateTaskSerializer(
-<<<<<<< HEAD
-            data=request.data
-        )
-
-        serializer.is_valid(
-            raise_exception=True
-        )
-
-        task = create_task(
-            title=serializer.validated_data[
-                "title"
-            ],
-
-            description=serializer.validated_data.get(
-                "description"
-            ),
-
-            priority=serializer.validated_data[
-                "priority"
-            ],
-
-            due_date=serializer.validated_data[
-                "due_date"
-            ],
-
-            created_by=request.user,
-
-            users=serializer.validated_data[
-                "users"
-            ],
-=======
             data=request.data,
         )
 
@@ -110,7 +76,6 @@ class CreateTaskView(APIView):
             created_by=request.user,
 
             users=serializer.validated_data["users"],
->>>>>>> feature/dashboard
         )
 
         return Response(
@@ -131,11 +96,7 @@ class MyTasksView(APIView):
         )
 
         serializer = (
-<<<<<<< HEAD
-            TaskAssignmentSerializer(
-=======
             MyTaskSerializer(
->>>>>>> feature/dashboard
                 tasks,
                 many=True,
             )
@@ -260,11 +221,16 @@ class ApproveTaskView(
             )
         )
 
+        ma_user = MAUser.objects.filter(
+            user_id=request.user
+        ).first()
+
         if (
-            assignment.task.created_by
-            != request.user
-            and request.user.role
-            != "SUPER_ADMIN"
+            assignment.task.created_by != request.user
+            and (
+                not ma_user
+                or ma_user.role != "SUPER_ADMIN"
+            )
         ):
 
             return Response(
@@ -323,11 +289,16 @@ class RejectTaskView(
             )
         )
 
+        ma_user = MAUser.objects.filter(
+            user_id=request.user
+        ).first()
+
         if (
-            assignment.task.created_by
-            != request.user
-            and request.user.role
-            != "SUPER_ADMIN"
+            assignment.task.created_by != request.user
+            and (
+                not ma_user
+                or ma_user.role != "SUPER_ADMIN"
+            )
         ):
 
             return Response(
