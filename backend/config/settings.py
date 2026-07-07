@@ -34,9 +34,18 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.postgres",
 
     # Local Apps
     "apps.accounts",
+    "apps.tasks",
+    "apps.forms",
+    'apps.automation',
+    "apps.events",
+    "apps.webhooks",
+    "apps.communications",
+    "apps.analytics",
+    'corsheaders',
     'apps.campaigns',
     'apps.dashboard',
     'apps.forms',
@@ -89,11 +98,18 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database (Neon PostgreSQL)
 # --------------------------------------------------
 
+DATABASE_URL = os.getenv("DATABASE_URL")
+
 DATABASES = {
     "default": dj_database_url.parse(
-        os.getenv("DATABASE_URL"),
+        DATABASE_URL,
         conn_max_age=600,
-        ssl_require=True,
+        ssl_require=(
+            DATABASE_URL
+            and DATABASE_URL.startswith(
+                ("postgres://", "postgresql://")
+            )
+        ),
     )
 }
 

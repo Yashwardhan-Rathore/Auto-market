@@ -1,0 +1,56 @@
+from .integration import (
+    HttpRequestAction,
+    InternalAPICallAction,
+    WebhookCallAction,
+)
+from .send_email import SendBulkEmailAction, SendEmailAction
+from .send_notification import SendNotificationAction
+from .send_sms import SendSMSAction
+from .send_whatsapp import SendWhatsAppAction
+from .create_task import CreateTaskAction
+from .end import EndAction
+from .website import TrackEventAction, UpdateUserPropertyAction
+from .workflow import TriggerWorkflowAction
+
+
+ACTION_REGISTRY = {
+
+    "SEND_EMAIL":
+        SendEmailAction(),
+
+    "SEND_BULK_EMAIL":
+        SendBulkEmailAction(),
+
+    "SEND_SMS":
+        SendSMSAction(),
+
+    "SEND_WHATSAPP":
+        SendWhatsAppAction(),
+
+    "SEND_NOTIFICATION":
+        SendNotificationAction(),
+
+    "TRACK_EVENT":
+        TrackEventAction(),
+
+    "UPDATE_USER_PROPERTY":
+        UpdateUserPropertyAction(),
+
+    "WEBHOOK_CALL":
+        WebhookCallAction(),
+
+    "HTTP_REQUEST":
+        HttpRequestAction(),
+
+    "INTERNAL_API_CALL":
+        InternalAPICallAction(),
+
+    "TRIGGER_WORKFLOW":
+        TriggerWorkflowAction(),
+
+    "CREATE_TASK":
+        CreateTaskAction(),
+
+    "END":
+        EndAction(),
+}
