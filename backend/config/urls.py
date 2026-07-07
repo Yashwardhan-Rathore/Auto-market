@@ -52,5 +52,10 @@ urlpatterns = [
     path(
     "api/templates/",
     include("apps.campaigns.urls.templates")),
+
+    path(
+    "api/dashboard/",
+    include("apps.dashboard.urls"),
+),
 ]
 
