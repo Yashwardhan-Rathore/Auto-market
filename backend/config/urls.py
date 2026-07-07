@@ -37,5 +37,21 @@ urlpatterns = [
         "api/automations/",
         include("apps.automation.api.urls"),
     ),
+    path(
+        "api/events/",
+        include("apps.events.urls"),
+    ),
+    path(
+        "api/webhooks/",
+        include("apps.webhooks.urls"),
+    ),
+    path(
+        "api/communications/",
+        include("apps.communications.urls"),
+    ),
+    path(
+        "api/analytics/",
+        include("apps.analytics.urls"),
+    ),
 ]
 

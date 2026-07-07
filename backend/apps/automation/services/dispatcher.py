@@ -10,12 +10,14 @@ from apps.automation.tasks import (
 def dispatch_workflow(
     automation,
     user,
+    context=None,
 ):
 
     execution = (
         AutomationExecution.objects.create(
             automation=automation,
             triggered_by=user,
+            context=context or {},
         )
     )
 

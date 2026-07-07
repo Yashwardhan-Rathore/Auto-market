@@ -290,6 +290,7 @@ class AutomationExecution(models.Model):
         PENDING = "PENDING", "Pending"
         RUNNING = "RUNNING", "Running"
         WAITING = "WAITING", "Waiting"
+        RETRYING = "RETRYING", "Retrying"
         SUCCESS = "SUCCESS", "Success"
         FAILED = "FAILED", "Failed"
         CANCELLED = "CANCELLED", "Cancelled"
@@ -331,6 +332,28 @@ class AutomationExecution(models.Model):
         default=0
     )
 
+    retry_after = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True
+    )
+
+    paused_at = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+
+    resume_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True
+    )
+
+    context = models.JSONField(
+        default=dict,
+        blank=True
+    )
+
     error_message = models.TextField(
         blank=True
     )
@@ -350,6 +373,8 @@ class AutomationExecution(models.Model):
         indexes = [
             models.Index(fields=["automation"]),
             models.Index(fields=["status"]),
+            models.Index(fields=["status", "resume_at"]),
+            models.Index(fields=["status", "retry_after"]),
         ]
 
     def __str__(self):

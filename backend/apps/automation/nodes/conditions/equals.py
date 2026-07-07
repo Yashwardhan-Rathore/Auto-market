@@ -1,3 +1,6 @@
+from .base import resolve_value
+
+
 class EqualsCondition:
 
     def execute(
@@ -7,12 +10,16 @@ class EqualsCondition:
         config,
     ):
 
-        left = config.get(
-            "left"
+        left = resolve_value(
+            config,
+            "left",
+            execution,
         )
 
-        right = config.get(
-            "right"
+        right = resolve_value(
+            config,
+            "right",
+            execution,
         )
 
         return left == right

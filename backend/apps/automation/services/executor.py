@@ -18,10 +18,18 @@ from apps.automation.nodes.triggers import (
     TRIGGER_REGISTRY,
 )
 
+from apps.automation.nodes.utilities import (
+    UTILITY_REGISTRY,
+)
+
 
 class WorkflowExecutor:
 
-    def __init__(self, execution):
+    def __init__(
+        self,
+        execution,
+        start_node=None,
+    ):
 
         self.execution = execution
 
@@ -33,7 +41,11 @@ class WorkflowExecutor:
 
         self.graph = parsed["graph"]
 
-        self.current = parsed["trigger"]
+        self.current = (
+            start_node
+            or execution.current_node
+            or parsed["trigger"]
+        )
 
     # =====================================================
     # EXECUTE NODE
@@ -60,10 +72,18 @@ class WorkflowExecutor:
                 ]
             )
 
-        else:
+        elif node.node_type == "ACTION":
 
             handler = (
                 ACTION_REGISTRY[
+                    node.action_name
+                ]
+            )
+
+        else:
+
+            handler = (
+                UTILITY_REGISTRY[
                     node.action_name
                 ]
             )
@@ -167,12 +187,17 @@ class WorkflowExecutor:
 
                 raise
 
+            if self.execution.status == "WAITING":
+
+                return False
+
             if current.action_name == "END":
 
                 break
 
             current = self.get_next(
-                current
+                current,
+                result,
             )
 
         return True

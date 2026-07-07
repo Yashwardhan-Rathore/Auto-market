@@ -1,5 +1,4 @@
-from django.core.mail import send_mail
-from django.conf import settings
+from apps.communications.services.email import send_email
 
 
 class SendEmailAction:
@@ -11,9 +10,8 @@ class SendEmailAction:
         config,
     ):
 
-        recipient = config.get(
-            "recipient"
-        )
+        recipient = config.get("recipient")
+        recipients = config.get("recipients") or [recipient]
 
         subject = config.get(
             "subject"
@@ -23,15 +21,19 @@ class SendEmailAction:
             "message"
         )
 
-        send_mail(
+        send_email(
+            execution,
             subject,
             message,
-            settings.DEFAULT_FROM_EMAIL,
-            [recipient],
-            fail_silently=False,
+            recipients,
+            sender=config.get("sender"),
         )
 
         return {
             "success": True,
             "message": "Email sent."
         }
+
+
+class SendBulkEmailAction(SendEmailAction):
+    pass

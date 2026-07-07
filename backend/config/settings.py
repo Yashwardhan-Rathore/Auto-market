@@ -41,6 +41,10 @@ INSTALLED_APPS = [
     "apps.tasks",
     "apps.forms",
     'apps.automation',
+    "apps.events",
+    "apps.webhooks",
+    "apps.communications",
+    "apps.analytics",
     'corsheaders',
     'rest_framework',
     "rest_framework_simplejwt",
@@ -88,11 +92,18 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database (Neon PostgreSQL)
 # --------------------------------------------------
 
+DATABASE_URL = os.getenv("DATABASE_URL")
+
 DATABASES = {
     "default": dj_database_url.parse(
-        os.getenv("DATABASE_URL"),
+        DATABASE_URL,
         conn_max_age=600,
-        ssl_require=True,
+        ssl_require=(
+            DATABASE_URL
+            and DATABASE_URL.startswith(
+                ("postgres://", "postgresql://")
+            )
+        ),
     )
 }
 
@@ -200,3 +211,10 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 
 CELERY_TIMEZONE = "Asia/Kolkata"
+
+CELERY_BEAT_SCHEDULE = {
+    "resume-waiting-automation-executions": {
+        "task": "apps.automation.tasks_resume.resume_workflows",
+        "schedule": 60.0,
+    },
+}
