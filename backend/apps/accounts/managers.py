@@ -1,5 +1,9 @@
 from django.contrib.auth.base_user import BaseUserManager
+from django.contrib.auth.base_user import BaseUserManager
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from .models import User
 
 class UserManager(BaseUserManager):
     use_in_migrations = True

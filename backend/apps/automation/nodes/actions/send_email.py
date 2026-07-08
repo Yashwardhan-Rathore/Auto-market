@@ -22,11 +22,12 @@ class SendEmailAction:
         )
 
         send_email(
-            execution,
-            subject,
-            message,
-            recipients,
+            organization=execution.automation.owner,
+            subject=subject,
+            message=message,
+            recipients=recipients,
             sender=config.get("sender"),
+            execution=execution,
         )
 
         return {

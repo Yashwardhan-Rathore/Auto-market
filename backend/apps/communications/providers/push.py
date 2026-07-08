@@ -2,6 +2,15 @@ class BasePushProvider:
     def send(self, recipient, title, body, metadata=None):
         raise NotImplementedError
 
+    def validate_configuration(self):
+        return True
+
+    def health_check(self):
+        return True
+
+    def test_connection(self):
+        return True
+
 
 class BrowserPushProvider(BasePushProvider):
     def send(self, recipient, title, body, metadata=None):
