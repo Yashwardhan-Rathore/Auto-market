@@ -1,0 +1,80 @@
+import logging
+from django.db import transaction
+from .models import GeneratedContent, ContentVersion
+from apps.billing.services import BillingService
+from apps.integrations.openai_service import OpenAIService
+
+logger = logging.getLogger(__name__)
+
+class ContentStudioService:
+    @staticmethod
+    @transaction.atomic
+    def generate_initial_content(company, user, prompt, content_type, platform="NONE"):
+        """
+        Creates a new GeneratedContent and its first version.
+        Charges 10 credits.
+        """
+        # Consume credits first
+        BillingService.consume_credits(
+            company=company,
+            amount=10,
+            description=f"Generated {content_type} content",
+        )
+
+        # Call OpenAI
+        ai_response = OpenAIService.generate_content(company, prompt, content_type)
+
+        # Create GeneratedContent
+        generated = GeneratedContent.objects.create(
+            company=company,
+            created_by=user,
+            content_type=content_type,
+            platform=platform,
+            status=GeneratedContent.Status.DRAFT
+        )
+
+        # Create ContentVersion
+        version = ContentVersion.objects.create(
+            generated_content=generated,
+            version_number=1,
+            prompt=prompt,
+            text_content=ai_response
+        )
+
+        logger.info(f"Successfully generated initial content {generated.id}")
+        return generated, version
+
+    @staticmethod
+    @transaction.atomic
+    def regenerate_content(generated_content, new_prompt):
+        """
+        Generates a new version for an existing GeneratedContent.
+        Charges 5 credits.
+        """
+        company = generated_content.company
+
+        # Consume credits
+        BillingService.consume_credits(
+            company=company,
+            amount=5,
+            description=f"Regenerated content {generated_content.id}",
+            reference_id=str(generated_content.id)
+        )
+
+        # Call OpenAI
+        ai_response = OpenAIService.generate_content(company, new_prompt, generated_content.content_type)
+
+        # Get latest version number
+        latest_version = generated_content.versions.first()
+        next_version_num = latest_version.version_number + 1 if latest_version else 1
+
+        # Create new ContentVersion
+        version = ContentVersion.objects.create(
+            generated_content=generated_content,
+            version_number=next_version_num,
+            prompt=new_prompt,
+            text_content=ai_response
+        )
+
+        logger.info(f"Successfully regenerated content {generated_content.id} (v{next_version_num})")
+        return version

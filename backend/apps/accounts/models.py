@@ -12,6 +12,22 @@ class User(AbstractUser):
 
     email = models.EmailField(unique=True)
 
+    company = models.ForeignKey(
+        "common.Company",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="users",
+    )
+
+    department = models.ForeignKey(
+        "common.Department",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="users",
+    )
+
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
 

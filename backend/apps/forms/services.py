@@ -183,4 +183,32 @@ class FormService:
             submission_answers
         )
 
+        try:
+            from apps.automation.models import Automation
+            from apps.automation.services.dispatcher import dispatch_workflow
+
+            matching_automations = Automation.objects.filter(
+                status=Automation.Status.PUBLISHED,
+                is_active=True,
+                nodes__node_type="TRIGGER",
+                nodes__action_name="FORM_SUBMITTED",
+                nodes__business_config__form_id=str(form.id),
+            ).distinct()
+
+            context = {
+                "form": {
+                    "id": str(form.id),
+                    "submission_id": str(submission.id),
+                }
+            }
+
+            for automation in matching_automations:
+                dispatch_workflow(
+                    automation,
+                    None,
+                    context=context,
+                )
+        except Exception:
+            pass # Failing to dispatch automation should not fail the form submission
+
         return submission

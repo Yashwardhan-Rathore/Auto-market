@@ -35,7 +35,7 @@ class CustomerImportService:
         }
 
     @staticmethod
-    def save_upload(uploaded_file, uploaded_by, summary):
+    def save_upload(uploaded_file, uploaded_by, summary) :
         extension = os.path.splitext(uploaded_file.name)[1].lower()
 
         return CustomerUpload.objects.create(

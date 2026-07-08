@@ -4,11 +4,12 @@ from apps.communications.services.push import send_notification
 class SendNotificationAction:
     def execute(self, execution, node, config):
         send_notification(
-            execution,
-            config.get("recipient"),
-            config.get("title", ""),
-            config.get("body", ""),
-            config,
+            organization=execution.automation.owner,
+            recipient=config.get("recipient"),
+            title=config.get("title", ""),
+            body=config.get("body", ""),
+            config=config,
+            execution=execution,
         )
 
         return {
