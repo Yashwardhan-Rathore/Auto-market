@@ -2,6 +2,15 @@ class BaseWhatsAppProvider:
     def send(self, to, message, metadata=None):
         raise NotImplementedError
 
+    def validate_configuration(self):
+        return True
+
+    def health_check(self):
+        return True
+
+    def test_connection(self):
+        return True
+
 
 class MetaWhatsAppProvider(BaseWhatsAppProvider):
     def __init__(self, access_token=None, phone_number_id=None):

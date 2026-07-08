@@ -1,32 +1,75 @@
-from apps.campaigns.services.senders.email import EmailSender
-from apps.campaigns.services.senders.sms import SmsSender
-from apps.campaigns.services.senders.whatsapp import WhatsAppSender
+import logging
+from apps.communications.services.email import send_email
+from apps.communications.services.sms import send_sms
+from apps.communications.services.whatsapp import send_whatsapp
 
+logger = logging.getLogger(__name__)
 
 class Dispatcher:
     """
-    Routes a delivery to the correct sender.
+    Routes a delivery to the correct communication service.
     """
-
-    SENDERS = {
-        "EMAIL": EmailSender,
-        "SMS": SmsSender,
-        "WHATSAPP": WhatsAppSender,
-    }
 
     @classmethod
     def send(cls, *, delivery):
+        channel_code = delivery.channel.code.upper()
+        organization = delivery.campaign.organization
+        recipient = None
 
-        sender = cls.SENDERS.get(
-            delivery.channel.code.upper()
-        )
+        try:
+            if channel_code == "EMAIL":
+                recipient = delivery.customer.data.get("email")
+                if not recipient:
+                    raise ValueError("Customer email not found.")
+                
+                send_email(
+                    organization=organization,
+                    subject=delivery.campaign.name,
+                    message=delivery.rendered_message,
+                    recipients=[recipient],
+                    campaign=delivery.campaign,
+                )
+            
+            elif channel_code == "SMS":
+                recipient = delivery.customer.data.get("phone")
+                if not recipient:
+                    raise ValueError("Customer phone not found.")
+                
+                send_sms(
+                    organization=organization,
+                    to=recipient,
+                    message=delivery.rendered_message,
+                    campaign=delivery.campaign,
+                )
+            
+            elif channel_code == "WHATSAPP":
+                recipient = delivery.customer.data.get("phone")
+                if not recipient:
+                    raise ValueError("Customer phone not found.")
+                
+                send_whatsapp(
+                    organization=organization,
+                    to=recipient,
+                    message=delivery.rendered_message,
+                    campaign=delivery.campaign,
+                )
+            
+            else:
+                raise ValueError(f"No dispatcher configured for channel {channel_code}")
 
-        if sender is None:
-            raise ValueError(
-                f"No sender configured for channel "
-                f"{delivery.channel.code}"
+            return {
+                "success": True,
+                "provider_message_id": "",
+            }
+
+        except Exception as exc:
+            logger.exception(
+                "Failed to send %s | Campaign=%s Customer=%s",
+                channel_code,
+                delivery.campaign.id,
+                delivery.customer.id,
             )
-
-        return sender.send(
-            delivery=delivery,
-        )
+            return {
+                "success": False,
+                "error": str(exc),
+            }

@@ -5,13 +5,38 @@ from apps.communications.providers.push import (
 )
 
 
-def send_notification(execution, recipient, title, body, config):
-    provider_name = (config.get("provider") or "BROWSER").upper()
+def get_push_provider(organization, provider_name):
+    from apps.communications.models import OrganizationPushProvider
+
+    organization_provider = (
+        OrganizationPushProvider.objects.filter(
+            organization=organization,
+            is_active=True,
+            provider="FCM" if provider_name == "MOBILE" else "VAPID",
+        )
+        .order_by("-created_at")
+        .first()
+    )
+
+    if not organization_provider:
+        raise ValueError(f"No active {provider_name} push provider configured for {organization}")
+
     provider = (
         MobilePushProvider()
         if provider_name == "MOBILE"
         else BrowserPushProvider()
     )
+    # The provider models should have the server_key, but BasePushProvider implementations
+    # in the codebase currently raise RuntimeError. We'll set the key for completeness.
+    provider.server_key = organization_provider.server_key
+    return provider
+
+
+def send_notification(organization, recipient, title, body, config=None, execution=None, campaign=None):
+    config = config or {}
+    provider_name = (config.get("provider") or "BROWSER").upper()
+    provider = get_push_provider(organization, provider_name)
+
     provider.send(
         recipient,
         title,
@@ -20,8 +45,9 @@ def send_notification(execution, recipient, title, body, config):
     )
 
     CommunicationEvent.objects.create(
-        organization=execution.automation.owner,
+        organization=organization,
         execution=execution,
+        campaign=campaign,
         channel="NOTIFICATION",
         event_name="NOTIFICATION_SENT",
         recipient=recipient,

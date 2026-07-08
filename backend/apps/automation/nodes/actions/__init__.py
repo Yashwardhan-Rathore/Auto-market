@@ -11,6 +11,7 @@ from .create_task import CreateTaskAction
 from .end import EndAction
 from .website import TrackEventAction, UpdateUserPropertyAction
 from .workflow import TriggerWorkflowAction
+from .generate_ai_content import GenerateAIContentAction
 
 
 ACTION_REGISTRY = {
@@ -53,4 +54,7 @@ ACTION_REGISTRY = {
 
     "END":
         EndAction(),
+
+    "GENERATE_AI_CONTENT":
+        GenerateAIContentAction(),
 }

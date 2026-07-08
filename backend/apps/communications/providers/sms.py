@@ -2,30 +2,16 @@ class BaseSMSProvider:
     def send(self, to, message, metadata=None):
         raise NotImplementedError
 
+    def validate_configuration(self):
+        return True
 
-class TwilioProvider(BaseSMSProvider):
-    def __init__(self, account_sid=None, auth_token=None, from_number=None):
-        self.account_sid = account_sid
-        self.auth_token = auth_token
-        self.from_number = from_number
+    def health_check(self):
+        return True
 
-    def send(self, to, message, metadata=None):
-        try:
-            from twilio.rest import Client
-        except ImportError as exc:
-            raise RuntimeError(
-                "twilio is required for Twilio SMS delivery."
-            ) from exc
+    def test_connection(self):
+        return True
 
-        client = Client(
-            self.account_sid,
-            self.auth_token,
-        )
-        return client.messages.create(
-            body=message,
-            from_=self.from_number,
-            to=to,
-        )
+
 
 
 class MSG91Provider(BaseSMSProvider):
