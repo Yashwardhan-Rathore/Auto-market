@@ -32,7 +32,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         user = User.objects.create_user(**validated_data)
 
         MAUser.objects.create(
-            user_id=user,
+            user=user,
             role="USER",
         )
 
