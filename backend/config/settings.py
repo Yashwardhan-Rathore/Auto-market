@@ -48,8 +48,6 @@ INSTALLED_APPS = [
     'corsheaders',
     'apps.campaigns',
     'apps.dashboard',
-    'apps.forms',
-    'apps.tasks',
     'rest_framework',
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
