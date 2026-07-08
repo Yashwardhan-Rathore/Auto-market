@@ -322,6 +322,22 @@ class Template(models.Model):
         related_name="templates",
     )
 
+    generated_content = models.ForeignKey(
+        "content_studio.GeneratedContent",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="campaign_templates",
+    )
+
+    asset = models.ForeignKey(
+        "asset_library.Asset",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="campaign_templates",
+    )
+
     subject = models.CharField(
         max_length=255,
         blank=True,

@@ -1,25 +1,32 @@
 from apps.communications.models import CommunicationEvent
-from apps.communications.providers.sms import MSG91Provider, TwilioProvider
+from apps.communications.providers.sms import MSG91Provider
 
 
-def get_sms_provider(config):
-    provider = (config.get("provider") or "TWILIO").upper()
+def get_sms_provider(organization):
+    from apps.communications.models import OrganizationSMSProvider
 
-    if provider == "MSG91":
-        return MSG91Provider(
-            auth_key=config.get("auth_key"),
-            sender_id=config.get("sender_id"),
+    organization_provider = (
+        OrganizationSMSProvider.objects.filter(
+            organization=organization,
+            is_active=True,
         )
+        .order_by("-created_at")
+        .first()
+    )
 
-    return TwilioProvider(
-        account_sid=config.get("account_sid"),
-        auth_token=config.get("auth_token"),
-        from_number=config.get("from_number"),
+    if not organization_provider:
+        raise ValueError(f"No active SMS provider configured for {organization}")
+
+    # Only MSG91 is supported currently
+    return MSG91Provider(
+        auth_key=organization_provider.auth_key,
+        sender_id=organization_provider.sender_id,
     )
 
 
-def send_sms(execution, to, message, config):
-    provider = get_sms_provider(config)
+def send_sms(organization, to, message, config=None, execution=None, campaign=None):
+    config = config or {}
+    provider = get_sms_provider(organization)
     response = provider.send(
         to,
         message,
@@ -27,8 +34,9 @@ def send_sms(execution, to, message, config):
     )
 
     CommunicationEvent.objects.create(
-        organization=execution.automation.owner,
+        organization=organization,
         execution=execution,
+        campaign=campaign,
         channel="SMS",
         event_name="SMS_SENT",
         recipient=to,

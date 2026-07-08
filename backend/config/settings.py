@@ -36,7 +36,11 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.postgres",
 
-    # Local Apps
+    "apps.common",
+    "apps.billing",
+    "apps.integrations",
+    "apps.content_studio",
+    "apps.asset_library",
     "apps.accounts",
     "apps.tasks",
     "apps.forms",
@@ -48,13 +52,10 @@ INSTALLED_APPS = [
     'corsheaders',
     'apps.campaigns',
     'apps.dashboard',
-    'apps.forms',
-    'apps.tasks',
     'rest_framework',
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     
-
 ]
 
 # --------------------------------------------------
