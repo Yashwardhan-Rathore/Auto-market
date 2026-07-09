@@ -1,11 +1,7 @@
 {
-  "/(auth)/login/page": "app/(auth)/login/page.js",
-  "/(dashboard)/campaigns/page": "app/(dashboard)/campaigns/page.js",
-  "/(dashboard)/companies/page": "app/(dashboard)/companies/page.js",
-  "/(dashboard)/contacts/page": "app/(dashboard)/contacts/page.js",
+  "/(dashboard)/workflows/page": "app/(dashboard)/workflows/page.js",
   "/(dashboard)/dashboard/page": "app/(dashboard)/dashboard/page.js",
-  "/(dashboard)/forms/page": "app/(dashboard)/forms/page.js",
-  "/(dashboard)/profile/page": "app/(dashboard)/profile/page.js",
-  "/(dashboard)/workflows/logs/page": "app/(dashboard)/workflows/logs/page.js",
-  "/(dashboard)/workflows/page": "app/(dashboard)/workflows/page.js"
+  "/(dashboard)/companies/page": "app/(dashboard)/companies/page.js",
+  "/(dashboard)/campaigns/page": "app/(dashboard)/campaigns/page.js",
+  "/(dashboard)/contacts/page": "app/(dashboard)/contacts/page.js"
 }

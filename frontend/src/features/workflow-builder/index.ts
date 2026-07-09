@@ -1,1 +1,1 @@
-// Public API for workflow-builder feature
+export * from './components/workflow-builder-view';
