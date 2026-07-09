@@ -21,16 +21,18 @@ from apps.automation.services.validator import (
 from apps.automation.services.dispatcher import (
     dispatch_workflow,
 )
+from apps.common.utils import filter_by_tenant
+
 
 
 class AutomationListCreateView(APIView):
 
     def get(self, request):
 
-        automations = (
-            Automation.objects.filter(
-                owner=request.user
-            )
+        automations = filter_by_tenant(
+            Automation.objects.all(),
+            request.user,
+            "owner"
         )
 
         serializer = (

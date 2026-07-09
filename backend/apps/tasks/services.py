@@ -7,6 +7,7 @@ from .models import (
     Task,
     TaskAssignment,
 )
+from apps.common.utils import filter_by_tenant
 
 
 @transaction.atomic
@@ -84,15 +85,14 @@ def get_admin_tasks(admin):
     Return tasks created by admin.
     """
 
-    return (
-        Task.objects
-        .filter(created_by=admin)
-        .prefetch_related(
-            "assignments",
-            "assignments__user",
-        )
-        .order_by("-created_at")
-    )
+    return filter_by_tenant(
+        Task.objects.all(),
+        admin,
+        "created_by"
+    ).prefetch_related(
+        "assignments",
+        "assignments__user",
+    ).order_by("-created_at")
 
 
 def start_task(

@@ -4,7 +4,18 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from ..serializers import CampaignCreateSerializer
+from ..serializers.campaign_list import CampaignListSerializer
 from ..services import CampaignService
+from ..models import Campaign
+from apps.common.utils import filter_by_tenant
+
+class CampaignListAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        campaigns = filter_by_tenant(Campaign.objects.all(), request.user, "created_by")
+        serializer = CampaignListSerializer(campaigns, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class CampaignCreateAPIView(APIView):

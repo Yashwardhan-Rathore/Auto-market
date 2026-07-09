@@ -4,6 +4,7 @@ from apps.campaigns.models import (
     Campaign,
     CampaignDelivery,
 )
+from apps.common.utils import filter_by_tenant
 
 
 class DashboardService:
@@ -16,13 +17,13 @@ class DashboardService:
     # ==========================================================
 
     @classmethod
-    def get_dashboard(cls):
+    def get_dashboard(cls, user):
         """
         Return dashboard data.
         """
 
-        campaigns = cls._get_campaigns()
-        deliveries = cls._get_deliveries()
+        campaigns = cls._get_campaigns(user)
+        deliveries = cls._get_deliveries(user)
 
         return {
             "campaigns": cls._get_campaign_stats(campaigns),
@@ -36,21 +37,21 @@ class DashboardService:
     # ==========================================================
 
     @staticmethod
-    def _get_campaigns():
+    def _get_campaigns(user):
         """
         Base queryset for campaigns.
         """
 
-        return Campaign.objects.all()
+        return filter_by_tenant(Campaign.objects.all(), user, "created_by")
 
 
     @staticmethod
-    def _get_deliveries():
+    def _get_deliveries(user):
         """
         Base queryset for deliveries.
         """
 
-        return CampaignDelivery.objects.select_related(
+        return filter_by_tenant(CampaignDelivery.objects.all(), user, "campaign__created_by").select_related(
             "campaign",
             "customer",
             "channel",

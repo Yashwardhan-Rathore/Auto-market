@@ -125,3 +125,14 @@ class PasswordResetOTP(models.Model):
 
     def __str__(self):
         return f"{self.user.email} - {self.otp}"
+
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+@receiver(post_save, sender=User)
+def create_ma_user_for_superuser(sender, instance, created, **kwargs):
+    if created and instance.is_superuser:
+        MAUser.objects.get_or_create(
+            user=instance,
+            defaults={"role": "SUPER_ADMIN"}
+        )

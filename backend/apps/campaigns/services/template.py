@@ -7,6 +7,7 @@ from apps.campaigns.models import (
     CampaignTemplate,
     Campaign
 )
+from apps.common.utils import filter_by_tenant
 
 
 class TemplateService:
@@ -40,19 +41,8 @@ class TemplateService:
         *,
         user,
     ):
-        ma_user = MAUser.objects.filter(
-            user_id=user
-        ).first()
-
-        if ma_user and ma_user.role == "USER":
-            return Template.objects.filter(
-                created_by=user,
-                status=Template.Status.ACTIVE,
-            ).order_by("name")
-        
-        return Template.objects.filter(
-            status=Template.Status.ACTIVE,
-        ).order_by("name")
+        templates = Template.objects.filter(status=Template.Status.ACTIVE)
+        return filter_by_tenant(templates, user, "created_by").order_by("name")
 
 
 class CampaignTemplateService:

@@ -2,6 +2,7 @@ from django.db.models import Avg, DurationField, ExpressionWrapper, F, Q
 
 from apps.automation.models import AutomationExecution
 from apps.communications.models import CommunicationEvent
+from apps.common.utils import filter_by_tenant
 
 
 def rate(numerator, denominator):
@@ -12,8 +13,8 @@ def rate(numerator, denominator):
 
 
 def communication_metrics(organization):
-    events = CommunicationEvent.objects.filter(
-        organization=organization
+    events = filter_by_tenant(
+        CommunicationEvent.objects.all(), organization, "organization"
     )
 
     email_sent = events.filter(
@@ -31,6 +32,7 @@ def communication_metrics(organization):
 
     return {
         "email": {
+            "sent": email_sent,
             "open_rate": rate(
                 events.filter(event_name="EMAIL_OPENED").count(),
                 email_sent,
@@ -49,12 +51,14 @@ def communication_metrics(organization):
             ),
         },
         "sms": {
+            "sent": sms_sent,
             "delivery_rate": rate(
                 events.filter(event_name="SMS_DELIVERED").count(),
                 sms_sent,
             ),
         },
         "whatsapp": {
+            "sent": whatsapp_sent,
             "read_rate": rate(
                 events.filter(event_name="WHATSAPP_READ").count(),
                 whatsapp_sent,
@@ -68,8 +72,8 @@ def communication_metrics(organization):
 
 
 def workflow_metrics(organization):
-    executions = AutomationExecution.objects.filter(
-        automation__owner=organization
+    executions = filter_by_tenant(
+        AutomationExecution.objects.all(), organization, "automation__owner"
     )
     total = executions.count()
     success = executions.filter(

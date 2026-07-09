@@ -3,6 +3,7 @@ from django.urls import path
 from apps.campaigns.views import (
     CustomerUploadAPIView,
     CustomerUploadListAPIView,
+    CustomerRecordListAPIView,
 )
 
 urlpatterns = [
@@ -15,5 +16,10 @@ urlpatterns = [
         "uploads/list/",
         CustomerUploadListAPIView.as_view(),
         name="customer-upload-list",
+    ),
+    path(
+        "",
+        CustomerRecordListAPIView.as_view(),
+        name="customer-list",
     ),
 ]

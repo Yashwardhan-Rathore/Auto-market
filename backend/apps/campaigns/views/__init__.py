@@ -1,7 +1,11 @@
-from .customer import (
+from .campaign import (
     CampaignCreateAPIView,
+    CampaignListAPIView,
+)
+from .customer import (
     CustomerUploadAPIView,
     CustomerUploadListAPIView,
+    CustomerRecordListAPIView,
 )
 from .channel import AssignChannelsView
 

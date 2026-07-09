@@ -3,7 +3,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from apps.campaigns.models import CustomerUpload
 from ..serializers import CustomerUploadSerializer,CustomerUploadListSerializer, CampaignCreateSerializer
+from ..serializers.customer_record import CustomerRecordSerializer
 from ..services import CustomerImportService , CampaignService
+from ..models import CustomerRecord
+from apps.common.utils import filter_by_tenant
 
 
 class CustomerUploadAPIView(APIView):
@@ -30,7 +33,7 @@ class CustomerUploadListAPIView(APIView):
 
     def get(self, request):
 
-        uploads = CustomerUpload.objects.all().order_by("-uploaded_at")
+        uploads = filter_by_tenant(CustomerUpload.objects.all(), request.user, "uploaded_by").order_by("-uploaded_at")
 
         serializer = CustomerUploadListSerializer(
             uploads,
@@ -38,7 +41,14 @@ class CustomerUploadListAPIView(APIView):
         )
 
         return Response(serializer.data)
-    
+
+
+class CustomerRecordListAPIView(APIView):
+    def get(self, request):
+        customers = filter_by_tenant(CustomerRecord.objects.all(), request.user, "upload__uploaded_by").order_by("-created_at")[:100]
+        serializer = CustomerRecordSerializer(customers, many=True)
+        return Response(serializer.data)
+
 class CampaignCreateAPIView(APIView):
 
     def post(self, request):

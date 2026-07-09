@@ -105,7 +105,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     def get_role(self, obj):
         ma_user = obj.ma_users.first()
-        return ma_user.role if ma_user else None
+        return ma_user.role if ma_user else ("SUPER_ADMIN" if obj.is_superuser else "USER")
 
 
 

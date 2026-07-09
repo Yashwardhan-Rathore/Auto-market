@@ -81,3 +81,10 @@ Thumbs.db
 .cursor/
 .gemini/
 .agents/
+figma_reference
+
+# API Documentation & Landing Page
+api_catalog.md
+landing-page.zip
+landing_page.zip
+*landing*.zip

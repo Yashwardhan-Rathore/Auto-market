@@ -18,6 +18,7 @@ from .serializers import (
     SubmissionListSerializer,
 )
 from .services import FormService
+from apps.common.utils import filter_by_tenant
 
 
 class FormListCreateView(
@@ -33,8 +34,10 @@ class FormListCreateView(
 
     def get_queryset(self):
 
-        return Form.objects.filter(
-            created_by=self.request.user
+        return filter_by_tenant(
+            Form.objects.all(),
+            self.request.user,
+            "created_by"
         )
 
     def post(
@@ -75,7 +78,12 @@ class FormDetailView(
         IsFormOwner,
     ]
 
-    queryset = Form.objects.all()
+    def get_queryset(self):
+        return filter_by_tenant(
+            Form.objects.all(),
+            self.request.user,
+            "created_by"
+        )
 
     def get_serializer_class(self):
 
@@ -147,9 +155,8 @@ class PublicFormView(
     lookup_field = "uuid"
 
     def get_queryset(self):
-
         return Form.objects.filter(
-            status=FormStatus.PUBLISHED
+            status="PUBLISHED"
         )
     
 

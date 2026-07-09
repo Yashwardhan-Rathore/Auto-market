@@ -1,7 +1,7 @@
 from django.urls import path
 
 from apps.campaigns.views import (
-    CampaignCreateAPIView,CampaignTemplateAssignAPIView,
+    CampaignCreateAPIView,CampaignListAPIView,CampaignTemplateAssignAPIView,
     CampaignPreviewAPIView,
     CampaignScheduleAPIView,
     CampaignSendAPIView,
@@ -11,6 +11,11 @@ from apps.campaigns.views import (
 urlpatterns = [
     path(
         "",
+        CampaignListAPIView.as_view(),
+        name="campaign-list",
+    ),
+    path(
+        "create/",
         CampaignCreateAPIView.as_view(),
         name="campaign-create",
     ),

@@ -16,7 +16,7 @@ class DashboardAPIView(APIView):
     ]
 
     def get(self, request):
-        dashboard = DashboardService.get_dashboard()
+        dashboard = DashboardService.get_dashboard(request.user)
 
         serializer = DashboardSerializer(
             dashboard,

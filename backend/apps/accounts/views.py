@@ -35,6 +35,8 @@ class LoginView(generics.GenericAPIView):
         ma_user = MAUser.objects.filter(user_id=user).first()
         refresh = RefreshToken.for_user(user)
 
+        role = ma_user.role if ma_user else ("SUPER_ADMIN" if user.is_superuser else "USER")
+
         return Response(
             {
                 "success": True,
@@ -46,7 +48,7 @@ class LoginView(generics.GenericAPIView):
                     "user": {
                         "id": user.id,
                         "email": user.email,
-                        "role": ma_user.role if ma_user else None,
+                        "role": role,
                         "is_active": user.is_active,
                         "last_login": user.last_login,
                     },
