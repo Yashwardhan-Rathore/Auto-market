@@ -1,0 +1,25 @@
+{
+  "pages": {
+    "/(auth)/register/page": [
+      "static/chunks/[root of the server]__554c579a._.css",
+      "static/chunks/node_modules_@tanstack_query-devtools_build_8ab887a4._.js",
+      "static/chunks/node_modules_4a5cec4e._.js",
+      "static/chunks/src_providers_fa2eeec3._.js",
+      "static/chunks/src_app_layout_tsx_f0e4c1a2._.js",
+      "static/chunks/[turbopack]_browser_dev_hmr-client_hmr-client_ts_482ce92e._.js",
+      "static/chunks/node_modules_react-hook-form_dist_index_esm_mjs_835d5139._.js",
+      "static/chunks/node_modules_zod_v3_209a51fb._.js",
+      "static/chunks/node_modules_framer-motion_dist_es_92139a2a._.js",
+      "static/chunks/node_modules_f0e60e30._.js",
+      "static/chunks/src_31cbc4ca._.js",
+      "static/chunks/src_app_(auth)_register_page_tsx_3fc32454._.js",
+      "static/chunks/[turbopack]_browser_dev_hmr-client_hmr-client_ts_49a6ea35._.js",
+      "static/chunks/node_modules_next_dist_compiled_2ce9398a._.js",
+      "static/chunks/node_modules_next_dist_client_43e3ffb8._.js",
+      "static/chunks/node_modules_next_dist_3bfaed20._.js",
+      "static/chunks/node_modules_@swc_helpers_cjs_00636ac3._.js",
+      "static/chunks/_e69f0d32._.js",
+      "static/chunks/_be317ff2._.js"
+    ]
+  }
+}
