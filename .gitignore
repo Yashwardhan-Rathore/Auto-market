@@ -23,8 +23,13 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+# lib/ and lib64/ only in venv/virtualenv, not frontend/src/lib
+venv/lib/
+.venv/lib/
+env/lib/
+venv/lib64/
+.venv/lib64/
+env/lib64/
 parts/
 sdist/
 var/
