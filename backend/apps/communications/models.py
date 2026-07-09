@@ -69,6 +69,156 @@ class OrganizationEmailProvider(models.Model):
         return f"{self.organization} - {self.provider}"
 
 
+class OrganizationSMSProvider(models.Model):
+    PROVIDERS = [
+        ("MSG91", "MSG91"),
+    ]
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+    )
+    organization = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="sms_providers",
+    )
+    provider = models.CharField(
+        max_length=50,
+        choices=PROVIDERS,
+        default="MSG91",
+    )
+    auth_key = models.CharField(
+        max_length=255,
+        blank=True,
+    )
+    sender_id = models.CharField(
+        max_length=50,
+        blank=True,
+    )
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        db_table = "organization_sms_provider"
+        indexes = [
+            models.Index(fields=["organization", "is_active"]),
+            models.Index(fields=["provider"]),
+        ]
+
+    def __str__(self):
+        return f"{self.organization} - {self.provider}"
+
+
+class OrganizationWhatsAppProvider(models.Model):
+    PROVIDERS = [
+        ("META", "Meta WhatsApp Business Platform"),
+    ]
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+    )
+    organization = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="whatsapp_providers",
+    )
+    provider = models.CharField(
+        max_length=50,
+        choices=PROVIDERS,
+        default="META",
+    )
+    access_token = models.CharField(
+        max_length=500,
+        blank=True,
+    )
+    phone_number_id = models.CharField(
+        max_length=100,
+        blank=True,
+    )
+    business_account_id = models.CharField(
+        max_length=100,
+        blank=True,
+    )
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        db_table = "organization_whatsapp_provider"
+        indexes = [
+            models.Index(fields=["organization", "is_active"]),
+            models.Index(fields=["provider"]),
+        ]
+
+    def __str__(self):
+        return f"{self.organization} - {self.provider}"
+
+
+class OrganizationPushProvider(models.Model):
+    PROVIDERS = [
+        ("FCM", "Firebase Cloud Messaging"),
+        ("VAPID", "Web Push (VAPID)"),
+    ]
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+    )
+    organization = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="push_providers",
+    )
+    provider = models.CharField(
+        max_length=50,
+        choices=PROVIDERS,
+        default="FCM",
+    )
+    server_key = models.TextField(
+        blank=True,
+    )
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        db_table = "organization_push_provider"
+        indexes = [
+            models.Index(fields=["organization", "is_active"]),
+            models.Index(fields=["provider"]),
+        ]
+
+    def __str__(self):
+        return f"{self.organization} - {self.provider}"
+
+
 class CommunicationEvent(models.Model):
     CHANNELS = [
         ("EMAIL", "Email"),
@@ -100,6 +250,13 @@ class CommunicationEvent(models.Model):
     )
     execution = models.ForeignKey(
         "automation.AutomationExecution",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="communication_events",
+    )
+    campaign = models.ForeignKey(
+        "campaigns.Campaign",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

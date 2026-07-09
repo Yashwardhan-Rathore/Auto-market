@@ -70,8 +70,7 @@ urlpatterns = [
         "api/analytics/",
         include("apps.analytics.urls"),
     ),
-    "api/templates/",
-    include("apps.campaigns.urls.templates"),
+    path("api/templates/", include("apps.campaigns.urls.templates")),
 
     path(
     "api/dashboard/",

@@ -2,7 +2,21 @@ from django.conf import settings
 from django.core.mail import EmailMessage, get_connection
 
 
-class SMTPEmailProvider:
+class BaseEmailProvider:
+    def send(self, subject, message, sender, recipients):
+        raise NotImplementedError
+
+    def validate_configuration(self):
+        return True
+
+    def health_check(self):
+        return True
+
+    def test_connection(self):
+        return True
+
+
+class SMTPEmailProvider(BaseEmailProvider):
     def __init__(self, organization_provider=None):
         self.organization_provider = organization_provider
 
@@ -17,7 +31,7 @@ class SMTPEmailProvider:
         return email.send(fail_silently=False)
 
 
-class SESEmailProvider:
+class SESEmailProvider(BaseEmailProvider):
     def __init__(self, organization_provider):
         self.organization_provider = organization_provider
 

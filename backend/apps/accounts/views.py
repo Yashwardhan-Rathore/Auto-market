@@ -2,15 +2,15 @@ from rest_framework import generics, status
 from rest_framework.permissions import AllowAny,IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import User , MAUser,AccessRequest
-from .serializers import LoginSerializer, RegisterSerializer , ProfileSerializer , LogoutSerializer,ForgotPasswordSerializer,ResetPasswordSerializer , RequestAccessSerializer , AccessRequestSerializer , ApproveAccessRequestSerializer , ApproveAccessRequestResponseSerializer ,    RejectAccessRequestSerializer,RejectAccessRequestResponseSerializer,CreateSuperAdminSerializer
+from .models import User , MAUser
+from .serializers import LoginSerializer, RegisterSerializer , ProfileSerializer , LogoutSerializer,ForgotPasswordSerializer,ResetPasswordSerializer , CreateSuperAdminSerializer , CreateAdminSerializer , CreateUserSerializer
 from django.utils import timezone
-from .permissions import IsAdminOrSuperAdmin
+from .permissions import IsAdminOrSuperAdmin,IsSuperAdmin , IsAdmin
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .services import approve_access_request,reject_access_request
+
 
 
 class RegisterView(generics.CreateAPIView):
@@ -116,109 +116,6 @@ class ResetPasswordView(generics.GenericAPIView):
             },
             status=status.HTTP_200_OK,
         )
-    
-class RequestAccessView(generics.CreateAPIView):
-    serializer_class = RequestAccessSerializer
-    permission_classes = [AllowAny]
-
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-
-        return Response(
-            {
-                "success": True,
-                "message": (
-                    "Your access request has been submitted successfully. "
-                    "Please wait for administrator approval."
-                ),
-            },
-            status=status.HTTP_201_CREATED,
-        )
-    
-class AccessRequestListView(generics.ListAPIView):
-    serializer_class = AccessRequestSerializer
-    permission_classes = [IsAdminOrSuperAdmin]
-
-    def get_queryset(self):
-        return AccessRequest.objects.filter(
-            status="PENDING"
-        ).order_by("-created_at")
-    
-class ApproveAccessRequestView(APIView):
-    permission_classes = [IsAdminOrSuperAdmin]
-
-    def post(self, request, pk):
-        serializer = ApproveAccessRequestSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        result = approve_access_request(
-            request_id=pk,
-            role=serializer.validated_data["role"],
-            approved_by=request.user,
-        )
-
-        response_data = {
-            "message": "Access request approved successfully.",
-            "user": {
-                "id": result["user"].id,
-                "email": result["user"].email,
-                "role": result["ma_user"].role,
-            },
-            "access_request": {
-                "id": result["access_request"].id,
-                "status": result["access_request"].status,
-                "approved_by": request.user.email,
-                "approved_at": result["access_request"].approved_at,
-            },
-        }
-
-        response_serializer = ApproveAccessRequestResponseSerializer(
-            response_data
-        )
-
-        return Response(
-            response_serializer.data,
-            status=status.HTTP_200_OK,
-        )
-
-class RejectAccessRequestView(APIView):
-    permission_classes = [IsAdminOrSuperAdmin]
-
-    def post(self, request, pk):
-        serializer = RejectAccessRequestSerializer(
-            data=request.data
-        )
-        serializer.is_valid(raise_exception=True)
-
-        access_request = reject_access_request(
-            request_id=pk,
-            reason=serializer.validated_data["reason"],
-            rejected_by=request.user,
-        )
-
-        response_data = {
-            "message": "Access request rejected successfully.",
-            "access_request": {
-                "id": access_request.id,
-                "status": access_request.status,
-                "rejection_reason": access_request.rejection_reason,
-                "processed_by": request.user.email,
-                "processed_at": access_request.approved_at,
-            },
-        }
-
-        response_serializer = RejectAccessRequestResponseSerializer(
-            response_data
-        )
-
-        return Response(
-            response_serializer.data,
-            status=status.HTTP_200_OK,
-        )
-    
-# accounts/views.py
 
 class CreateSuperAdminView(generics.CreateAPIView):
     serializer_class = CreateSuperAdminSerializer
@@ -243,6 +140,61 @@ class CreateSuperAdminView(generics.CreateAPIView):
                 "data": {
                     "id": user.id,
                     "email": user.email,
+                },
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+class CreateAdminView(generics.CreateAPIView):
+    """
+    Create a new Admin user.
+    Accessible only by Super Admin.
+    """
+
+    serializer_class = CreateAdminSerializer
+    permission_classes = [IsAuthenticated, IsSuperAdmin]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        admin = serializer.save()
+
+        return Response(
+            {
+                "success": True,
+                "message": "Admin created successfully.",
+                "data": {
+                    "id": admin.id,
+                    "email": admin.email,
+                    "role": "ADMIN",
+                },
+            },
+            status=status.HTTP_201_CREATED,
+        )
+    
+class CreateUserView(generics.CreateAPIView):
+    """
+    Create a new User.
+    Accessible only by Admin.
+    """
+
+    serializer_class = CreateUserSerializer
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = serializer.save()
+
+        return Response(
+            {
+                "success": True,
+                "message": "User created successfully.",
+                "data": {
+                    "id": user.id,
+                    "email": user.email,
+                    "role": "USER",
                 },
             },
             status=status.HTTP_201_CREATED,
