@@ -1,16 +1,15 @@
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
+from django.db import transaction
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
-from .models import User,MAUser, AccessRequest, PasswordResetOTP
+from .models import User,MAUser, PasswordResetOTP
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
 import random
-
-
 
 class RegisterSerializer(serializers.ModelSerializer):
 
@@ -238,100 +237,6 @@ class ResetPasswordSerializer(serializers.Serializer):
         otp.is_used = True
         otp.save(update_fields=["is_used"])
 
-class RequestAccessSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = AccessRequest
-        fields = [
-            "full_name",
-            "email",
-            "department",
-            "designation",
-            "reason",
-        ]
-
-    def validate_email(self, value):
-        # Check if the user already exists
-        if User.objects.filter(email=value).exists():
-            raise serializers.ValidationError(
-                "An account with this email already exists."
-            )
-
-        # Check if an access request is already pending
-        if AccessRequest.objects.filter(
-            email=value,
-            status="PENDING"
-        ).exists():
-            raise serializers.ValidationError(
-                "An access request is already pending for this email."
-            )
-
-        return value
-
-    def create(self, validated_data):
-        return AccessRequest.objects.create(**validated_data)
-    
-class AccessRequestSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = AccessRequest
-        fields = [
-            "id",
-            "full_name",
-            "email",
-            "department",
-            "designation",
-            "reason",
-            "status",
-            "created_at",
-        ]
-        read_only_fields = fields
-
-
-class ApproveAccessRequestSerializer(serializers.Serializer):
-    role = serializers.ChoiceField(
-        choices=[
-            ("USER", "User"),
-            ("ADMIN", "Admin"),
-        ]
-    )
-
-class ApprovedUserSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    email = serializers.EmailField()
-    role = serializers.CharField()
-
-
-class ApprovedAccessRequestSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    status = serializers.CharField()
-    approved_by = serializers.EmailField()
-    approved_at = serializers.DateTimeField()
-
-
-class ApproveAccessRequestResponseSerializer(serializers.Serializer):
-    message = serializers.CharField()
-    user = ApprovedUserSerializer()
-    access_request = ApprovedAccessRequestSerializer()
-
-class RejectAccessRequestSerializer(serializers.Serializer):
-    reason = serializers.CharField(
-        max_length=500,
-        trim_whitespace=True,
-    )
-
-class RejectedAccessRequestSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    status = serializers.CharField()
-    rejection_reason = serializers.CharField()
-    processed_by = serializers.EmailField()
-    processed_at = serializers.DateTimeField()
-
-
-class RejectAccessRequestResponseSerializer(serializers.Serializer):
-    message = serializers.CharField()
-    access_request = RejectedAccessRequestSerializer()
-
-
-
 class CreateSuperAdminSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(
@@ -355,6 +260,71 @@ class CreateSuperAdminSerializer(serializers.Serializer):
         MAUser.objects.create(
             user=user,
             role="SUPER_ADMIN",
+        )
+
+        return user
+    
+
+class CreateAdminSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(
+        write_only=True,
+        validators=[validate_password],
+    )
+
+    class Meta:
+        model = User
+        fields = ["email", "password"]
+
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError(
+                "User with this email already exists."
+            )
+        return value
+
+    @transaction.atomic
+    def create(self, validated_data):
+        user = User.objects.create_user(
+            email=validated_data["email"],
+            password=validated_data["password"],
+        )
+
+        MAUser.objects.create(
+            user=user,
+            role="ADMIN",
+        )
+
+        return user
+    
+
+
+class CreateUserSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(
+        write_only=True,
+        validators=[validate_password],
+    )
+
+    class Meta:
+        model = User
+        fields = ["email", "password"]
+
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError(
+                "User with this email already exists."
+            )
+        return value
+
+    @transaction.atomic
+    def create(self, validated_data):
+        user = User.objects.create_user(
+            email=validated_data["email"],
+            password=validated_data["password"],
+        )
+
+        MAUser.objects.create(
+            user=user,
+            role="USER",   
         )
 
         return user
