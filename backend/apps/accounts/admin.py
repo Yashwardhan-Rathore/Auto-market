@@ -5,7 +5,6 @@ from .models import (
     User,
     MAUser,
     PasswordResetOTP,
-    AccessRequest,
 )
 
 
@@ -95,29 +94,6 @@ class MAUserAdmin(admin.ModelAdmin):
         "user_id__username",
     )
 
-
-@admin.register(AccessRequest)
-class AccessRequestAdmin(admin.ModelAdmin):
-    list_display = (
-        "full_name",
-        "email",
-        "department",
-        "designation",
-        "status",
-        "approved_by",
-        "created_at",
-    )
-
-    list_filter = (
-        "status",
-        "department",
-        "created_at",
-    )
-
-    search_fields = (
-        "full_name",
-        "email",
-    )
 
 
 @admin.register(PasswordResetOTP)
