@@ -11,6 +11,47 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .services import approve_access_request,reject_access_request
+from .serializers import TeamMemberCreateSerializer
+
+class TeamMemberCreateAPIView(generics.CreateAPIView):
+    permission_classes = [IsAdminOrSuperAdmin]
+    serializer_class = TeamMemberCreateSerializer
+    
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(
+            {
+                "success": True,
+                "message": "Team member created successfully.",
+                "data": {
+                    "id": user.id,
+                    "email": user.email,
+                }
+            },
+            status=status.HTTP_201_CREATED
+        )
+
+
+class UserListAPIView(generics.ListAPIView):
+    permission_classes = [IsAdminOrSuperAdmin]
+    
+    def get_queryset(self):
+        return User.objects.filter(is_active=True).order_by("email")
+    
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        data = [
+            {
+                "id": u.id,
+                "email": u.email,
+                "first_name": u.first_name,
+                "last_name": u.last_name,
+            }
+            for u in queryset
+        ]
+        return Response(data, status=status.HTTP_200_OK)
 
 
 class RegisterView(generics.CreateAPIView):

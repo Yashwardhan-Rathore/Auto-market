@@ -33,5 +33,30 @@ export const AuthService = {
   getProfile: async (): Promise<UserProfile> => {
     const response = await apiClient.get<UserProfile>('/api/auth/profile/');
     return response.data;
+  },
+
+  listUsers: async (): Promise<{id: number, email: string, first_name: string, last_name: string}[]> => {
+    const response = await apiClient.get('/api/auth/users/');
+    return response.data;
+  },
+
+  createTeamMember: async (payload: any): Promise<any> => {
+    const response = await apiClient.post('/api/auth/team/create/', payload);
+    return response.data;
+  },
+
+  listAccessRequests: async (): Promise<any[]> => {
+    const response = await apiClient.get('/api/auth/access-requests/');
+    return response.data;
+  },
+
+  approveAccessRequest: async (id: number, role: string): Promise<any> => {
+    const response = await apiClient.post(`/api/auth/access-requests/${id}/approve/`, { role });
+    return response.data;
+  },
+
+  rejectAccessRequest: async (id: number, reason: string): Promise<any> => {
+    const response = await apiClient.post(`/api/auth/access-requests/${id}/reject/`, { reason });
+    return response.data;
   }
 };

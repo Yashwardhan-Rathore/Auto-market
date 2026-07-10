@@ -247,6 +247,7 @@ class TaskSummarySerializer(serializers.ModelSerializer):
             "audience_name",
             "priority",
             "due_date",
+            "channels",
         ]
 
 class MyTaskSerializer(serializers.ModelSerializer):

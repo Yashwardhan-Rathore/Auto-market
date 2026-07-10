@@ -3,6 +3,17 @@ from rest_framework import serializers
 from apps.campaigns.models import Channel
 
 
+class ChannelListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Channel
+        fields = [
+            "id",
+            "name",
+            "code",
+            "description",
+            "icon",
+        ]
+
 class CampaignChannelSerializer(serializers.Serializer):
     channels = serializers.ListField(
         child=serializers.IntegerField(),

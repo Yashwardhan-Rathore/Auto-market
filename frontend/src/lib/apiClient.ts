@@ -1,5 +1,6 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
+import { toast } from 'sonner';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
@@ -68,6 +69,13 @@ apiClient.interceptors.response.use(
           window.location.href = '/login';
         }
         return Promise.reject(refreshError);
+      }
+    }
+    
+    // Handle 403 Forbidden
+    if (error.response?.status === 403) {
+      if (typeof window !== 'undefined') {
+        toast.error("Access Denied: You do not have permission to perform this action.");
       }
     }
     

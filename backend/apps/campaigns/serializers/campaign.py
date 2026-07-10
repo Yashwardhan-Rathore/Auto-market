@@ -19,6 +19,26 @@ class CampaignCreateSerializer(serializers.ModelSerializer):
             )
 
         return value
+
+
+class CampaignRetrieveUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Campaign
+        fields = [
+            "id",
+            "name",
+            "description",
+            "status",
+        ]
+        read_only_fields = ["id", "status"]
+
+    def validate_name(self, value):
+        value = value.strip()
+        if len(value) < 3:
+            raise serializers.ValidationError(
+                "Campaign name must be at least 3 characters."
+            )
+        return value
     
 
 class CampaignPreviewSerializer(serializers.Serializer):

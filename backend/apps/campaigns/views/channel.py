@@ -6,9 +6,18 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 
 from apps.accounts.models import MAUser
-from apps.campaigns.models import Campaign
-from apps.campaigns.serializers import CampaignChannelSerializer
+from apps.campaigns.models import Campaign, Channel
+from apps.campaigns.serializers import CampaignChannelSerializer, ChannelListSerializer
 from apps.campaigns.services import assign_channels
+
+
+class ChannelListAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        channels = Channel.objects.filter(is_active=True).order_by("display_order", "name")
+        serializer = ChannelListSerializer(channels, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class AssignChannelsView(APIView):

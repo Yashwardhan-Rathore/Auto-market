@@ -1,8 +1,10 @@
 from django.urls import path
-from .views import RegisterView,LoginView, ProfileView , LogoutView,ForgotPasswordView,ResetPasswordView  , RequestAccessView , AccessRequestListView ,ApproveAccessRequestView , RejectAccessRequestView ,CreateSuperAdminView
+from .views import RegisterView,LoginView, ProfileView , LogoutView,ForgotPasswordView,ResetPasswordView  , RequestAccessView , AccessRequestListView ,ApproveAccessRequestView , RejectAccessRequestView ,CreateSuperAdminView, UserListAPIView, TeamMemberCreateAPIView
 from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
+    path("users/", UserListAPIView.as_view(), name="users"),
+    path("team/create/", TeamMemberCreateAPIView.as_view(), name="team-create"),
     path("register/", RegisterView.as_view(), name="register"),
     path("login/", LoginView.as_view(), name="login"),
     path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),

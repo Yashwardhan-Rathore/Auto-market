@@ -10,6 +10,27 @@ from django.utils import timezone
 from datetime import timedelta
 import random
 
+class TeamMemberCreateSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
+    role = serializers.ChoiceField(choices=[("USER", "User"), ("ADMIN", "Admin")])
+    password = serializers.CharField(write_only=True, min_length=8)
+
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("User with this email already exists.")
+        return value
+
+    def create(self, validated_data):
+        user = User.objects.create_user(
+            email=validated_data["email"],
+            first_name=validated_data["first_name"],
+            last_name=validated_data["last_name"],
+            password=validated_data["password"],
+        )
+        MAUser.objects.create(user=user, role=validated_data["role"])
+        return user
 
 
 class RegisterSerializer(serializers.ModelSerializer):

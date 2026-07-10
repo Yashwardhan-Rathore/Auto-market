@@ -23,6 +23,20 @@ export const TasksService = {
       return [];
     }
   },
+
+  listTeamTasks: async (): Promise<any[]> => {
+    try {
+      const { data } = await apiClient.get<any[]>('/api/tasks/team/');
+      return data;
+    } catch (e) {
+      return [];
+    }
+  },
+
+  createTask: async (taskData: any): Promise<any> => {
+    const { data } = await apiClient.post('/api/tasks/', taskData);
+    return data;
+  },
   
   updateStatus: async (assignmentId: number, status: string): Promise<any> => {
     const { data } = await apiClient.patch(`/api/tasks/assignment/${assignmentId}/`, { status });

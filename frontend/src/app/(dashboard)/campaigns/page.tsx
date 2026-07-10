@@ -1,10 +1,22 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { CampaignService } from '@/services/campaign.service';
 import { Plus, Search, Edit2, PauseCircle, Trash2, Megaphone } from 'lucide-react';
 import { format } from 'date-fns';
+import Link from 'next/link';
+import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 function mono(cls = ""): { style: React.CSSProperties; className: string } {
   return { style: { fontFamily: "'JetBrains Mono', monospace" }, className: cls };
@@ -27,11 +39,32 @@ const statusColor: Record<string, string> = {
 export default function CampaignsPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
+  
+  const [campaignToDelete, setCampaignToDelete] = useState<number | null>(null);
 
-  const { data: campaigns = [], isLoading } = useQuery({
+  const { data: campaigns = [], isLoading, refetch } = useQuery({
     queryKey: ['campaigns'],
     queryFn: CampaignService.list
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: CampaignService.delete,
+    onSuccess: () => {
+      toast.success('Campaign deleted successfully');
+      setCampaignToDelete(null);
+      refetch();
+    },
+    onError: () => {
+      toast.error('Failed to delete campaign');
+      setCampaignToDelete(null);
+    }
+  });
+
+  const handleDeleteConfirm = () => {
+    if (campaignToDelete) {
+      deleteMutation.mutate(campaignToDelete);
+    }
+  };
 
   const filtered = campaigns.filter(c => 
     c.name.toLowerCase().includes(search.toLowerCase()) && 
@@ -45,9 +78,12 @@ export default function CampaignsPage() {
           <h2 className="text-xl font-black uppercase" style={{ fontFamily: "'Archivo Black', sans-serif" }}>My Campaigns</h2>
           <p className="text-sm text-muted-foreground mt-0.5">{campaigns.length} campaigns</p>
         </div>
-        <button {...mono("bg-foreground text-background px-4 py-2 text-xs uppercase tracking-widest font-semibold flex items-center gap-2 hover:opacity-90 transition-opacity")}>
+        <Link 
+          href="/campaigns/create" 
+          {...mono("bg-foreground text-background px-4 py-2 text-xs uppercase tracking-widest font-semibold flex items-center gap-2 hover:opacity-90 transition-opacity")}
+        >
           <Plus size={13} /> Create
-        </button>
+        </Link>
       </div>
       
       <div className="flex gap-3 flex-wrap">
@@ -102,10 +138,24 @@ export default function CampaignsPage() {
                 <td {...mono("px-4 py-3 text-xs")}>-</td>
                 <td {...mono("px-4 py-3 text-xs")}>{format(new Date(c.created_at), 'MMM dd, yyyy')}</td>
                 <td className="px-4 py-3">
-                  <div className="flex gap-1">
-                    <button className="p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground"><Edit2 size={12} /></button>
-                    <button className="p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground"><PauseCircle size={12} /></button>
-                    <button className="p-1.5 hover:bg-red-50 text-muted-foreground hover:text-red-600"><Trash2 size={12} /></button>
+                  <div className="flex gap-1 items-center">
+                    {(c.status.toUpperCase() === 'DRAFT' || c.status.toUpperCase() === 'SCHEDULED') ? (
+                      <Link href={`/campaigns/${c.id}/edit`} className="p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground inline-flex">
+                        <Edit2 size={12} />
+                      </Link>
+                    ) : (
+                      <button disabled className="p-1.5 text-muted-foreground opacity-50 cursor-not-allowed">
+                        <Edit2 size={12} />
+                      </button>
+                    )}
+                    
+                    <button 
+                      onClick={() => setCampaignToDelete(c.id)}
+                      disabled={deleteMutation.isPending}
+                      className="p-1.5 hover:bg-red-50 text-muted-foreground hover:text-red-600 disabled:opacity-50"
+                    >
+                      <Trash2 size={12} />
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -113,6 +163,27 @@ export default function CampaignsPage() {
           </tbody>
         </table>
       </div>
+
+      <AlertDialog open={!!campaignToDelete} onOpenChange={(open) => !open && setCampaignToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the campaign
+              and remove it from our servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteConfirm}
+              className="bg-red-600 text-white hover:bg-red-700 focus:ring-red-600"
+            >
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete Campaign'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

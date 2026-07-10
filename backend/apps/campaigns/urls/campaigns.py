@@ -5,7 +5,9 @@ from apps.campaigns.views import (
     CampaignPreviewAPIView,
     CampaignScheduleAPIView,
     CampaignSendAPIView,
-    CampaignAnalyticsAPIView
+    CampaignAnalyticsAPIView,
+    CampaignDeleteAPIView,
+    CampaignRetrieveUpdateAPIView,
 )
 
 urlpatterns = [
@@ -43,6 +45,14 @@ urlpatterns = [
     path("<int:campaign_id>/analytics/",
     CampaignAnalyticsAPIView.as_view(),
     name="campaign-analytics",
+    ),
+    path("<int:campaign_id>/delete/",
+        CampaignDeleteAPIView.as_view(),
+        name="campaign-delete",
+    ),
+    path("<int:id>/",
+        CampaignRetrieveUpdateAPIView.as_view(),
+        name="campaign-detail",
     ),
 
 ]

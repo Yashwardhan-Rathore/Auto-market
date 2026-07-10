@@ -12,8 +12,13 @@ export interface Customer {
 }
 
 export const CustomerService = {
-  list: async (): Promise<Customer[]> => {
-    const { data } = await apiClient.get<Customer[]>('/api/customers/');
-    return data;
+  list: async (): Promise<any[]> => {
+    const response = await apiClient.get('/api/customers/');
+    return response.data;
+  },
+
+  listUploads: async (): Promise<any[]> => {
+    const response = await apiClient.get('/api/customers/uploads/');
+    return response.data;
   }
 };

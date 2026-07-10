@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { TasksService } from '@/services/tasks.service';
-import { Search, CheckCircle, Clock, AlertCircle, ListTodo } from 'lucide-react';
+import { Search, CheckCircle, Clock, AlertCircle, ListTodo, Plus } from 'lucide-react';
 import { format } from 'date-fns';
+import { useAuth } from '@/hooks/useAuth';
+import Link from 'next/link';
 
 function mono(cls = ""): { style: React.CSSProperties; className: string } {
   return { style: { fontFamily: "'JetBrains Mono', monospace" }, className: cls };
@@ -23,6 +25,8 @@ const priorityColor: Record<string, string> = {
 export default function TasksPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN';
 
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ['tasks'],
@@ -41,6 +45,16 @@ export default function TasksPage() {
           <h2 className="text-xl font-black uppercase" style={{ fontFamily: "'Archivo Black', sans-serif" }}>My Tasks</h2>
           <p className="text-sm text-muted-foreground mt-0.5">{tasks.length} assigned tasks</p>
         </div>
+        
+        {isAdmin && (
+          <Link 
+            href="/tasks/create" 
+            className="flex items-center gap-2 bg-foreground text-background px-4 py-2 text-xs font-semibold uppercase tracking-widest hover:bg-foreground/90 transition-colors"
+          >
+            <Plus size={14} />
+            Create Task
+          </Link>
+        )}
       </div>
       
       <div className="flex gap-3 flex-wrap">
