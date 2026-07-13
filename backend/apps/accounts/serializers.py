@@ -2,7 +2,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
-from .models import User,MAUser, AccessRequest, PasswordResetOTP
+from .models import User, MAUser, PasswordResetOTP
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.mail import send_mail
 from django.conf import settings
@@ -14,7 +14,6 @@ class TeamMemberCreateSerializer(serializers.Serializer):
     email = serializers.EmailField()
     first_name = serializers.CharField()
     last_name = serializers.CharField()
-    role = serializers.ChoiceField(choices=[("USER", "User"), ("ADMIN", "Admin")])
     password = serializers.CharField(write_only=True, min_length=8)
 
     def validate_email(self, value):
@@ -23,13 +22,34 @@ class TeamMemberCreateSerializer(serializers.Serializer):
         return value
 
     def create(self, validated_data):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            raise serializers.ValidationError("Authentication required to create a team member.")
+        
+        creator_ma = getattr(request.user, "ma_users", None)
+        creator_ma = creator_ma.first() if creator_ma else None
+        
+        if not creator_ma:
+            raise serializers.ValidationError("Requesting user has no role assigned.")
+
+        if creator_ma.role == "SUPER_ADMIN":
+            target_role = "ADMIN"
+            managed_by = None
+        elif creator_ma.role == "ADMIN":
+            target_role = "USER"
+            managed_by = creator_ma
+        else:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("You do not have permission to create users.")
+
         user = User.objects.create_user(
             email=validated_data["email"],
             first_name=validated_data["first_name"],
             last_name=validated_data["last_name"],
             password=validated_data["password"],
+            company=request.user.company,  # inherit company
         )
-        MAUser.objects.create(user=user, role=validated_data["role"])
+        MAUser.objects.create(user=user, role=target_role, managed_by=managed_by)
         return user
 
 
@@ -258,99 +278,6 @@ class ResetPasswordSerializer(serializers.Serializer):
         otp = self.validated_data["password_reset_otp"]
         otp.is_used = True
         otp.save(update_fields=["is_used"])
-
-class RequestAccessSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = AccessRequest
-        fields = [
-            "full_name",
-            "email",
-            "department",
-            "designation",
-            "reason",
-        ]
-
-    def validate_email(self, value):
-        # Check if the user already exists
-        if User.objects.filter(email=value).exists():
-            raise serializers.ValidationError(
-                "An account with this email already exists."
-            )
-
-        # Check if an access request is already pending
-        if AccessRequest.objects.filter(
-            email=value,
-            status="PENDING"
-        ).exists():
-            raise serializers.ValidationError(
-                "An access request is already pending for this email."
-            )
-
-        return value
-
-    def create(self, validated_data):
-        return AccessRequest.objects.create(**validated_data)
-    
-class AccessRequestSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = AccessRequest
-        fields = [
-            "id",
-            "full_name",
-            "email",
-            "department",
-            "designation",
-            "reason",
-            "status",
-            "created_at",
-        ]
-        read_only_fields = fields
-
-
-class ApproveAccessRequestSerializer(serializers.Serializer):
-    role = serializers.ChoiceField(
-        choices=[
-            ("USER", "User"),
-            ("ADMIN", "Admin"),
-        ]
-    )
-
-class ApprovedUserSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    email = serializers.EmailField()
-    role = serializers.CharField()
-
-
-class ApprovedAccessRequestSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    status = serializers.CharField()
-    approved_by = serializers.EmailField()
-    approved_at = serializers.DateTimeField()
-
-
-class ApproveAccessRequestResponseSerializer(serializers.Serializer):
-    message = serializers.CharField()
-    user = ApprovedUserSerializer()
-    access_request = ApprovedAccessRequestSerializer()
-
-class RejectAccessRequestSerializer(serializers.Serializer):
-    reason = serializers.CharField(
-        max_length=500,
-        trim_whitespace=True,
-    )
-
-class RejectedAccessRequestSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    status = serializers.CharField()
-    rejection_reason = serializers.CharField()
-    processed_by = serializers.EmailField()
-    processed_at = serializers.DateTimeField()
-
-
-class RejectAccessRequestResponseSerializer(serializers.Serializer):
-    message = serializers.CharField()
-    access_request = RejectedAccessRequestSerializer()
-
 
 
 class CreateSuperAdminSerializer(serializers.Serializer):

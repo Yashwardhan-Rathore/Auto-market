@@ -2,15 +2,15 @@ from rest_framework import generics, status
 from rest_framework.permissions import AllowAny,IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import User , MAUser,AccessRequest
-from .serializers import LoginSerializer, RegisterSerializer , ProfileSerializer , LogoutSerializer,ForgotPasswordSerializer,ResetPasswordSerializer , RequestAccessSerializer , AccessRequestSerializer , ApproveAccessRequestSerializer , ApproveAccessRequestResponseSerializer ,    RejectAccessRequestSerializer,RejectAccessRequestResponseSerializer,CreateSuperAdminSerializer
+from .models import User, MAUser
+from .serializers import LoginSerializer, RegisterSerializer, ProfileSerializer, LogoutSerializer, ForgotPasswordSerializer, ResetPasswordSerializer, CreateSuperAdminSerializer
 from django.utils import timezone
 from .permissions import IsAdminOrSuperAdmin
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .services import approve_access_request,reject_access_request
+
 from .serializers import TeamMemberCreateSerializer
 
 class TeamMemberCreateAPIView(generics.CreateAPIView):
@@ -38,7 +38,18 @@ class UserListAPIView(generics.ListAPIView):
     permission_classes = [IsAdminOrSuperAdmin]
     
     def get_queryset(self):
-        return User.objects.filter(is_active=True).order_by("email")
+        user = self.request.user
+        ma = user.ma_users.first()
+        qs = User.objects.filter(is_active=True, company=user.company)
+        
+        if ma and ma.role == "SUPER_ADMIN":
+            # Super Admin only sees Admins in the same company
+            return qs.filter(ma_users__role="ADMIN").order_by("email")
+        elif ma and ma.role == "ADMIN":
+            # Admin only sees Users they manage
+            return qs.filter(ma_users__managed_by=ma).order_by("email")
+            
+        return User.objects.none()
     
     def get(self, request, *args, **kwargs):
         queryset = self.get_queryset()
@@ -160,107 +171,7 @@ class ResetPasswordView(generics.GenericAPIView):
             status=status.HTTP_200_OK,
         )
     
-class RequestAccessView(generics.CreateAPIView):
-    serializer_class = RequestAccessSerializer
-    permission_classes = [AllowAny]
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-
-        return Response(
-            {
-                "success": True,
-                "message": (
-                    "Your access request has been submitted successfully. "
-                    "Please wait for administrator approval."
-                ),
-            },
-            status=status.HTTP_201_CREATED,
-        )
-    
-class AccessRequestListView(generics.ListAPIView):
-    serializer_class = AccessRequestSerializer
-    permission_classes = [IsAdminOrSuperAdmin]
-
-    def get_queryset(self):
-        return AccessRequest.objects.filter(
-            status="PENDING"
-        ).order_by("-created_at")
-    
-class ApproveAccessRequestView(APIView):
-    permission_classes = [IsAdminOrSuperAdmin]
-
-    def post(self, request, pk):
-        serializer = ApproveAccessRequestSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        result = approve_access_request(
-            request_id=pk,
-            role=serializer.validated_data["role"],
-            approved_by=request.user,
-        )
-
-        response_data = {
-            "message": "Access request approved successfully.",
-            "user": {
-                "id": result["user"].id,
-                "email": result["user"].email,
-                "role": result["ma_user"].role,
-            },
-            "access_request": {
-                "id": result["access_request"].id,
-                "status": result["access_request"].status,
-                "approved_by": request.user.email,
-                "approved_at": result["access_request"].approved_at,
-            },
-        }
-
-        response_serializer = ApproveAccessRequestResponseSerializer(
-            response_data
-        )
-
-        return Response(
-            response_serializer.data,
-            status=status.HTTP_200_OK,
-        )
-
-class RejectAccessRequestView(APIView):
-    permission_classes = [IsAdminOrSuperAdmin]
-
-    def post(self, request, pk):
-        serializer = RejectAccessRequestSerializer(
-            data=request.data
-        )
-        serializer.is_valid(raise_exception=True)
-
-        access_request = reject_access_request(
-            request_id=pk,
-            reason=serializer.validated_data["reason"],
-            rejected_by=request.user,
-        )
-
-        response_data = {
-            "message": "Access request rejected successfully.",
-            "access_request": {
-                "id": access_request.id,
-                "status": access_request.status,
-                "rejection_reason": access_request.rejection_reason,
-                "processed_by": request.user.email,
-                "processed_at": access_request.approved_at,
-            },
-        }
-
-        response_serializer = RejectAccessRequestResponseSerializer(
-            response_data
-        )
-
-        return Response(
-            response_serializer.data,
-            status=status.HTTP_200_OK,
-        )
-    
 # accounts/views.py
 
 class CreateSuperAdminView(generics.CreateAPIView):
