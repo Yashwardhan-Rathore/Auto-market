@@ -42,7 +42,7 @@ export default function AutomationPage() {
   );
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5 p-7">
       <div className="flex items-center justify-between flex-wrap gap-3 mb-2">
         <div>
           <h2 className="text-xl font-black uppercase" style={{ fontFamily: "'Archivo Black', sans-serif" }}>Automations</h2>
