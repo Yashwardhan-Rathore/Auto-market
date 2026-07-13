@@ -16,9 +16,5 @@ urlpatterns = [
     path("access-requests/", AccessRequestListView.as_view(), name="access-requests"),
     path("access-requests/<int:pk>/approve/",ApproveAccessRequestView.as_view(),name="approve-access-request"),
     path("access-requests/<int:pk>/reject/",RejectAccessRequestView.as_view(),name="reject-access-request"),
-    path(
-    "create-super-admin/",
-    CreateSuperAdminView.as_view(),
-    name="create-super-admin",
-),
+    path("create-super-admin/",CreateSuperAdminView.as_view(),name="create-super-admin"),
 ]
