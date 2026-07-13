@@ -76,6 +76,7 @@ export const CampaignService = {
       const { data } = await apiClient.get<any[]>('/api/audiences/');
       return data;
     } catch (e) {
+      return [];
     }
   },
 
@@ -86,6 +87,11 @@ export const CampaignService = {
 
   previewAudience: async (payload: { customer_upload: number, definition: any }): Promise<any> => {
     const { data } = await apiClient.post('/api/audiences/preview/', payload);
+    return data;
+  },
+
+  createTemplate: async (payload: { name: string; channel: number; subject?: string; body: string }): Promise<any> => {
+    const { data } = await apiClient.post('/api/templates/create/', payload);
     return data;
   }
 };

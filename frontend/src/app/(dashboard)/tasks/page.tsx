@@ -82,7 +82,7 @@ export default function TasksPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/40">
-              {["Task", "Priority", "Status", "Due Date"].map(h => (
+              {["Task", "Priority", "Status", "Due Date", "Action"].map(h => (
                 <th key={h} {...mono("text-left px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground")}>{h}</th>
               ))}
             </tr>
@@ -90,12 +90,12 @@ export default function TasksPage() {
           <tbody>
             {isLoading && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">Loading tasks...</td>
+                <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Loading tasks...</td>
               </tr>
             )}
             {!isLoading && filtered.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-12 text-center text-muted-foreground flex flex-col items-center">
+                <td colSpan={5} className="px-4 py-12 text-center text-muted-foreground flex flex-col items-center">
                   <ListTodo size={32} className="mb-3 opacity-20" />
                   <p>No tasks found</p>
                 </td>
@@ -119,6 +119,18 @@ export default function TasksPage() {
                   </div>
                 </td>
                 <td {...mono("px-4 py-3 text-xs")}>{t.task.due_date ? format(new Date(t.task.due_date), 'MMM dd, yyyy') : '-'}</td>
+                <td className="px-4 py-3">
+                  {(t.status === 'ASSIGNED' || t.status === 'IN_PROGRESS') ? (
+                    <Link 
+                      href={`/campaigns/create?taskId=${t.task.id}`}
+                      className="bg-foreground text-background px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest hover:opacity-90 inline-block"
+                    >
+                      Create Campaign
+                    </Link>
+                  ) : (
+                    <span className="text-[10px] uppercase text-muted-foreground font-medium">-</span>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>

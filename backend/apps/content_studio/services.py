@@ -78,3 +78,31 @@ class ContentStudioService:
 
         logger.info(f"Successfully regenerated content {generated_content.id} (v{next_version_num})")
         return version
+
+    @staticmethod
+    def save_to_library(generated_content, version):
+        """
+        Mock implementation to save generated content to asset library.
+        """
+        logger.info(f"Saved content {generated_content.id} version {version.version_number} to asset library.")
+        return True
+        
+    @staticmethod
+    def post_content(generated_content, version):
+        """
+        Mock implementation to post content directly.
+        """
+        logger.info(f"Posted content {generated_content.id} version {version.version_number} to {generated_content.platform}.")
+        generated_content.status = GeneratedContent.Status.PUBLISHED
+        generated_content.save()
+        return True
+        
+    @staticmethod
+    def schedule_post(generated_content, version, scheduled_time):
+        """
+        Mock implementation to schedule a post.
+        """
+        logger.info(f"Scheduled content {generated_content.id} version {version.version_number} for {scheduled_time}.")
+        generated_content.status = GeneratedContent.Status.APPROVED
+        generated_content.save()
+        return True

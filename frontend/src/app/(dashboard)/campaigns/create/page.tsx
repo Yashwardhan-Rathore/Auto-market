@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { TasksService } from '@/services/tasks.service';
 import { CampaignService } from '@/services/campaign.service';
-import { ArrowLeft, Save, Loader2, Play, Calendar } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Play, Calendar, Plus } from 'lucide-react';
 import Link from 'next/link';
+import { CreateTemplateModal } from './components/CreateTemplateModal';
 
 function mono(cls = ""): { style: React.CSSProperties; className: string } {
   return { style: { fontFamily: "'JetBrains Mono', monospace" }, className: cls };
@@ -14,11 +15,12 @@ function mono(cls = ""): { style: React.CSSProperties; className: string } {
 
 export default function CreateCampaignPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
 
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
-    task: '',
+    task: searchParams.get('taskId') || '',
     name: '',
     description: '',
   });
@@ -28,6 +30,9 @@ export default function CreateCampaignPage() {
   // templates is a map from channelId -> templateId
   const [channelTemplates, setChannelTemplates] = useState<Record<number, number>>({});
   const [scheduledAt, setScheduledAt] = useState('');
+  
+  // Modal state for creating templates
+  const [showTemplateModalForChannel, setShowTemplateModalForChannel] = useState<{id: number, name: string} | null>(null);
 
   const { data: myTasks = [] } = useQuery({
     queryKey: ['my_tasks'],
@@ -186,7 +191,16 @@ export default function CreateCampaignPage() {
               
               return (
                 <div key={channelId} className="border border-border p-4">
-                  <label className="block text-xs font-bold uppercase tracking-widest mb-3">{channel?.name || 'Unknown Channel'}</label>
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="block text-xs font-bold uppercase tracking-widest">{channel?.name || 'Unknown Channel'}</label>
+                    <button 
+                      type="button"
+                      onClick={() => setShowTemplateModalForChannel({ id: channelId, name: channel?.name || 'Unknown' })}
+                      className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-foreground hover:opacity-70 transition-opacity"
+                    >
+                      <Plus size={12} /> Create New Template
+                    </button>
+                  </div>
                   <select 
                     value={channelTemplates[channelId] || ''}
                     onChange={e => setChannelTemplates(prev => ({...prev, [channelId]: parseInt(e.target.value)}))}
@@ -194,7 +208,7 @@ export default function CreateCampaignPage() {
                   >
                     <option value="">Select Template</option>
                     {channelTemplatesList.map((t: any) => (
-                      <option key={t.id} value={t.id}>{t.name} ({t.subject})</option>
+                      <option key={t.id} value={t.id}>{t.name} {t.subject ? `(${t.subject})` : ''}</option>
                     ))}
                   </select>
                 </div>
@@ -245,6 +259,17 @@ export default function CreateCampaignPage() {
             </button>
           </div>
         </div>
+      )}
+      {showTemplateModalForChannel && (
+        <CreateTemplateModal 
+          channelId={showTemplateModalForChannel.id}
+          channelName={showTemplateModalForChannel.name}
+          onClose={() => setShowTemplateModalForChannel(null)}
+          onSuccess={(templateId) => {
+            setChannelTemplates(prev => ({...prev, [showTemplateModalForChannel.id]: templateId}));
+            setShowTemplateModalForChannel(null);
+          }}
+        />
       )}
     </div>
   );

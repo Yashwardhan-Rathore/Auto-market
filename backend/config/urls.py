@@ -73,9 +73,12 @@ urlpatterns = [
     path("api/templates/", include("apps.campaigns.urls.templates")),
 
     path(
-    "api/dashboard/",
-    include("apps.dashboard.urls"),
-),
-
+        "api/dashboard/",
+        include("apps.dashboard.urls"),
+    ),
+    path(
+        "api/content/",
+        include("apps.content_studio.urls"),
+    ),
 ]
 

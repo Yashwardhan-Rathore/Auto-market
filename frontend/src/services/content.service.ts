@@ -1,24 +1,25 @@
 import apiClient from '@/lib/apiClient';
 
-export interface ContentAsset {
+export interface GeneratedContentResponse {
   id: string;
-  name: string;
-  type: string; // e.g., 'image', 'video', 'document', 'template'
-  url: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
+  content_type: string;
+  platform: string;
+  text_content: string;
+  image_url: string;
+  version_id: string;
 }
 
 export const ContentStudioService = {
-  list: async (): Promise<ContentAsset[]> => {
-    // If backend doesn't have an endpoint for content studio yet, we return empty or basic structure
-    try {
-      const { data } = await apiClient.get<ContentAsset[]>('/api/content_studio/');
-      return data;
-    } catch (error) {
-      // Graceful fallback for demo/stub purposes until API is fully wired
-      return [];
-    }
+  generate: async (payload: { prompt: string; content_type: string; platform?: string }): Promise<GeneratedContentResponse> => {
+    const { data } = await apiClient.post<GeneratedContentResponse>('/api/content/generate/', payload);
+    return data;
+  },
+
+  update: async (id: string, text_content: string): Promise<void> => {
+    await apiClient.put(`/api/content/${id}/update/`, { text_content });
+  },
+
+  action: async (id: string, action: 'save_to_library' | 'post' | 'schedule', scheduled_time?: string): Promise<void> => {
+    await apiClient.post(`/api/content/${id}/action/`, { action, scheduled_time });
   }
 };

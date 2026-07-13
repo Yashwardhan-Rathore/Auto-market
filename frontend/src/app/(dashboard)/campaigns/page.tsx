@@ -34,6 +34,8 @@ const statusColor: Record<string, string> = {
   DRAFT: "bg-muted text-muted-foreground", 
   ACTIVE: "bg-green-100 text-green-700", 
   COMPLETED: "bg-purple-100 text-purple-700",
+  SENDING: "bg-orange-100 text-orange-700",
+  FAILED: "bg-red-100 text-red-700",
 };
 
 export default function CampaignsPage() {
@@ -44,7 +46,11 @@ export default function CampaignsPage() {
 
   const { data: campaigns = [], isLoading, refetch } = useQuery({
     queryKey: ['campaigns'],
-    queryFn: CampaignService.list
+    queryFn: CampaignService.list,
+    refetchInterval: (query) => {
+      const data = query.state.data || [];
+      return data.some(c => c.status === 'SENDING' || c.status === 'QUEUED') ? 5000 : false;
+    }
   });
 
   const deleteMutation = useMutation({
@@ -96,7 +102,7 @@ export default function CampaignsPage() {
             className="w-full pl-9 pr-4 py-2 border border-border text-sm outline-none focus:border-foreground" 
           />
         </div>
-        {["All", "Running", "Scheduled", "Draft", "Completed"].map(f => (
+        {["All", "Sending", "Scheduled", "Draft", "Completed"].map(f => (
           <button 
             key={f} 
             onClick={() => setFilter(f)} 
