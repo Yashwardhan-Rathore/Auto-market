@@ -11,33 +11,6 @@ from django.utils import timezone
 from datetime import timedelta
 import random
 
-class RegisterSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = User
-        fields = ["email", "password"]
-        extra_kwargs = {
-            "password": {"write_only": True}
-        }
-
-    def validate_email(self, value):
-        if User.objects.filter(email=value).exists():
-            raise serializers.ValidationError(
-                "User with this email already exists."
-            )
-        return value
-
-    def create(self, validated_data):
-        user = User.objects.create_user(**validated_data)
-
-        MAUser.objects.create(
-            user=user,
-            role="USER",
-        )
-
-        return user
-
-
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField(
         required=True,
