@@ -3,7 +3,8 @@ from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
-from .models import User,MAUser, PasswordResetOTP
+from .models import User,MAUser
+from .services import OTPService
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.mail import send_mail
 from django.conf import settings
@@ -110,17 +111,7 @@ class ForgotPasswordSerializer(serializers.Serializer):
     def save(self):
         user = User.objects.get(email=self.validated_data["email"])
 
-        PasswordResetOTP.objects.filter(
-            user=user,
-            is_used=False,
-        ).update(is_used=True)
-
-        otp = f"{random.SystemRandom().randint(100000, 999999)}"
-        PasswordResetOTP.objects.create(
-            user=user,
-            otp=otp,
-            expires_at=timezone.now() + timedelta(minutes=10),
-        )
+        otp = OTPService.generate_and_cache_otp(user.email)
 
         subject = "Your Password Reset OTP"
         message = f"""
@@ -132,7 +123,7 @@ Use this OTP to reset your password:
 
 {otp}
 
-This OTP will expire in 10 minutes.
+This OTP will expire in 5 minutes.
 
 If you did not request this, please ignore this email.
 
@@ -174,20 +165,10 @@ class ResetPasswordSerializer(serializers.Serializer):
                 {"email": "No account found with this email."}
             )
 
-        otp = PasswordResetOTP.objects.filter(
-            user=user,
-            otp=attrs["otp"],
-            is_used=False,
-        ).order_by("-created_at").first()
-
-        if not otp:
+        is_valid, error_message = OTPService.verify_and_delete_otp(user.email, attrs["otp"])
+        if not is_valid:
             raise serializers.ValidationError(
-                {"otp": "Invalid OTP."}
-            )
-
-        if otp.expires_at < timezone.now():
-            raise serializers.ValidationError(
-                {"otp": "OTP has expired."}
+                {"otp": error_message}
             )
 
         try:
@@ -198,17 +179,12 @@ class ResetPasswordSerializer(serializers.Serializer):
             )
 
         attrs["user"] = user
-        attrs["password_reset_otp"] = otp
         return attrs
 
     def save(self):
         user = self.validated_data["user"]
         user.set_password(self.validated_data["password"])
         user.save()
-
-        otp = self.validated_data["password_reset_otp"]
-        otp.is_used = True
-        otp.save(update_fields=["is_used"])
 
 class CreateSuperAdminSerializer(serializers.Serializer):
     email = serializers.EmailField()
