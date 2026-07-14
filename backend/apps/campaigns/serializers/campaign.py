@@ -85,6 +85,39 @@ class RecentDeliverySerializer(serializers.Serializer):
     )
 
 
+class CampaignSubmitSerializer(serializers.Serializer):
+    pass
+
+class CampaignApproveSerializer(serializers.Serializer):
+    pass
+
+class CampaignRejectSerializer(serializers.Serializer):
+    rejection_reason = serializers.CharField(required=True)
+
+class PendingApprovalSerializer(serializers.ModelSerializer):
+    task_name = serializers.CharField(source="task.title", read_only=True)
+    owner_email = serializers.CharField(source="created_by.email", read_only=True)
+    submitted_by_email = serializers.CharField(source="submitted_by.email", read_only=True)
+    audience_name = serializers.CharField(source="task.audience.name", read_only=True)
+    channels = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Campaign
+        fields = [
+            "id",
+            "name",
+            "task_name",
+            "owner_email",
+            "submitted_by_email",
+            "submitted_at",
+            "audience_name",
+            "channels",
+            "status",
+        ]
+
+    def get_channels(self, obj):
+        return [c.channel.name for c in obj.campaign_channels.all()]
+
 class CampaignAnalyticsSerializer(serializers.Serializer):
     campaign = CampaignInfoSerializer()
     summary = CampaignSummarySerializer()

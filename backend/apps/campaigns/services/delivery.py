@@ -79,7 +79,7 @@ class DeliveryService:
         """
 
         if campaign.status not in (
-            Campaign.Status.DRAFT,
+            Campaign.Status.APPROVED,
             Campaign.Status.SCHEDULED,
         ):
             raise ValidationError(

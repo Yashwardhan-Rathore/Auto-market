@@ -30,9 +30,9 @@ class CampaignScheduleService:
             )
 
         # Campaign status
-        if campaign.status != Campaign.Status.DRAFT:
+        if campaign.status != Campaign.Status.APPROVED:
             raise ValidationError(
-                "Only draft campaigns can be scheduled."
+                "Only approved campaigns can be scheduled."
             )
 
         # Future date

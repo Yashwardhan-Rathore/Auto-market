@@ -7,7 +7,15 @@ from .campaign import (
     CampaignCreateSerializer,
     CampaignPreviewSerializer,
     CampaignSendSerializer,
-    CampaignAnalyticsSerializer
+    CampaignInfoSerializer,
+    CampaignSummarySerializer,
+    ChannelAnalyticsSerializer,
+    RecentDeliverySerializer,
+    CampaignAnalyticsSerializer,
+    CampaignSubmitSerializer,
+    CampaignApproveSerializer,
+    CampaignRejectSerializer,
+    PendingApprovalSerializer,
 )
 
 from .channel import CampaignChannelSerializer

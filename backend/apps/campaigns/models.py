@@ -60,6 +60,9 @@ class Campaign(models.Model):
 
     class Status(models.TextChoices):
         DRAFT = "DRAFT", "Draft"
+        PENDING_APPROVAL = "PENDING_APPROVAL", "Pending Approval"
+        APPROVED = "APPROVED", "Approved"
+        REJECTED = "REJECTED", "Rejected"
         SCHEDULED = "SCHEDULED", "Scheduled"
         SENDING = "SENDING", "Sending"
         COMPLETED = "COMPLETED", "Completed"
@@ -96,6 +99,27 @@ class Campaign(models.Model):
         related_name="campaigns",
     )
 
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="approved_campaigns",
+        null=True,
+        blank=True,
+    )
+
+    submitted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="submitted_campaigns",
+        null=True,
+        blank=True,
+    )
+
+    rejection_reason = models.TextField(
+        blank=True,
+        null=True,
+    )
+
     is_active = models.BooleanField(
         default=True,
     )
@@ -112,10 +136,20 @@ class Campaign(models.Model):
         auto_now=True,
     )
 
+    approved_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    submitted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
     scheduled_at = models.DateTimeField(
-    null=True,
-    blank=True,
-)
+        null=True,
+        blank=True,
+    )
 
     started_at = models.DateTimeField(
         null=True,

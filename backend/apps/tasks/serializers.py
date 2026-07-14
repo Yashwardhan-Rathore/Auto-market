@@ -119,6 +119,8 @@ class CreateTaskSerializer(serializers.ModelSerializer):
     users = serializers.ListField(
         child=serializers.IntegerField(),
         write_only=True,
+        min_length=1,
+        max_length=1,
     )
 
     channels = serializers.PrimaryKeyRelatedField(
@@ -126,6 +128,7 @@ class CreateTaskSerializer(serializers.ModelSerializer):
             is_active=True,
         ),
         many=True,
+        allow_empty=False,
     )
 
     instructions = serializers.CharField(

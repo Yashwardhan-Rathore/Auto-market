@@ -33,8 +33,8 @@ class Task(models.Model):
         "campaigns.Audience",
         on_delete=models.PROTECT,
         related_name="tasks",
-        null=True,
-        blank=True,
+        null=False,
+        blank=False,
     )
 
     # Channels assigned by Admin

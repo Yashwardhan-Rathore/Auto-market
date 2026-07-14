@@ -52,11 +52,12 @@ class AudienceService:
             "AND",
         ).upper()
 
+        from apps.campaigns.utils import normalize_column_name
         query = Q()
 
         for condition in conditions:
 
-            field = condition["field"]
+            field = normalize_column_name(condition["field"])
             operator = condition["operator"]
             value = condition["value"]
 
