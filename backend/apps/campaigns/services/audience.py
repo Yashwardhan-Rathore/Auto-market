@@ -67,11 +67,18 @@ class AudienceService:
                     f"Unsupported operator: {operator}"
                 )
 
-            condition_query = Q(
-                **{
-                    f"data__{field}{lookup}": value
-                }
-            )
+            if operator == "!=":
+                condition_query = ~Q(
+                    **{
+                        f"data__{field}": value
+                    }
+                )
+            else:
+                condition_query = Q(
+                    **{
+                        f"data__{field}{lookup}": value
+                    }
+                )
 
             if group_operator == "AND":
                 query &= condition_query

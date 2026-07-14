@@ -277,3 +277,31 @@ class CreateUserSerializer(serializers.ModelSerializer):
         )
 
         return user
+
+class UserListSerializer(serializers.ModelSerializer):
+    full_name = serializers.SerializerMethodField()
+    role = serializers.SerializerMethodField()
+    created_at = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "full_name",
+            "email",
+            "role",
+            "is_active",
+            "created_at"
+        ]
+
+    def get_full_name(self, obj):
+        return f"{obj.first_name} {obj.last_name}".strip()
+
+    def get_role(self, obj):
+        # We assume prefetch_related("ma_users") has been called
+        ma_user = obj.ma_users.all()[0] if obj.ma_users.all() else None
+        return ma_user.role if ma_user else None
+
+    def get_created_at(self, obj):
+        ma_user = obj.ma_users.all()[0] if obj.ma_users.all() else None
+        return ma_user.created_at if ma_user else None

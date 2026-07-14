@@ -135,3 +135,13 @@ class UserManagementService:
         target_email = target_user.email
         target_user.delete()
         logger.info(f"User {target_email} deleted by {request_ma_user.role} {request_user.email}.")
+
+    @classmethod
+    def get_admins_queryset(cls):
+        """Returns a queryset of User objects with role ADMIN, optimized with prefetch_related."""
+        return User.objects.filter(ma_users__role="ADMIN").prefetch_related("ma_users")
+
+    @classmethod
+    def get_users_queryset(cls):
+        """Returns a queryset of User objects with role USER, optimized with prefetch_related."""
+        return User.objects.filter(ma_users__role="USER").prefetch_related("ma_users")

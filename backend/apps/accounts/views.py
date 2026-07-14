@@ -223,3 +223,35 @@ class DeleteUserView(APIView):
             {"message": "User deleted successfully."},
             status=status.HTTP_200_OK,
         )
+
+from rest_framework import filters
+from .serializers import UserListSerializer
+from .pagination import AccountsPagination
+
+class ListAdminsView(generics.ListAPIView):
+    """
+    List all Admins. Accessible only by Super Admin.
+    """
+    serializer_class = UserListSerializer
+    permission_classes = [IsAuthenticated, IsSuperAdmin]
+    pagination_class = AccountsPagination
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["first_name", "last_name", "email"]
+    ordering_fields = ["first_name", "email", "date_joined"]
+    
+    def get_queryset(self):
+        return UserManagementService.get_admins_queryset()
+
+class ListUsersView(generics.ListAPIView):
+    """
+    List all Users. Accessible by Admin or Super Admin.
+    """
+    serializer_class = UserListSerializer
+    permission_classes = [IsAuthenticated, IsAdminOrSuperAdmin]
+    pagination_class = AccountsPagination
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["first_name", "last_name", "email"]
+    ordering_fields = ["first_name", "email", "date_joined"]
+
+    def get_queryset(self):
+        return UserManagementService.get_users_queryset()
