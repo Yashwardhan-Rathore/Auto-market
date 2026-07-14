@@ -88,3 +88,50 @@ class OTPService:
         cache.delete(cache_key)
         return True, None
 
+import logging
+from django.http import Http404
+from rest_framework.exceptions import PermissionDenied
+
+logger = logging.getLogger(__name__)
+
+class UserManagementService:
+
+    @classmethod
+    @transaction.atomic
+    def delete_admin(cls, request_user, target_id):
+        request_ma_user = MAUser.objects.filter(user=request_user).first()
+        if not request_ma_user or request_ma_user.role != "SUPER_ADMIN":
+            raise PermissionDenied("You do not have permission to perform this action.")
+
+        try:
+            target_user = User.objects.get(id=target_id)
+        except User.DoesNotExist:
+            raise Http404("User not found.")
+
+        target_ma_user = MAUser.objects.filter(user=target_user).first()
+        if not target_ma_user or target_ma_user.role != "ADMIN":
+            raise ValidationError({"detail": "Only Admin accounts can be deleted using this endpoint."})
+
+        target_email = target_user.email
+        target_user.delete()
+        logger.info(f"Admin {target_email} deleted by Super Admin {request_user.email}.")
+
+    @classmethod
+    @transaction.atomic
+    def delete_user(cls, request_user, target_id):
+        request_ma_user = MAUser.objects.filter(user=request_user).first()
+        if not request_ma_user or request_ma_user.role not in ["ADMIN", "SUPER_ADMIN"]:
+            raise PermissionDenied("You do not have permission to perform this action.")
+
+        try:
+            target_user = User.objects.get(id=target_id)
+        except User.DoesNotExist:
+            raise Http404("User not found.")
+
+        target_ma_user = MAUser.objects.filter(user=target_user).first()
+        if not target_ma_user or target_ma_user.role != "USER":
+            raise ValidationError({"detail": "Only User accounts can be deleted using this endpoint."})
+
+        target_email = target_user.email
+        target_user.delete()
+        logger.info(f"User {target_email} deleted by {request_ma_user.role} {request_user.email}.")

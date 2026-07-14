@@ -193,3 +193,33 @@ class CreateUserView(generics.CreateAPIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+from .services import UserManagementService
+
+class DeleteAdminView(APIView):
+    """
+    Deletes an Admin user.
+    Accessible only by Super Admin.
+    """
+    permission_classes = [IsAuthenticated, IsSuperAdmin]
+
+    def delete(self, request, user_id):
+        UserManagementService.delete_admin(request.user, user_id)
+        return Response(
+            {"message": "Admin deleted successfully."},
+            status=status.HTTP_200_OK,
+        )
+
+class DeleteUserView(APIView):
+    """
+    Deletes a User.
+    Accessible by Admin or Super Admin.
+    """
+    permission_classes = [IsAuthenticated, IsAdminOrSuperAdmin]
+
+    def delete(self, request, user_id):
+        UserManagementService.delete_user(request.user, user_id)
+        return Response(
+            {"message": "User deleted successfully."},
+            status=status.HTTP_200_OK,
+        )
