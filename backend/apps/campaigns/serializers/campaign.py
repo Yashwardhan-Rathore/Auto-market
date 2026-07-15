@@ -118,6 +118,49 @@ class PendingApprovalSerializer(serializers.ModelSerializer):
     def get_channels(self, obj):
         return [c.channel.name for c in obj.campaign_channels.all()]
 
+class MyCampaignListSerializer(serializers.ModelSerializer):
+    campaign_name = serializers.CharField(source="name", read_only=True)
+    task_name = serializers.CharField(source="task.title", read_only=True)
+    audience_name = serializers.CharField(source="task.audience.name", read_only=True)
+    approved_by = serializers.CharField(source="approved_by.email", read_only=True)
+    channels = serializers.SerializerMethodField()
+    available_actions = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Campaign
+        fields = [
+            "id",
+            "campaign_name",
+            "task_id",
+            "task_name",
+            "audience_name",
+            "channels",
+            "status",
+            "created_at",
+            "updated_at",
+            "submitted_at",
+            "approved_at",
+            "approved_by",
+            "rejection_reason",
+            "available_actions",
+        ]
+
+    def get_channels(self, obj):
+        return [c.channel.name for c in obj.campaign_channels.all()]
+
+    def get_available_actions(self, obj):
+        if obj.status == Campaign.Status.DRAFT:
+            return ["edit", "delete", "submit"]
+        elif obj.status == Campaign.Status.PENDING_APPROVAL:
+            return ["view"]
+        elif obj.status == Campaign.Status.APPROVED:
+            return ["view", "send", "schedule"]
+        elif obj.status == Campaign.Status.REJECTED:
+            return ["edit", "submit"]
+        elif obj.status == Campaign.Status.COMPLETED:
+            return ["view"]
+        return []
+
 class CampaignAnalyticsSerializer(serializers.Serializer):
     campaign = CampaignInfoSerializer()
     summary = CampaignSummarySerializer()

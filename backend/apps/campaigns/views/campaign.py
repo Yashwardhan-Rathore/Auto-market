@@ -128,3 +128,40 @@ class PendingApprovalAPIView(APIView):
 
         serializer = PendingApprovalSerializer(campaigns, many=True)
         return Response(serializer.data)
+
+from rest_framework import generics
+from rest_framework.filters import SearchFilter, OrderingFilter
+from apps.accounts.permissions import IsMarketingUser
+from apps.accounts.pagination import AccountsPagination
+from ..serializers import MyCampaignListSerializer
+
+class MyCampaignsAPIView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated, IsMarketingUser]
+    serializer_class = MyCampaignListSerializer
+    pagination_class = AccountsPagination
+    filter_backends = [SearchFilter, OrderingFilter]
+    search_fields = ["name", "task__title"]
+    ordering_fields = ["created_at", "updated_at", "name", "status"]
+    ordering = ["-created_at"]
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = Campaign.objects.filter(
+            created_by=user,
+            is_active=True,
+            is_deleted=False
+        ).select_related(
+            "task",
+            "task__audience",
+            "created_by",
+            "submitted_by",
+            "approved_by",
+        ).prefetch_related(
+            "campaign_channels__channel"
+        )
+
+        status = self.request.query_params.get("status")
+        if status:
+            queryset = queryset.filter(status=status)
+            
+        return queryset

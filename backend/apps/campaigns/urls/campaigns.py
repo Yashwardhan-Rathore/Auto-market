@@ -6,6 +6,7 @@ from apps.campaigns.views.campaign import (
     CampaignApproveAPIView,
     CampaignRejectAPIView,
     PendingApprovalAPIView,
+    MyCampaignsAPIView,
 )
 
 from apps.campaigns.views import (
@@ -21,6 +22,11 @@ urlpatterns = [
         "",
         CampaignCreateAPIView.as_view(),
         name="campaign-create",
+    ),
+    path(
+        "my/",
+        MyCampaignsAPIView.as_view(),
+        name="campaign-my",
     ),
     path(
         "templates/assign/",

@@ -49,3 +49,19 @@ class IsAdmin(BasePermission):
             return False
 
         return ma_user.role == "ADMIN"
+
+class IsMarketingUser(BasePermission):
+    """
+    Allows access only to Marketing users.
+    """
+
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+
+        ma_user = MAUser.objects.filter(user=request.user).first()
+
+        if not ma_user:
+            return False
+
+        return ma_user.role == "USER"
