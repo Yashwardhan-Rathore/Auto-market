@@ -59,7 +59,7 @@ export default function AssetLibraryPage() {
       <div className="flex items-center justify-between flex-wrap gap-4 mb-2">
         <div>
           <h2 className="text-xl font-black uppercase" style={{ fontFamily: "'Archivo Black', sans-serif" }}>Asset Library</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">Manage images, documents, and media for your campaigns.</p>
+          <p className="text-sm text-muted-foreground mt-0.5">Manage images, documents, and media for your contentDrafts.</p>
         </div>
         
         <input 

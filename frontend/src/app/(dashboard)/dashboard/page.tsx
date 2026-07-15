@@ -44,7 +44,7 @@ function SectionHeader({ title, sub, action }: { title: string; sub?: string; ac
   );
 }
 
-// Removed mock fallback data for channels and campaigns
+// Removed mock fallback data for channels and contentDrafts
 const COLORS = ["#0a0a0a", "#e8001a", "#2563eb", "#16a34a", "#9333ea"];
 
 export default function DashboardPage() {
@@ -67,10 +67,10 @@ export default function DashboardPage() {
   const role = user.role.toUpperCase();
 
   const campStatusData = overview ? [
-    { status: "Draft", count: overview.campaigns?.draft || 0 },
-    { status: "Scheduled", count: overview.campaigns?.scheduled || 0 },
-    { status: "Sending", count: overview.campaigns?.sending || 0 },
-    { status: "Completed", count: overview.campaigns?.completed || 0 },
+    { status: "Draft", count: overview.contentDrafts?.draft || 0 },
+    { status: "Scheduled", count: overview.contentDrafts?.scheduled || 0 },
+    { status: "Sending", count: overview.contentDrafts?.sending || 0 },
+    { status: "Completed", count: overview.contentDrafts?.completed || 0 },
   ] : [];
 
   const channelData = analytics ? [
@@ -86,7 +86,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
         {role === 'SUPER_ADMIN' && (
           <>
-            <KpiCard icon={<Megaphone size={18} />} label="Total Campaigns" value={overview?.campaigns?.total || 0} />
+            <KpiCard icon={<Megaphone size={18} />} label="Total contentDrafts" value={overview?.contentDrafts?.total || 0} />
             <KpiCard icon={<Mail size={18} />} label="Total Deliveries" value={overview?.deliveries?.total || 0} />
             <KpiCard icon={<Zap size={18} />} label="Email Open Rate" value={`${analytics?.email?.open_rate || 0}%`} />
             <KpiCard icon={<Target size={18} />} label="Global Success Rate" value={`${overview?.deliveries?.success_rate || 0}%`} />
@@ -96,7 +96,7 @@ export default function DashboardPage() {
         
         {role === 'ADMIN' && (
           <>
-            <KpiCard icon={<Megaphone size={18} />} label="Active Campaigns" value={overview?.campaigns?.total || 0} />
+            <KpiCard icon={<Megaphone size={18} />} label="Active contentDrafts" value={overview?.contentDrafts?.total || 0} />
             <KpiCard icon={<Mail size={18} />} label="Emails Sent" value={analytics?.email?.sent || 0} />
             <KpiCard icon={<Zap size={18} />} label="Email Open Rate" value={`${analytics?.email?.open_rate || 0}%`} />
             <KpiCard icon={<Target size={18} />} label="Delivery Success" value={`${overview?.deliveries?.success_rate || 0}%`} />
@@ -106,7 +106,7 @@ export default function DashboardPage() {
 
         {role === 'USER' && (
           <>
-            <KpiCard icon={<Megaphone size={18} />} label="My Campaigns" value={overview?.campaigns?.total || 0} />
+            <KpiCard icon={<Megaphone size={18} />} label="My contentDrafts" value={overview?.contentDrafts?.total || 0} />
             <KpiCard icon={<Mail size={18} />} label="My Deliveries" value={overview?.deliveries?.total || 0} />
             <KpiCard icon={<Zap size={18} />} label="Email Open Rate" value={`${analytics?.email?.open_rate || 0}%`} />
             <KpiCard icon={<Target size={18} />} label="My Delivery Success" value={`${overview?.deliveries?.success_rate || 0}%`} />
@@ -116,7 +116,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 bg-card border border-border p-5">
-          <p className="font-semibold text-sm mb-1">Campaign Overview</p>
+          <p className="font-semibold text-sm mb-1">contentDraft Overview</p>
           <p className="text-xs text-muted-foreground mb-4">Distribution by status</p>
           <ResponsiveContainer width="100%" height={210}>
             <BarChart data={campStatusData} barSize={30}>

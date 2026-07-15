@@ -44,14 +44,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     navGroups = [
       { label: "Overview", items: [{ id:"/dashboard", label:"Dashboard", icon:<LayoutDashboard size={15}/> }] },
       { label: "Audience", items: [{ id:"/contacts", label:"Contacts", icon:<Users size={15}/> }, { id:"/segments", label:"Segmentation", icon:<Filter size={15}/> }] },
-      { label: "Marketing", items: [{ id:"/campaigns", label:"Campaigns", icon:<Megaphone size={15}/> }, { id:"/automation", label:"Automation", icon:<GitBranch size={15}/> }, { id:"/social", label:"Social Publisher", icon:<Share2 size={15}/> }] },
+      { label: "Marketing", items: [{ id:"/contentDrafts", label:"contentDrafts", icon:<Megaphone size={15}/> }, { id:"/automation", label:"Automation", icon:<GitBranch size={15}/> }, { id:"/social", label:"Social Publisher", icon:<Share2 size={15}/> }] },
       { label: "Team & Data", items: [{ id:"/team", label:"Team Management", icon:<UserCheck size={15}/> }, { id:"/analytics", label:"Analytics", icon:<BarChart2 size={15}/> }] },
       { label: "System", items: [{ id:"/account", label:"Account", icon:<Settings size={15}/> }] },
     ];
   } else {
     navGroups = [
-      { label: "Main", items: [{ id:"/dashboard", label:"Dashboard", icon:<LayoutDashboard size={15}/> }, { id:"/tasks", label:"My Tasks", icon:<CheckSquare size={15}/> }, { id:"/campaigns", label:"My Campaigns", icon:<Megaphone size={15}/> }] },
-      { label: "Tools", items: [{ id:"/automation", label:"Automation Builder", icon:<GitBranch size={15}/> }, { id:"/contacts", label:"Contacts", icon:<Users size={15}/> }, { id:"/forms", label:"Forms", icon:<FileText size={15}/> }, { id:"/content", label:"Content Studio ✦ AI", icon:<Sparkles size={15}/> }] },
+      { label: "Main", items: [{ id:"/dashboard", label:"Dashboard", icon:<LayoutDashboard size={15}/> }, { id:"/tasks", label:"My Tasks", icon:<CheckSquare size={15}/> }, { id:"/contentDrafts", label:"My contentDrafts", icon:<Megaphone size={15}/> }] },
+      { label: "Tools", items: [{ id:"/automation", label:"Automation Builder", icon:<GitBranch size={15}/> }, { id:"/contacts", label:"Contacts", icon:<Users size={15}/> }, { id:"/forms", label:"Forms", icon:<FileText size={15}/> }, { id:"/content-studio", label:"Content Studio ✦ AI", icon:<Sparkles size={15}/> }] },
       { label: "Library & Reports", items: [{ id:"/assets", label:"Asset Library", icon:<Image size={15}/> }, { id:"/performance", label:"My Performance", icon:<BarChart2 size={15}/> }] },
       { label: "System", items: [{ id:"/account", label:"Account", icon:<Settings size={15}/> }] },
     ];

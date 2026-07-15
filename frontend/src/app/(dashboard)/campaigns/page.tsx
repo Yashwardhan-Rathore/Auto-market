@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { CampaignService } from '@/services/campaign.service';
+import { contentDraftService } from '@/services/contentDraft.service';
 import { Plus, Search, Edit2, PauseCircle, Trash2, Megaphone } from 'lucide-react';
 import { format } from 'date-fns';
 import Link from 'next/link';
@@ -38,15 +38,15 @@ const statusColor: Record<string, string> = {
   FAILED: "bg-red-100 text-red-700",
 };
 
-export default function CampaignsPage() {
+export default function contentDraftsPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
   
-  const [campaignToDelete, setCampaignToDelete] = useState<number | null>(null);
+  const [contentDraftToDelete, setDraftToDelete] = useState<number | null>(null);
 
-  const { data: campaigns = [], isLoading, refetch } = useQuery({
-    queryKey: ['campaigns'],
-    queryFn: CampaignService.list,
+  const { data: contentDrafts = [], isLoading, refetch } = useQuery({
+    queryKey: ['contentDrafts'],
+    queryFn: contentDraftService.list,
     refetchInterval: (query) => {
       const data = query.state.data || [];
       return data.some(c => c.status === 'SENDING' || c.status === 'QUEUED') ? 5000 : false;
@@ -54,25 +54,25 @@ export default function CampaignsPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: CampaignService.delete,
+    mutationFn: contentDraftService.delete,
     onSuccess: () => {
-      toast.success('Campaign deleted successfully');
-      setCampaignToDelete(null);
+      toast.success('contentDraft deleted successfully');
+      setDraftToDelete(null);
       refetch();
     },
     onError: () => {
-      toast.error('Failed to delete campaign');
-      setCampaignToDelete(null);
+      toast.error('Failed to delete contentDraft');
+      setDraftToDelete(null);
     }
   });
 
   const handleDeleteConfirm = () => {
-    if (campaignToDelete) {
-      deleteMutation.mutate(campaignToDelete);
+    if (contentDraftToDelete) {
+      deleteMutation.mutate(contentDraftToDelete);
     }
   };
 
-  const filtered = campaigns.filter(c => 
+  const filtered = contentDrafts.filter(c => 
     c.name.toLowerCase().includes(search.toLowerCase()) && 
     (filter === "All" || c.status.toLowerCase() === filter.toLowerCase())
   );
@@ -81,11 +81,11 @@ export default function CampaignsPage() {
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between flex-wrap gap-3 mb-2">
         <div>
-          <h2 className="text-xl font-black uppercase" style={{ fontFamily: "'Archivo Black', sans-serif" }}>My Campaigns</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">{campaigns.length} campaigns</p>
+          <h2 className="text-xl font-black uppercase" style={{ fontFamily: "'Archivo Black', sans-serif" }}>My contentDrafts</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">{contentDrafts.length} contentDrafts</p>
         </div>
         <Link 
-          href="/campaigns/create" 
+          href="/content-drafts/create" 
           {...mono("bg-foreground text-background px-4 py-2 text-xs uppercase tracking-widest font-semibold flex items-center gap-2 hover:opacity-90 transition-opacity")}
         >
           <Plus size={13} /> Create
@@ -98,7 +98,7 @@ export default function CampaignsPage() {
           <input 
             value={search} 
             onChange={e => setSearch(e.target.value)} 
-            placeholder="Search campaigns..." 
+            placeholder="Search contentDrafts..." 
             className="w-full pl-9 pr-4 py-2 border border-border text-sm outline-none focus:border-foreground" 
           />
         </div>
@@ -125,14 +125,14 @@ export default function CampaignsPage() {
           <tbody>
             {isLoading && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Loading campaigns...</td>
+                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Loading contentDrafts...</td>
               </tr>
             )}
             {!isLoading && filtered.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground flex flex-col items-center">
                   <Megaphone size={32} className="mb-3 opacity-20" />
-                  <p>No campaigns found</p>
+                  <p>No contentDrafts found</p>
                 </td>
               </tr>
             )}
@@ -146,7 +146,7 @@ export default function CampaignsPage() {
                 <td className="px-4 py-3">
                   <div className="flex gap-1 items-center">
                     {(c.status.toUpperCase() === 'DRAFT' || c.status.toUpperCase() === 'SCHEDULED') ? (
-                      <Link href={`/campaigns/${c.id}/edit`} className="p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground inline-flex">
+                      <Link href={`/content-drafts/${c.id}/edit`} className="p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground inline-flex">
                         <Edit2 size={12} />
                       </Link>
                     ) : (
@@ -156,7 +156,7 @@ export default function CampaignsPage() {
                     )}
                     
                     <button 
-                      onClick={() => setCampaignToDelete(c.id)}
+                      onClick={() => setDraftToDelete(c.id)}
                       disabled={deleteMutation.isPending}
                       className="p-1.5 hover:bg-red-50 text-muted-foreground hover:text-red-600 disabled:opacity-50"
                     >
@@ -170,12 +170,12 @@ export default function CampaignsPage() {
         </table>
       </div>
 
-      <AlertDialog open={!!campaignToDelete} onOpenChange={(open) => !open && setCampaignToDelete(null)}>
+      <AlertDialog open={!!contentDraftToDelete} onOpenChange={(open) => !open && setDraftToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the campaign
+              This action cannot be undone. This will permanently delete the contentDraft
               and remove it from our servers.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -185,7 +185,7 @@ export default function CampaignsPage() {
               onClick={handleDeleteConfirm}
               className="bg-red-600 text-white hover:bg-red-700 focus:ring-red-600"
             >
-              {deleteMutation.isPending ? 'Deleting...' : 'Delete Campaign'}
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete contentDraft'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

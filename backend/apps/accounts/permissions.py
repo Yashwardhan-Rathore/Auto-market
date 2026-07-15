@@ -11,7 +11,7 @@ class IsAdminOrSuperAdmin(BasePermission):
         if not request.user.is_authenticated:
             return False
 
-        ma_user = MAUser.objects.filter(user_id=request.user).first()
+        ma_user = MAUser.objects.filter(user=request.user).first()
 
         if not ma_user:
             return False
@@ -46,3 +46,22 @@ class IsSuperAdminOrOwnManagedUser(BasePermission):
             return getattr(target_ma, 'managed_by_id', None) == ma.id and obj.company == request.user.company
             
         return False
+
+
+class IsContentStudioAuthorized(BasePermission):
+    """
+    Role-based access control for Content Studio:
+    Super Admin / Admin: Can approve, reject, schedule, and publish directly.
+    User: Can create, edit, request approval. Cannot publish unless approved or approvals not required.
+    """
+
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+            
+        ma_user = MAUser.objects.filter(user=request.user).first()
+        if not ma_user:
+            return False
+            
+        request.user.role = ma_user.role  # Cache it on request.user for view logic
+        return True

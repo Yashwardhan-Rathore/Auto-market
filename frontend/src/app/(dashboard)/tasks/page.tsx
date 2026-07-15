@@ -122,10 +122,10 @@ export default function TasksPage() {
                 <td className="px-4 py-3">
                   {(t.status === 'ASSIGNED' || t.status === 'IN_PROGRESS') ? (
                     <Link 
-                      href={`/campaigns/create?taskId=${t.task.id}`}
+                      href={`/content-drafts/create?taskId=${t.task.id}`}
                       className="bg-foreground text-background px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest hover:opacity-90 inline-block"
                     >
-                      Create Campaign
+                      Create contentDraft
                     </Link>
                   ) : (
                     <span className="text-[10px] uppercase text-muted-foreground font-medium">-</span>

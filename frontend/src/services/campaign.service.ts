@@ -1,6 +1,6 @@
 import apiClient from '@/lib/apiClient';
 
-export interface Campaign {
+export interface contentDraft {
   id: number;
   name: string;
   status: string;
@@ -13,28 +13,28 @@ export interface Campaign {
   clicks?: string;
 }
 
-export const CampaignService = {
-  list: async (): Promise<Campaign[]> => {
-    const { data } = await apiClient.get<Campaign[]>('/api/campaigns/');
+export const contentDraftService = {
+  list: async (): Promise<contentDraft[]> => {
+    const { data } = await apiClient.get<contentDraft[]>('/api/content-drafts/');
     return data;
   },
 
   create: async (name: string, description: string, task: number): Promise<any> => {
-    const { data } = await apiClient.post('/api/campaigns/create/', { name, description, task });
+    const { data } = await apiClient.post('/api/content-drafts/create/', { name, description, task });
     return data;
   },
 
   delete: async (id: number): Promise<void> => {
-    await apiClient.delete(`/api/campaigns/${id}/delete/`);
+    await apiClient.delete(`/api/content-drafts/${id}/delete/`);
   },
 
-  get: async (id: number): Promise<Campaign> => {
-    const { data } = await apiClient.get<Campaign>(`/api/campaigns/${id}/`);
+  get: async (id: number): Promise<contentDraft> => {
+    const { data } = await apiClient.get<contentDraft>(`/api/content-drafts/${id}/`);
     return data;
   },
 
-  update: async (id: number, payload: { name: string, description?: string }): Promise<Campaign> => {
-    const { data } = await apiClient.patch<Campaign>(`/api/campaigns/${id}/`, payload);
+  update: async (id: number, payload: { name: string, description?: string }): Promise<contentDraft> => {
+    const { data } = await apiClient.patch<contentDraft>(`/api/content-drafts/${id}/`, payload);
     return data;
   },
 
@@ -47,18 +47,18 @@ export const CampaignService = {
     }
   },
 
-  assignTemplate: async (campaign: number, channel: number, template: number): Promise<any> => {
-    const { data } = await apiClient.post('/api/campaigns/templates/assign/', { campaign, channel, template });
+  assignTemplate: async (contentDraft: number, channel: number, template: number): Promise<any> => {
+    const { data } = await apiClient.post('/api/content-drafts/templates/assign/', { contentDraft, channel, template });
     return data;
   },
 
-  schedule: async (campaign: number, scheduled_at: string): Promise<any> => {
-    const { data } = await apiClient.post('/api/campaigns/schedule/', { campaign, scheduled_at });
+  schedule: async (contentDraft: number, scheduled_at: string): Promise<any> => {
+    const { data } = await apiClient.post('/api/content-drafts/schedule/', { contentDraft, scheduled_at });
     return data;
   },
 
-  send: async (campaign: number): Promise<any> => {
-    const { data } = await apiClient.post('/api/campaigns/send/', { campaign });
+  send: async (contentDraft: number): Promise<any> => {
+    const { data } = await apiClient.post('/api/content-drafts/send/', { contentDraft });
     return data;
   },
 

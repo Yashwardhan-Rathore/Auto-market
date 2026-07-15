@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { CampaignService } from '@/services/campaign.service';
+import { contentDraftService } from '@/services/contentDraft.service';
 import { Plus, Search, Users } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -20,7 +20,7 @@ export default function AudiencesPage() {
 
   const { data: audiences = [], isLoading } = useQuery({
     queryKey: ['audiences'],
-    queryFn: CampaignService.listAudiences
+    queryFn: contentDraftService.listAudiences
   });
 
   const filtered = audiences.filter((a: any) => 

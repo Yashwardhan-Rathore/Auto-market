@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { TasksService } from '@/services/tasks.service';
-import { CampaignService } from '@/services/campaign.service';
+import { contentDraftService } from '@/services/contentDraft.service';
 import { AuthService } from '@/services/auth.service';
 import { ArrowLeft, Save, Loader2 } from 'lucide-react';
 import Link from 'next/link';
@@ -30,12 +30,12 @@ export default function CreateTaskPage() {
 
   const { data: audiences = [] } = useQuery({
     queryKey: ['audiences'],
-    queryFn: CampaignService.listAudiences
+    queryFn: contentDraftService.listAudiences
   });
 
   const { data: channels = [] } = useQuery({
     queryKey: ['channels'],
-    queryFn: CampaignService.listChannels
+    queryFn: contentDraftService.listChannels
   });
 
   const { data: users = [] } = useQuery({
@@ -97,7 +97,7 @@ export default function CreateTaskPage() {
               value={formData.title}
               onChange={e => setFormData({...formData, title: e.target.value})}
               className="w-full px-3 py-2 border border-border bg-background text-sm outline-none focus:border-foreground"
-              placeholder="e.g. Summer Sale Campaign Setup"
+              placeholder="e.g. Summer Sale contentDraft Setup"
             />
           </div>
 

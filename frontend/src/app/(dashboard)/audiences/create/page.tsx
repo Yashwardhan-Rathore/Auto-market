@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { CampaignService } from '@/services/campaign.service';
+import { contentDraftService } from '@/services/contentDraft.service';
 import { CustomerService } from '@/services/customer.service';
 import { ArrowLeft, Save, Plus, Trash2, Loader2, Play } from 'lucide-react';
 import Link from 'next/link';
@@ -32,7 +32,7 @@ export default function CreateAudiencePage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: () => CampaignService.createAudience({
+    mutationFn: () => contentDraftService.createAudience({
       name,
       customer_upload: parseInt(uploadId),
       definition: {
@@ -51,7 +51,7 @@ export default function CreateAudiencePage() {
   });
 
   const previewMutation = useMutation({
-    mutationFn: () => CampaignService.previewAudience({
+    mutationFn: () => contentDraftService.previewAudience({
       customer_upload: parseInt(uploadId),
       definition: { operator, conditions }
     }),

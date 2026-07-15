@@ -18,7 +18,7 @@ class GenerateContentAPIView(APIView):
             return Response({"error": "prompt and content_type are required"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Get company from user (assuming one company for now)
-        company = request.user.companies.first()
+        company = request.user.company
         if not company:
             return Response({"error": "User does not belong to a company"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -83,3 +83,198 @@ class ContentActionAPIView(APIView):
             return Response({"message": "Scheduled successfully"})
             
         return Response({"error": "Invalid action"}, status=status.HTTP_400_BAD_REQUEST)
+
+from rest_framework import generics
+from .models import BrandVoice, ContentTemplate
+from .serializers import BrandVoiceSerializer, ContentTemplateSerializer, GeneratedContentSerializer
+
+class BrandVoiceAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        company = request.user.company
+        if not company:
+            return Response({"error": "User does not belong to a company"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        brand_voice, created = BrandVoice.objects.get_or_create(company=company)
+        serializer = BrandVoiceSerializer(brand_voice)
+        return Response(serializer.data)
+
+    def put(self, request):
+        company = request.user.company
+        if not company:
+            return Response({"error": "User does not belong to a company"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        brand_voice, created = BrandVoice.objects.get_or_create(company=company)
+        serializer = BrandVoiceSerializer(brand_voice, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class ContentTemplateListCreateAPIView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ContentTemplateSerializer
+
+    def get_queryset(self):
+        company = self.request.user.company
+        return ContentTemplate.objects.filter(company=company)
+
+    def perform_create(self, serializer):
+        company = self.request.user.company
+        serializer.save(company=company)
+
+class ContentTemplateDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ContentTemplateSerializer
+
+    def get_queryset(self):
+        company = self.request.user.company
+        return ContentTemplate.objects.filter(company=company)
+
+class GeneratedContentListAPIView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = GeneratedContentSerializer
+
+    def get_queryset(self):
+        company = self.request.user.company
+        return GeneratedContent.objects.filter(company=company)
+
+class RegenerateContentAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        generated_content = get_object_or_404(GeneratedContent, id=pk, created_by=request.user)
+        new_prompt = request.data.get('prompt')
+        
+        if not new_prompt:
+            return Response({"error": "prompt is required"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            version = ContentStudioService.regenerate_content(generated_content, new_prompt)
+
+            return Response({
+                "message": "Content regenerated",
+                "text_content": version.text_content,
+                "image_url": version.image_url,
+                "version_id": version.id
+            }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+# --- New Content Workflow Views ---
+from rest_framework import viewsets
+from rest_framework.decorators import action
+from apps.accounts.permissions import IsContentStudioAuthorized
+from .models import ContentDraft
+from .serializers import (
+    ContentDraftSerializer, ContentDraftCreateSerializer,
+    ContentDraftUpdateSerializer, ContentScheduleSerializer
+)
+from .services.content_draft_service import ContentDraftService
+from .services.approval_service import ApprovalService
+from .services.schedule_service import ScheduleService
+from .services.publishing_service import PublishingService
+
+class ContentDraftViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated, IsContentStudioAuthorized]
+    serializer_class = ContentDraftSerializer
+
+    def get_queryset(self):
+        company = self.request.user.company
+        return ContentDraft.objects.filter(company=company)
+
+    def create(self, request, *args, **kwargs):
+        serializer = ContentDraftCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        company = request.user.company
+        if not company:
+            return Response({"error": "User does not belong to a company"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        platforms = serializer.validated_data['platforms']
+        draft = ContentDraftService.create_content_draft(request.user, company, platforms)
+        
+        return Response(ContentDraftSerializer(draft).data, status=status.HTTP_201_CREATED)
+
+    def partial_update(self, request, *args, **kwargs):
+        draft = self.get_object()
+        serializer = ContentDraftUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        updated_draft = ContentDraftService.update_content_partial(draft, serializer.validated_data)
+        return Response(ContentDraftSerializer(updated_draft).data)
+
+    @action(detail=True, methods=['post'])
+    def request_approval(self, request, pk=None):
+        draft = self.get_object()
+        try:
+            ApprovalService.request_approval(draft)
+            return Response({"message": "Approval requested successfully."})
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        if request.user.role not in ['ADMIN', 'SUPER_ADMIN']:
+            return Response({"error": "Only Admins can approve contents."}, status=status.HTTP_403_FORBIDDEN)
+            
+        draft = self.get_object()
+        notes = request.data.get('notes', '')
+        try:
+            ApprovalService.approve_content(draft, request.user, notes)
+            return Response({"message": "Content approved."})
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        if request.user.role not in ['ADMIN', 'SUPER_ADMIN']:
+            return Response({"error": "Only Admins can reject contents."}, status=status.HTTP_403_FORBIDDEN)
+            
+        draft = self.get_object()
+        notes = request.data.get('notes', '')
+        try:
+            ApprovalService.reject_content(draft, request.user, notes)
+            return Response({"message": "Content rejected."})
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'])
+    def schedule(self, request, pk=None):
+        draft = self.get_object()
+        serializer = ContentScheduleSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        try:
+            ScheduleService.save_schedules(draft, serializer.validated_data['schedules'])
+            return Response({"message": "Schedules saved successfully."})
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'])
+    def regenerate(self, request, pk=None):
+        """Mock regeneration to capture version snapshot"""
+        draft = self.get_object()
+        reason = request.data.get('reason', '')
+        
+        try:
+            version = ContentDraftService.create_content_version(draft, request.user, reason)
+            return Response({
+                "message": "New version captured.",
+                "version_id": version.id,
+                "version_number": version.version_number
+            }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'])
+    def publish(self, request, pk=None):
+        draft = self.get_object()
+        try:
+            PublishingService.publish_content(draft, request.user)
+            # Reload to get updated statuses
+            draft.refresh_from_db()
+            return Response(ContentDraftSerializer(draft).data)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

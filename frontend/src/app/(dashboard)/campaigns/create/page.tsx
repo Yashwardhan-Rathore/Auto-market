@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { TasksService } from '@/services/tasks.service';
-import { CampaignService } from '@/services/campaign.service';
+import { contentDraftService } from '@/services/contentDraft.service';
 import { ArrowLeft, Save, Loader2, Play, Calendar, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { CreateTemplateModal } from './components/CreateTemplateModal';
@@ -13,7 +13,7 @@ function mono(cls = ""): { style: React.CSSProperties; className: string } {
   return { style: { fontFamily: "'JetBrains Mono', monospace" }, className: cls };
 }
 
-export default function CreateCampaignPage() {
+export default function CreatecontentDraftPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
@@ -25,7 +25,7 @@ export default function CreateCampaignPage() {
     description: '',
   });
 
-  const [campaignId, setCampaignId] = useState<number | null>(null);
+  const [draftId, setdraftId] = useState<number | null>(null);
   
   // templates is a map from channelId -> templateId
   const [channelTemplates, setChannelTemplates] = useState<Record<number, number>>({});
@@ -41,25 +41,25 @@ export default function CreateCampaignPage() {
 
   const { data: allChannels = [] } = useQuery({
     queryKey: ['channels'],
-    queryFn: CampaignService.listChannels
+    queryFn: contentDraftService.listChannels
   });
 
   const { data: templates = [] } = useQuery({
     queryKey: ['templates'],
-    queryFn: CampaignService.listTemplates
+    queryFn: contentDraftService.listTemplates
   });
 
   const selectedTask = myTasks.find(t => t.task.id.toString() === formData.task)?.task;
 
-  const createCampaignMutation = useMutation({
-    mutationFn: () => CampaignService.create(formData.name, formData.description, parseInt(formData.task)),
+  const createcontentDraftMutation = useMutation({
+    mutationFn: () => contentDraftService.create(formData.name, formData.description, parseInt(formData.task)),
     onSuccess: async (data) => {
-      setCampaignId(data.campaign.id);
+      setdraftId(data.contentDraft.id);
       
       // Auto assign channels from task
       if (selectedTask?.channels?.length) {
          try {
-           await CampaignService.assignTemplate(data.campaign.id, selectedTask.channels, []); // This assigns channels to campaign. Wait, backend uses assignTemplate but expects channel and template. Let's do channels first.
+           await contentDraftService.assignTemplate(data.contentDraft.id, selectedTask.channels, []); // This assigns channels to contentDraft. Wait, backend uses assignTemplate but expects channel and template. Let's do channels first.
            // Actually, /api/channels/<id> assigns channels. Let's just go to step 2.
          } catch(e) {}
       }
@@ -70,12 +70,12 @@ export default function CreateCampaignPage() {
 
   const assignChannelsAndTemplatesMutation = useMutation({
     mutationFn: async () => {
-      if (!campaignId) return;
+      if (!draftId) return;
       
       // Assign templates to channels
       for (const [channelId, templateId] of Object.entries(channelTemplates)) {
         if (templateId) {
-          await CampaignService.assignTemplate(campaignId, parseInt(channelId), templateId);
+          await contentDraftService.assignTemplate(draftId, parseInt(channelId), templateId);
         }
       }
     },
@@ -86,22 +86,22 @@ export default function CreateCampaignPage() {
 
   const sendMutation = useMutation({
     mutationFn: async () => {
-      if (!campaignId) return;
+      if (!draftId) return;
       if (scheduledAt) {
-        await CampaignService.schedule(campaignId, new Date(scheduledAt).toISOString());
+        await contentDraftService.schedule(draftId, new Date(scheduledAt).toISOString());
       } else {
-        await CampaignService.send(campaignId);
+        await contentDraftService.send(draftId);
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
-      router.push('/campaigns');
+      queryClient.invalidateQueries({ queryKey: ['contentDrafts'] });
+      router.push('/contentDrafts');
     }
   });
 
   const handleCreateNext = (e: React.FormEvent) => {
     e.preventDefault();
-    createCampaignMutation.mutate();
+    createcontentDraftMutation.mutate();
   };
 
   const handleTemplatesNext = (e: React.FormEvent) => {
@@ -112,11 +112,11 @@ export default function CreateCampaignPage() {
   return (
     <div className="flex flex-col gap-5 max-w-4xl">
       <div className="flex items-center gap-4 mb-2">
-        <Link href="/campaigns" className="text-muted-foreground hover:text-foreground transition-colors">
+        <Link href="/contentDrafts" className="text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft size={20} />
         </Link>
         <div>
-          <h2 className="text-xl font-black uppercase" style={{ fontFamily: "'Archivo Black', sans-serif" }}>Create Campaign</h2>
+          <h2 className="text-xl font-black uppercase" style={{ fontFamily: "'Archivo Black', sans-serif" }}>Create contentDraft</h2>
           <p className="text-sm text-muted-foreground mt-0.5">Step {step} of 3</p>
         </div>
       </div>
@@ -146,7 +146,7 @@ export default function CreateCampaignPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest mb-1.5">Campaign Name *</label>
+              <label className="block text-xs font-bold uppercase tracking-widest mb-1.5">contentDraft Name *</label>
               <input 
                 type="text" 
                 required
@@ -171,10 +171,10 @@ export default function CreateCampaignPage() {
           <div className="pt-6 flex justify-end">
             <button 
               type="submit" 
-              disabled={createCampaignMutation.isPending || !formData.task || !formData.name}
+              disabled={createcontentDraftMutation.isPending || !formData.task || !formData.name}
               className="flex items-center gap-2 bg-foreground text-background px-6 py-2.5 text-xs font-bold uppercase tracking-widest hover:bg-foreground/90 transition-colors disabled:opacity-50"
             >
-              {createCampaignMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Next: Assign Templates'}
+              {createcontentDraftMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Next: Assign Templates'}
             </button>
           </div>
         </form>
@@ -233,7 +233,7 @@ export default function CreateCampaignPage() {
           <h3 className="text-sm font-bold uppercase tracking-widest mb-4">Review & Send</h3>
           
           <div className="grid grid-cols-2 gap-4 text-sm bg-muted/30 p-4 border border-border">
-            <div><span className="text-muted-foreground">Campaign:</span> <span className="font-medium">{formData.name}</span></div>
+            <div><span className="text-muted-foreground">contentDraft:</span> <span className="font-medium">{formData.name}</span></div>
             <div><span className="text-muted-foreground">Task:</span> <span className="font-medium">{selectedTask?.title}</span></div>
           </div>
 
@@ -255,7 +255,7 @@ export default function CreateCampaignPage() {
               className="flex items-center gap-2 bg-foreground text-background px-6 py-2.5 text-xs font-bold uppercase tracking-widest hover:bg-foreground/90 transition-colors disabled:opacity-50"
             >
               {sendMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : (scheduledAt ? <Calendar size={16} /> : <Play size={16} />)}
-              {scheduledAt ? 'Schedule Campaign' : 'Send Now'}
+              {scheduledAt ? 'Schedule contentDraft' : 'Send Now'}
             </button>
           </div>
         </div>

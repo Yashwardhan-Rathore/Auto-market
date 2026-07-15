@@ -1,6 +1,6 @@
 import logging
 from django.db import transaction
-from .models import GeneratedContent, ContentVersion
+from ..models import GeneratedContent, ContentVersion, BrandVoice, ContentTemplate
 from apps.billing.services import BillingService
 from apps.integrations.openai_service import OpenAIService
 
@@ -9,11 +9,30 @@ logger = logging.getLogger(__name__)
 class ContentStudioService:
     @staticmethod
     @transaction.atomic
-    def generate_initial_content(company, user, prompt, content_type, platform="NONE"):
+    def generate_initial_content(company, user, prompt, content_type, platform="NONE", template_id=None):
         """
         Creates a new GeneratedContent and its first version.
         Charges 10 credits.
         """
+        enhanced_prompt = prompt
+        
+        if template_id:
+            try:
+                template = ContentTemplate.objects.get(id=template_id, company=company)
+                enhanced_prompt = f"Template: {template.prompt_template}\n\nUser Input: {prompt}"
+            except ContentTemplate.DoesNotExist:
+                pass
+                
+        try:
+            brand_voice = BrandVoice.objects.get(company=company)
+            enhanced_prompt += f"\n\nBrand Tone: {brand_voice.tone}"
+            if brand_voice.guidelines:
+                enhanced_prompt += f"\nBrand Guidelines: {brand_voice.guidelines}"
+            if brand_voice.target_audience:
+                enhanced_prompt += f"\nTarget Audience: {brand_voice.target_audience}"
+        except BrandVoice.DoesNotExist:
+            pass
+
         # Consume credits first
         BillingService.consume_credits(
             company=company,
@@ -22,7 +41,7 @@ class ContentStudioService:
         )
 
         # Call OpenAI
-        ai_response = OpenAIService.generate_content(company, prompt, content_type)
+        ai_response = OpenAIService.generate_content(company, enhanced_prompt, content_type)
 
         # Create GeneratedContent
         generated = GeneratedContent.objects.create(
@@ -52,6 +71,17 @@ class ContentStudioService:
         Charges 5 credits.
         """
         company = generated_content.company
+        enhanced_prompt = new_prompt
+        
+        try:
+            brand_voice = BrandVoice.objects.get(company=company)
+            enhanced_prompt += f"\n\nBrand Tone: {brand_voice.tone}"
+            if brand_voice.guidelines:
+                enhanced_prompt += f"\nBrand Guidelines: {brand_voice.guidelines}"
+            if brand_voice.target_audience:
+                enhanced_prompt += f"\nTarget Audience: {brand_voice.target_audience}"
+        except BrandVoice.DoesNotExist:
+            pass
 
         # Consume credits
         BillingService.consume_credits(
@@ -62,7 +92,7 @@ class ContentStudioService:
         )
 
         # Call OpenAI
-        ai_response = OpenAIService.generate_content(company, new_prompt, generated_content.content_type)
+        ai_response = OpenAIService.generate_content(company, enhanced_prompt, generated_content.content_type)
 
         # Get latest version number
         latest_version = generated_content.versions.first()

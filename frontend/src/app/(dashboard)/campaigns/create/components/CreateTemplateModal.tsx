@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { CampaignService } from '@/services/campaign.service';
+import { contentDraftService } from '@/services/contentDraft.service';
 import { X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -21,7 +21,7 @@ export function CreateTemplateModal({ channelId, channelName, onClose, onSuccess
   const queryClient = useQueryClient();
 
   const createMutation = useMutation({
-    mutationFn: () => CampaignService.createTemplate({
+    mutationFn: () => contentDraftService.createTemplate({
       name,
       channel: channelId,
       subject,
