@@ -2,73 +2,15 @@ from rest_framework import generics, status
 from rest_framework.permissions import AllowAny,IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import User, MAUser
-from .serializers import LoginSerializer, RegisterSerializer, ProfileSerializer, LogoutSerializer, ForgotPasswordSerializer, ResetPasswordSerializer, CreateSuperAdminSerializer
+from .models import User , MAUser
+from .serializers import LoginSerializer, ProfileSerializer , LogoutSerializer,ForgotPasswordSerializer,ResetPasswordSerializer , CreateSuperAdminSerializer , CreateAdminSerializer , CreateUserSerializer
 from django.utils import timezone
-from .permissions import IsAdminOrSuperAdmin
+from .permissions import IsAdminOrSuperAdmin,IsSuperAdmin , IsAdmin
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 
-from .serializers import TeamMemberCreateSerializer
-
-class TeamMemberCreateAPIView(generics.CreateAPIView):
-    permission_classes = [IsAdminOrSuperAdmin]
-    serializer_class = TeamMemberCreateSerializer
-    
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save()
-        return Response(
-            {
-                "success": True,
-                "message": "Team member created successfully.",
-                "data": {
-                    "id": user.id,
-                    "email": user.email,
-                }
-            },
-            status=status.HTTP_201_CREATED
-        )
-
-
-class UserListAPIView(generics.ListAPIView):
-    permission_classes = [IsAdminOrSuperAdmin]
-    
-    def get_queryset(self):
-        user = self.request.user
-        ma = user.ma_users.first()
-        qs = User.objects.filter(is_active=True, company=user.company)
-        
-        if ma and ma.role == "SUPER_ADMIN":
-            # Super Admin only sees Admins in the same company
-            return qs.filter(ma_users__role="ADMIN").order_by("email")
-        elif ma and ma.role == "ADMIN":
-            # Admin only sees Users they manage
-            return qs.filter(ma_users__managed_by=ma).order_by("email")
-            
-        return User.objects.none()
-    
-    def get(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        data = [
-            {
-                "id": u.id,
-                "email": u.email,
-                "first_name": u.first_name,
-                "last_name": u.last_name,
-            }
-            for u in queryset
-        ]
-        return Response(data, status=status.HTTP_200_OK)
-
-
-class RegisterView(generics.CreateAPIView):
-    queryset = User.objects.all()
-    serializer_class = RegisterSerializer
-    permission_classes = [AllowAny]
 
 class LoginView(generics.GenericAPIView):
     serializer_class = LoginSerializer
@@ -170,9 +112,6 @@ class ResetPasswordView(generics.GenericAPIView):
             },
             status=status.HTTP_200_OK,
         )
-    
-
-# accounts/views.py
 
 class CreateSuperAdminView(generics.CreateAPIView):
     serializer_class = CreateSuperAdminSerializer
@@ -201,3 +140,120 @@ class CreateSuperAdminView(generics.CreateAPIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+class CreateAdminView(generics.CreateAPIView):
+    """
+    Create a new Admin user.
+    Accessible only by Super Admin.
+    """
+
+    serializer_class = CreateAdminSerializer
+    permission_classes = [IsAuthenticated, IsSuperAdmin]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        admin = serializer.save()
+
+        return Response(
+            {
+                "success": True,
+                "message": "Admin created successfully.",
+                "data": {
+                    "id": admin.id,
+                    "email": admin.email,
+                    "role": "ADMIN",
+                },
+            },
+            status=status.HTTP_201_CREATED,
+        )
+    
+class CreateUserView(generics.CreateAPIView):
+    """
+    Create a new User.
+    Accessible only by Admin.
+    """
+
+    serializer_class = CreateUserSerializer
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = serializer.save()
+
+        return Response(
+            {
+                "success": True,
+                "message": "User created successfully.",
+                "data": {
+                    "id": user.id,
+                    "email": user.email,
+                    "role": "USER",
+                },
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+from .services import UserManagementService
+
+class DeleteAdminView(APIView):
+    """
+    Deletes an Admin user.
+    Accessible only by Super Admin.
+    """
+    permission_classes = [IsAuthenticated, IsSuperAdmin]
+
+    def delete(self, request, user_id):
+        UserManagementService.delete_admin(request.user, user_id)
+        return Response(
+            {"message": "Admin deleted successfully."},
+            status=status.HTTP_200_OK,
+        )
+
+class DeleteUserView(APIView):
+    """
+    Deletes a User.
+    Accessible by Admin or Super Admin.
+    """
+    permission_classes = [IsAuthenticated, IsAdminOrSuperAdmin]
+
+    def delete(self, request, user_id):
+        UserManagementService.delete_user(request.user, user_id)
+        return Response(
+            {"message": "User deleted successfully."},
+            status=status.HTTP_200_OK,
+        )
+
+from rest_framework import filters
+from .serializers import UserListSerializer
+from .pagination import AccountsPagination
+
+class ListAdminsView(generics.ListAPIView):
+    """
+    List all Admins. Accessible only by Super Admin.
+    """
+    serializer_class = UserListSerializer
+    permission_classes = [IsAuthenticated, IsSuperAdmin]
+    pagination_class = AccountsPagination
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["first_name", "last_name", "email"]
+    ordering_fields = ["first_name", "email", "date_joined"]
+    
+    def get_queryset(self):
+        return UserManagementService.get_admins_queryset()
+
+class ListUsersView(generics.ListAPIView):
+    """
+    List all Users. Accessible by Admin or Super Admin.
+    """
+    serializer_class = UserListSerializer
+    permission_classes = [IsAuthenticated, IsAdminOrSuperAdmin]
+    pagination_class = AccountsPagination
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["first_name", "last_name", "email"]
+    ordering_fields = ["first_name", "email", "date_joined"]
+
+    def get_queryset(self):
+        return UserManagementService.get_users_queryset()

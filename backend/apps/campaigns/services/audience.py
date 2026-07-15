@@ -52,11 +52,12 @@ class AudienceService:
             "AND",
         ).upper()
 
+        from apps.campaigns.utils import normalize_column_name
         query = Q()
 
         for condition in conditions:
 
-            field = condition["field"]
+            field = normalize_column_name(condition["field"])
             operator = condition["operator"]
             value = condition["value"]
 
@@ -67,11 +68,18 @@ class AudienceService:
                     f"Unsupported operator: {operator}"
                 )
 
-            condition_query = Q(
-                **{
-                    f"data__{field}{lookup}": value
-                }
-            )
+            if operator == "!=":
+                condition_query = ~Q(
+                    **{
+                        f"data__{field}": value
+                    }
+                )
+            else:
+                condition_query = Q(
+                    **{
+                        f"data__{field}{lookup}": value
+                    }
+                )
 
             if group_operator == "AND":
                 query &= condition_query

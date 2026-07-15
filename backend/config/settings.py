@@ -1,6 +1,5 @@
 from pathlib import Path
 import os
-
 from dotenv import load_dotenv
 import dj_database_url
 
@@ -216,3 +215,15 @@ LOGGING = {
         "level": "INFO",
     },
 }
+
+# --------------------------------------------------
+# Cache Configuration
+# --------------------------------------------------
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "unique-snowflake",
+    }
+}
+

@@ -5,10 +5,19 @@ from .customer import (
 
 from .campaign import (
     CampaignCreateSerializer,
-    CampaignRetrieveUpdateSerializer,
+    CampaignInfoSerializer,
+    CampaignSummarySerializer,
+    ChannelAnalyticsSerializer,
+    CustomerSerializer,
+    RecentDeliverySerializer,
+    CampaignAnalyticsSerializer,
     CampaignPreviewSerializer,
     CampaignSendSerializer,
-    CampaignAnalyticsSerializer
+    CampaignSubmitSerializer,
+    CampaignApproveSerializer,
+    CampaignRejectSerializer,
+    PendingApprovalSerializer,
+    MyCampaignListSerializer,
 )
 
 from .channel import CampaignChannelSerializer, ChannelListSerializer

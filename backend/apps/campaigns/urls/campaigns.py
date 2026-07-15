@@ -1,7 +1,16 @@
 from django.urls import path
 
+from apps.campaigns.views.campaign import (
+    CampaignCreateAPIView,
+    CampaignSubmitAPIView,
+    CampaignApproveAPIView,
+    CampaignRejectAPIView,
+    PendingApprovalAPIView,
+    MyCampaignsAPIView,
+)
+
 from apps.campaigns.views import (
-    CampaignCreateAPIView,CampaignListAPIView,CampaignTemplateAssignAPIView,
+    CampaignTemplateAssignAPIView,
     CampaignPreviewAPIView,
     CampaignScheduleAPIView,
     CampaignSendAPIView,
@@ -12,14 +21,14 @@ from apps.campaigns.views import (
 
 urlpatterns = [
     path(
-        "",
-        CampaignListAPIView.as_view(),
-        name="campaign-list",
-    ),
-    path(
         "create/",
         CampaignCreateAPIView.as_view(),
         name="campaign-create",
+    ),
+    path(
+        "my/",
+        MyCampaignsAPIView.as_view(),
+        name="campaign-my",
     ),
     path(
         "templates/assign/",
@@ -55,4 +64,25 @@ urlpatterns = [
         name="campaign-detail",
     ),
 
+    path(
+        "pending-approval/",
+        PendingApprovalAPIView.as_view(),
+        name="campaign-pending-approval",
+    ),
+
+    path(
+        "<int:campaign_id>/submit/",
+        CampaignSubmitAPIView.as_view(),
+        name="campaign-submit",
+    ),
+    path(
+        "<int:campaign_id>/approve/",
+        CampaignApproveAPIView.as_view(),
+        name="campaign-approve",
+    ),
+    path(
+        "<int:campaign_id>/reject/",
+        CampaignRejectAPIView.as_view(),
+        name="campaign-reject",
+    ),
 ]

@@ -65,3 +65,51 @@ class IsContentStudioAuthorized(BasePermission):
             
         request.user.role = ma_user.role  # Cache it on request.user for view logic
         return True
+
+class IsSuperAdmin(BasePermission):
+    """
+    Allows access only to Super Admin users.
+    """
+
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+
+        ma_user = MAUser.objects.filter(user=request.user).first()
+
+        if not ma_user:
+            return False
+
+        return ma_user.role == "SUPER_ADMIN"
+
+class IsAdmin(BasePermission):
+    """
+    Allows access only to Admin users.
+    """
+
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+
+        ma_user = MAUser.objects.filter(user=request.user).first()
+
+        if not ma_user:
+            return False
+
+        return ma_user.role == "ADMIN"
+
+class IsMarketingUser(BasePermission):
+    """
+    Allows access only to Marketing users.
+    """
+
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+
+        ma_user = MAUser.objects.filter(user=request.user).first()
+
+        if not ma_user:
+            return False
+
+        return ma_user.role == "USER"

@@ -13,9 +13,30 @@ class Task(models.Model):
         HIGH = "HIGH", "High"
         URGENT = "URGENT", "Urgent"
 
+    class Status(models.TextChoices):
+        ASSIGNED = "ASSIGNED", "Assigned"
+        IN_PROGRESS = "IN_PROGRESS", "In Progress"
+        PENDING_APPROVAL = "PENDING_APPROVAL", "Pending Approval"
+        APPROVED = "APPROVED", "Approved"
+        COMPLETED = "COMPLETED", "Completed"
+        CANCELLED = "CANCELLED", "Cancelled"
+
     title = models.CharField(
         max_length=255,
         db_index=True,
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ASSIGNED,
+        db_index=True,
+    )
+
+    last_activity_at = models.DateTimeField(
+        auto_now_add=True,
+        null=True,
+        blank=True,
     )
 
     description = models.TextField(
@@ -33,8 +54,8 @@ class Task(models.Model):
         "campaigns.Audience",
         on_delete=models.PROTECT,
         related_name="tasks",
-        null=True,
-        blank=True,
+        null=False,
+        blank=False,
     )
 
     # Channels assigned by Admin

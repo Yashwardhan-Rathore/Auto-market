@@ -1,84 +1,16 @@
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
+from django.db import transaction
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
-from .models import User, MAUser, PasswordResetOTP
+from .models import User,MAUser
+from .services import OTPService
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
 import random
-
-class TeamMemberCreateSerializer(serializers.Serializer):
-    email = serializers.EmailField()
-    first_name = serializers.CharField()
-    last_name = serializers.CharField()
-    password = serializers.CharField(write_only=True, min_length=8)
-
-    def validate_email(self, value):
-        if User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("User with this email already exists.")
-        return value
-
-    def create(self, validated_data):
-        request = self.context.get("request")
-        if not request or not request.user.is_authenticated:
-            raise serializers.ValidationError("Authentication required to create a team member.")
-        
-        creator_ma = getattr(request.user, "ma_users", None)
-        creator_ma = creator_ma.first() if creator_ma else None
-        
-        if not creator_ma:
-            raise serializers.ValidationError("Requesting user has no role assigned.")
-
-        if creator_ma.role == "SUPER_ADMIN":
-            target_role = "ADMIN"
-            managed_by = None
-        elif creator_ma.role == "ADMIN":
-            target_role = "USER"
-            managed_by = creator_ma
-        else:
-            from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied("You do not have permission to create users.")
-
-        user = User.objects.create_user(
-            email=validated_data["email"],
-            first_name=validated_data["first_name"],
-            last_name=validated_data["last_name"],
-            password=validated_data["password"],
-            company=request.user.company,  # inherit company
-        )
-        MAUser.objects.create(user=user, role=target_role, managed_by=managed_by)
-        return user
-
-
-class RegisterSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = User
-        fields = ["email", "password"]
-        extra_kwargs = {
-            "password": {"write_only": True}
-        }
-
-    def validate_email(self, value):
-        if User.objects.filter(email=value).exists():
-            raise serializers.ValidationError(
-                "User with this email already exists."
-            )
-        return value
-
-    def create(self, validated_data):
-        user = User.objects.create_user(**validated_data)
-
-        MAUser.objects.create(
-            user=user,
-            role="USER",
-        )
-
-        return user
-
 
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField(
@@ -179,17 +111,7 @@ class ForgotPasswordSerializer(serializers.Serializer):
     def save(self):
         user = User.objects.get(email=self.validated_data["email"])
 
-        PasswordResetOTP.objects.filter(
-            user=user,
-            is_used=False,
-        ).update(is_used=True)
-
-        otp = f"{random.SystemRandom().randint(100000, 999999)}"
-        PasswordResetOTP.objects.create(
-            user=user,
-            otp=otp,
-            expires_at=timezone.now() + timedelta(minutes=10),
-        )
+        otp = OTPService.generate_and_cache_otp(user.email)
 
         subject = "Your Password Reset OTP"
         message = f"""
@@ -201,7 +123,7 @@ Use this OTP to reset your password:
 
 {otp}
 
-This OTP will expire in 10 minutes.
+This OTP will expire in 5 minutes.
 
 If you did not request this, please ignore this email.
 
@@ -243,20 +165,10 @@ class ResetPasswordSerializer(serializers.Serializer):
                 {"email": "No account found with this email."}
             )
 
-        otp = PasswordResetOTP.objects.filter(
-            user=user,
-            otp=attrs["otp"],
-            is_used=False,
-        ).order_by("-created_at").first()
-
-        if not otp:
+        is_valid, error_message = OTPService.verify_and_delete_otp(user.email, attrs["otp"])
+        if not is_valid:
             raise serializers.ValidationError(
-                {"otp": "Invalid OTP."}
-            )
-
-        if otp.expires_at < timezone.now():
-            raise serializers.ValidationError(
-                {"otp": "OTP has expired."}
+                {"otp": error_message}
             )
 
         try:
@@ -267,18 +179,12 @@ class ResetPasswordSerializer(serializers.Serializer):
             )
 
         attrs["user"] = user
-        attrs["password_reset_otp"] = otp
         return attrs
 
     def save(self):
         user = self.validated_data["user"]
         user.set_password(self.validated_data["password"])
         user.save()
-
-        otp = self.validated_data["password_reset_otp"]
-        otp.is_used = True
-        otp.save(update_fields=["is_used"])
-
 
 class CreateSuperAdminSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -306,3 +212,96 @@ class CreateSuperAdminSerializer(serializers.Serializer):
         )
 
         return user
+    
+
+class CreateAdminSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(
+        write_only=True,
+        validators=[validate_password],
+    )
+
+    class Meta:
+        model = User
+        fields = ["email", "password"]
+
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError(
+                "User with this email already exists."
+            )
+        return value
+
+    @transaction.atomic
+    def create(self, validated_data):
+        user = User.objects.create_user(
+            email=validated_data["email"],
+            password=validated_data["password"],
+        )
+
+        MAUser.objects.create(
+            user=user,
+            role="ADMIN",
+        )
+
+        return user
+    
+
+
+class CreateUserSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(
+        write_only=True,
+        validators=[validate_password],
+    )
+
+    class Meta:
+        model = User
+        fields = ["email", "password"]
+
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError(
+                "User with this email already exists."
+            )
+        return value
+
+    @transaction.atomic
+    def create(self, validated_data):
+        user = User.objects.create_user(
+            email=validated_data["email"],
+            password=validated_data["password"],
+        )
+
+        MAUser.objects.create(
+            user=user,
+            role="USER",   
+        )
+
+        return user
+
+class UserListSerializer(serializers.ModelSerializer):
+    full_name = serializers.SerializerMethodField()
+    role = serializers.SerializerMethodField()
+    created_at = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "full_name",
+            "email",
+            "role",
+            "is_active",
+            "created_at"
+        ]
+
+    def get_full_name(self, obj):
+        return f"{obj.first_name} {obj.last_name}".strip()
+
+    def get_role(self, obj):
+        # We assume prefetch_related("ma_users") has been called
+        ma_user = obj.ma_users.all()[0] if obj.ma_users.all() else None
+        return ma_user.role if ma_user else None
+
+    def get_created_at(self, obj):
+        ma_user = obj.ma_users.all()[0] if obj.ma_users.all() else None
+        return ma_user.created_at if ma_user else None

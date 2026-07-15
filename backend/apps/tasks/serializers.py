@@ -119,6 +119,8 @@ class CreateTaskSerializer(serializers.ModelSerializer):
     users = serializers.ListField(
         child=serializers.IntegerField(),
         write_only=True,
+        min_length=1,
+        max_length=1,
     )
 
     channels = serializers.PrimaryKeyRelatedField(
@@ -126,6 +128,7 @@ class CreateTaskSerializer(serializers.ModelSerializer):
             is_active=True,
         ),
         many=True,
+        allow_empty=False,
     )
 
     instructions = serializers.CharField(
@@ -181,6 +184,12 @@ class TaskSerializer(serializers.ModelSerializer):
         read_only=True,
     )
 
+    statistics = serializers.SerializerMethodField()
+
+    def get_statistics(self, obj):
+        from apps.tasks.services import TaskStatusService
+        return TaskStatusService.get_task_statistics(obj)
+
     class Meta:
         model = Task
 
@@ -195,6 +204,10 @@ class TaskSerializer(serializers.ModelSerializer):
             "audience_name",
             "channels",
             "priority",
+            
+            "status",
+            "last_activity_at",
+            "statistics",
 
             "due_date",
 
@@ -236,6 +249,12 @@ class TaskSummarySerializer(serializers.ModelSerializer):
         read_only=True,
     )
 
+    statistics = serializers.SerializerMethodField()
+
+    def get_statistics(self, obj):
+        from apps.tasks.services import TaskStatusService
+        return TaskStatusService.get_task_statistics(obj)
+
     class Meta:
         model = Task
         fields = [
@@ -246,6 +265,9 @@ class TaskSummarySerializer(serializers.ModelSerializer):
             "audience",
             "audience_name",
             "priority",
+            "status",
+            "last_activity_at",
+            "statistics",
             "due_date",
             "channels",
         ]

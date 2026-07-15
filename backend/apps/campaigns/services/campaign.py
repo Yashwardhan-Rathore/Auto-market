@@ -12,6 +12,21 @@ from apps.campaigns.services.audience import AudienceService
 
 class CampaignService:
 
+    @classmethod
+    def change_status(cls, campaign, new_status, **update_fields):
+        from apps.tasks.services import TaskStatusService
+        
+        campaign.status = new_status
+        for field, value in update_fields.items():
+            setattr(campaign, field, value)
+            
+        fields_to_save = ["status"] + list(update_fields.keys())
+        campaign.save(update_fields=fields_to_save)
+        
+        TaskStatusService.update_task_status(campaign.task)
+        
+        return campaign
+
     @staticmethod
     def create_campaign(
         validated_data,
@@ -74,3 +89,73 @@ class CampaignService:
         )
 
         return campaign
+
+    @classmethod
+    def submit_campaign(cls,*, campaign, user):
+        from rest_framework.exceptions import ValidationError
+        from apps.campaigns.models import CampaignTemplate
+        from django.utils import timezone
+        
+        if campaign.created_by != user:
+            raise PermissionDenied("You can only submit your own campaigns.")
+
+        if not TaskAssignment.objects.filter(task=campaign.task, user=user).exists():
+            raise PermissionDenied("You are not assigned to this task.")
+
+        if campaign.status != Campaign.Status.DRAFT:
+            raise ValidationError("Only draft campaigns can be submitted.")
+
+        if not CampaignAudience.objects.filter(campaign=campaign).exists():
+            raise ValidationError("Campaign has no recipients.")
+
+        campaign_channels = CampaignChannel.objects.filter(campaign=campaign)
+        template_count = CampaignTemplate.objects.filter(campaign=campaign).count()
+
+        if template_count == 0 or template_count != campaign_channels.count():
+            raise ValidationError("Every selected channel must have an assigned template.")
+
+        return cls.change_status(
+            campaign,
+            Campaign.Status.PENDING_APPROVAL,
+            submitted_by=user,
+            submitted_at=timezone.now()
+        )
+
+    @classmethod
+    def approve_campaign(cls,*, campaign, admin_user):
+        from rest_framework.exceptions import ValidationError
+        from django.utils import timezone
+        
+        ma_user = MAUser.objects.filter(user_id=admin_user).first()
+        if not ma_user or ma_user.role not in ["ADMIN", "SUPER_ADMIN"]:
+            raise PermissionDenied("Only ADMIN or SUPER_ADMIN can approve campaigns.")
+
+        if campaign.status != Campaign.Status.PENDING_APPROVAL:
+            raise ValidationError("Campaign must be pending approval.")
+
+        return cls.change_status(
+            campaign,
+            Campaign.Status.APPROVED,
+            approved_by=admin_user,
+            approved_at=timezone.now()
+        )
+
+    @classmethod
+    def reject_campaign(cls,*, campaign, admin_user, rejection_reason):
+        from rest_framework.exceptions import ValidationError
+        from django.utils import timezone
+        
+        ma_user = MAUser.objects.filter(user_id=admin_user).first()
+        if not ma_user or ma_user.role not in ["ADMIN", "SUPER_ADMIN"]:
+            raise PermissionDenied("Only ADMIN or SUPER_ADMIN can reject campaigns.")
+
+        if campaign.status != Campaign.Status.PENDING_APPROVAL:
+            raise ValidationError("Campaign must be pending approval.")
+
+        return cls.change_status(
+            campaign,
+            Campaign.Status.REJECTED,
+            approved_by=admin_user,
+            approved_at=timezone.now(),
+            rejection_reason=rejection_reason
+        )

@@ -79,7 +79,7 @@ class DeliveryService:
         """
 
         if campaign.status not in (
-            Campaign.Status.DRAFT,
+            Campaign.Status.APPROVED,
             Campaign.Status.SCHEDULED,
         ):
             raise ValidationError(
@@ -119,14 +119,12 @@ class DeliveryService:
         Mark campaign as sending.
         """
 
-        campaign.status = Campaign.Status.SENDING
-        campaign.started_at = timezone.now()
+        from apps.campaigns.services.campaign import CampaignService
 
-        campaign.save(
-            update_fields=[
-                "status",
-                "started_at",
-            ]
+        CampaignService.change_status(
+            campaign,
+            Campaign.Status.SENDING,
+            started_at=timezone.now()
         )
 
         logger.info(
@@ -143,14 +141,12 @@ class DeliveryService:
         """
 
 
-        campaign.status = Campaign.Status.COMPLETED
-        campaign.completed_at = timezone.now()
+        from apps.campaigns.services.campaign import CampaignService
 
-        campaign.save(
-            update_fields=[
-                "status",
-                "completed_at",
-            ]
+        CampaignService.change_status(
+            campaign,
+            Campaign.Status.COMPLETED,
+            completed_at=timezone.now()
         )
 
         logger.info(

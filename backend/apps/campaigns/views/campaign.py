@@ -7,7 +7,6 @@ from django.shortcuts import get_object_or_404
 
 from ..serializers import (
     CampaignCreateSerializer,
-    CampaignRetrieveUpdateSerializer
 )
 from ..serializers.campaign_list import CampaignListSerializer
 from ..services import CampaignService
@@ -51,31 +50,133 @@ class CampaignCreateAPIView(APIView):
             status=status.HTTP_201_CREATED,
         )
 
-class CampaignRetrieveUpdateAPIView(RetrieveUpdateAPIView):
-    permission_classes = [IsAuthenticated]
-    serializer_class = CampaignRetrieveUpdateSerializer
-    lookup_field = "id"
+from django.shortcuts import get_object_or_404
+from ..models import Campaign
+from ..serializers import CampaignSubmitSerializer, CampaignApproveSerializer, CampaignRejectSerializer
 
-    def get_queryset(self):
-        # Only allow editing own campaigns that are not deleted
-        # and only if they are DRAFT or SCHEDULED
-        return Campaign.objects.filter(
-            created_by=self.request.user,
-            is_deleted=False,
+class CampaignSubmitAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, campaign_id):
+        serializer = CampaignSubmitSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        campaign = get_object_or_404(Campaign, id=campaign_id)
+
+        campaign = CampaignService.submit_campaign(
+            campaign=campaign,
+            user=request.user,
         )
 
-class CampaignDeleteAPIView(APIView):
+        return Response(
+            {
+                "message": "Campaign submitted for approval.",
+                "status": campaign.status,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class CampaignApproveAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def delete(self, request, campaign_id):
+    def post(self, request, campaign_id):
+        serializer = CampaignApproveSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
         campaign = get_object_or_404(Campaign, id=campaign_id)
-        if campaign.created_by != request.user:
-            return Response(
-                {"detail": "You do not have permission to delete this campaign."},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
-        # Soft delete
-        campaign.is_deleted = True
-        campaign.save(update_fields=["is_deleted"])
-        return Response(status=status.HTTP_204_NO_CONTENT)
+
+        campaign = CampaignService.approve_campaign(
+            campaign=campaign,
+            admin_user=request.user,
+        )
+
+        return Response(
+            {
+                "message": "Campaign approved.",
+                "status": campaign.status,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class CampaignRejectAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, campaign_id):
+        serializer = CampaignRejectSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        campaign = get_object_or_404(Campaign, id=campaign_id)
+
+        campaign = CampaignService.reject_campaign(
+            campaign=campaign,
+            admin_user=request.user,
+            rejection_reason=serializer.validated_data["rejection_reason"],
+        )
+
+        return Response(
+            {
+                "message": "Campaign rejected.",
+                "status": campaign.status,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+from apps.accounts.permissions import IsAdminOrSuperAdmin
+from ..serializers import PendingApprovalSerializer
+
+class PendingApprovalAPIView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminOrSuperAdmin]
+
+    def get(self, request):
+        campaigns = Campaign.objects.filter(
+            status=Campaign.Status.PENDING_APPROVAL
+        ).select_related(
+            "task",
+            "created_by",
+            "submitted_by",
+            "task__audience",
+        ).prefetch_related(
+            "campaign_channels__channel"
+        ).order_by("submitted_at")
+
+        serializer = PendingApprovalSerializer(campaigns, many=True)
+        return Response(serializer.data)
+
+from rest_framework import generics
+from rest_framework.filters import SearchFilter, OrderingFilter
+from apps.accounts.permissions import IsMarketingUser
+from apps.accounts.pagination import AccountsPagination
+from ..serializers import MyCampaignListSerializer
+
+class MyCampaignsAPIView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated, IsMarketingUser]
+    serializer_class = MyCampaignListSerializer
+    pagination_class = AccountsPagination
+    filter_backends = [SearchFilter, OrderingFilter]
+    search_fields = ["name", "task__title"]
+    ordering_fields = ["created_at", "updated_at", "name", "status"]
+    ordering = ["-created_at"]
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = Campaign.objects.filter(
+            created_by=user,
+            is_active=True,
+            is_deleted=False
+        ).select_related(
+            "task",
+            "task__audience",
+            "created_by",
+            "submitted_by",
+            "approved_by",
+        ).prefetch_related(
+            "campaign_channels__channel"
+        )
+
+        status = self.request.query_params.get("status")
+        if status:
+            queryset = queryset.filter(status=status)
+            
+        return queryset

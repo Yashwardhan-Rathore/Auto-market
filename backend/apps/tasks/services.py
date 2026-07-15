@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.db.models import Prefetch
 from django.utils import timezone
 
 from apps.accounts.models import User
@@ -65,6 +66,7 @@ def get_user_tasks(user):
     Return tasks assigned to current user.
     """
 
+    from apps.campaigns.models import Campaign
     return (
         TaskAssignment.objects
         .filter(user=user)
@@ -75,6 +77,7 @@ def get_user_tasks(user):
         .prefetch_related(
             "comments",
             "attachments",
+            Prefetch("task__campaigns", to_attr="prefetched_campaigns")
         )
         .order_by("-created_at")
     )
@@ -85,14 +88,17 @@ def get_admin_tasks(admin):
     Return tasks created by admin.
     """
 
-    return filter_by_tenant(
-        Task.objects.all(),
-        admin,
-        "created_by"
-    ).prefetch_related(
-        "assignments",
-        "assignments__user",
-    ).order_by("-created_at")
+    from apps.campaigns.models import Campaign
+    return (
+        Task.objects
+        .filter(created_by=admin)
+        .prefetch_related(
+            "assignments",
+            "assignments__user",
+            Prefetch("campaigns", to_attr="prefetched_campaigns")
+        )
+        .order_by("-created_at")
+    )
 
 
 def start_task(
@@ -221,4 +227,83 @@ def get_task_summary(user):
                 status="OVERDUE"
             ).count(),
     }
+
+
+class TaskStatusService:
+
+    @staticmethod
+    def calculate_task_status(campaigns):
+        from apps.tasks.models import Task
+        from apps.campaigns.models import Campaign
+
+        if not campaigns:
+            return Task.Status.ASSIGNED
+
+        statuses = [c.status for c in campaigns]
+        
+        if Campaign.Status.PENDING_APPROVAL in statuses:
+            return Task.Status.PENDING_APPROVAL
+            
+        active_statuses = {Campaign.Status.SCHEDULED, Campaign.Status.SENDING, Campaign.Status.PAUSED}
+        if any(s in active_statuses for s in statuses):
+            return Task.Status.IN_PROGRESS
+            
+        if Campaign.Status.APPROVED in statuses:
+            return Task.Status.APPROVED
+            
+        terminal_statuses = {Campaign.Status.COMPLETED, Campaign.Status.CANCELLED, Campaign.Status.FAILED}
+        if all(s in terminal_statuses for s in statuses):
+            if any(s == Campaign.Status.COMPLETED for s in statuses):
+                return Task.Status.COMPLETED
+            return Task.Status.CANCELLED
+            
+        if any(s in terminal_statuses for s in statuses):
+            return Task.Status.IN_PROGRESS
+            
+        return Task.Status.ASSIGNED
+
+    @staticmethod
+    def update_task_status(task):
+        from django.utils import timezone
+        
+        campaigns = getattr(task, "prefetched_campaigns", task.campaigns.all())
+        new_status = TaskStatusService.calculate_task_status(campaigns)
+        
+        task.status = new_status
+        task.last_activity_at = timezone.now()
+        task.save(update_fields=["status", "last_activity_at"])
+        return task
+
+    @staticmethod
+    def get_task_statistics(task):
+        from apps.campaigns.models import Campaign
+        campaigns = getattr(task, "prefetched_campaigns", task.campaigns.all())
+        
+        total = len(campaigns)
+        if total == 0:
+            return {
+                "campaign_count": 0,
+                "completed_campaigns": 0,
+                "approved_campaigns": 0,
+                "pending_campaigns": 0,
+                "draft_campaigns": 0,
+                "rejected_campaigns": 0,
+                "cancelled_campaigns": 0,
+                "progress_percentage": 0.0,
+            }
+
+        counts = {
+            "campaign_count": total,
+            "completed_campaigns": sum(1 for c in campaigns if c.status == Campaign.Status.COMPLETED),
+            "approved_campaigns": sum(1 for c in campaigns if c.status == Campaign.Status.APPROVED),
+            "pending_campaigns": sum(1 for c in campaigns if c.status == Campaign.Status.PENDING_APPROVAL),
+            "draft_campaigns": sum(1 for c in campaigns if c.status == Campaign.Status.DRAFT),
+            "rejected_campaigns": sum(1 for c in campaigns if c.status == Campaign.Status.REJECTED),
+            "cancelled_campaigns": sum(1 for c in campaigns if c.status == Campaign.Status.CANCELLED),
+        }
+        
+        counts["progress_percentage"] = (counts["completed_campaigns"] / total) * 100.0
+        
+        return counts
+
 

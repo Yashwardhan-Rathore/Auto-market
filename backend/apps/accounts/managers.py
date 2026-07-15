@@ -1,5 +1,4 @@
 from django.contrib.auth.base_user import BaseUserManager
-from django.contrib.auth.base_user import BaseUserManager
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
