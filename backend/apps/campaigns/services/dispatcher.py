@@ -13,7 +13,11 @@ class Dispatcher:
     @classmethod
     def send(cls, *, delivery):
         channel_code = delivery.channel.code.upper()
-        organization = delivery.campaign.organization
+        organization = delivery.campaign.task.created_by
+        if organization is None:
+            raise ValueError(
+                "Task owner is missing. Cannot determine communication provider."
+            )
         recipient = None
 
         try:
