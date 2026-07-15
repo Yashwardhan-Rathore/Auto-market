@@ -1,8 +1,5 @@
 from .campaign import (
     CampaignCreateAPIView,
-    CampaignListAPIView,
-    CampaignDeleteAPIView,
-    CampaignRetrieveUpdateAPIView,
 )
 from .customer import (
     CustomerUploadAPIView,
@@ -25,3 +22,4 @@ from .schedule import CampaignScheduleAPIView
 from .send import CampaignSendAPIView
 
 from .analytics import CampaignAnalyticsAPIView
+

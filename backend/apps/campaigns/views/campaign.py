@@ -2,24 +2,25 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.generics import RetrieveUpdateAPIView
-from django.shortcuts import get_object_or_404
 
-from ..serializers import (
-    CampaignCreateSerializer,
-)
 from ..serializers.campaign_list import CampaignListSerializer
 from ..services import CampaignService
 from ..models import Campaign
-from apps.common.utils import filter_by_tenant
+from ..serializers import CampaignCreateSerializer
 
-class CampaignListAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+from django.shortcuts import get_object_or_404
+from ..models import Campaign
+from ..serializers import CampaignSubmitSerializer, CampaignApproveSerializer, CampaignRejectSerializer
 
-    def get(self, request):
-        campaigns = filter_by_tenant(Campaign.objects.filter(is_deleted=False), request.user, "created_by")
-        serializer = CampaignListSerializer(campaigns, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+from apps.accounts.permissions import IsAdminOrSuperAdmin
+from ..serializers import PendingApprovalSerializer
+
+from rest_framework import generics
+from rest_framework.filters import SearchFilter, OrderingFilter
+from apps.accounts.permissions import IsMarketingUser
+from apps.accounts.pagination import AccountsPagination
+from ..serializers import MyCampaignListSerializer
+
 
 
 class CampaignCreateAPIView(APIView):
@@ -50,9 +51,6 @@ class CampaignCreateAPIView(APIView):
             status=status.HTTP_201_CREATED,
         )
 
-from django.shortcuts import get_object_or_404
-from ..models import Campaign
-from ..serializers import CampaignSubmitSerializer, CampaignApproveSerializer, CampaignRejectSerializer
 
 class CampaignSubmitAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -123,8 +121,7 @@ class CampaignRejectAPIView(APIView):
             status=status.HTTP_200_OK,
         )
 
-from apps.accounts.permissions import IsAdminOrSuperAdmin
-from ..serializers import PendingApprovalSerializer
+
 
 class PendingApprovalAPIView(APIView):
     permission_classes = [IsAuthenticated, IsAdminOrSuperAdmin]
@@ -144,11 +141,7 @@ class PendingApprovalAPIView(APIView):
         serializer = PendingApprovalSerializer(campaigns, many=True)
         return Response(serializer.data)
 
-from rest_framework import generics
-from rest_framework.filters import SearchFilter, OrderingFilter
-from apps.accounts.permissions import IsMarketingUser
-from apps.accounts.pagination import AccountsPagination
-from ..serializers import MyCampaignListSerializer
+
 
 class MyCampaignsAPIView(generics.ListAPIView):
     permission_classes = [IsAuthenticated, IsMarketingUser]
