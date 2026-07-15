@@ -69,9 +69,10 @@ class CampaignScheduleService:
                 "Assign templates for all channels before scheduling."
             )
 
-        campaign.status = Campaign.Status.SCHEDULED
-        campaign.scheduled_at = scheduled_at
-
-        campaign.save()
-
-        return campaign
+        from apps.campaigns.services.campaign import CampaignService
+        
+        return CampaignService.change_status(
+            campaign,
+            Campaign.Status.SCHEDULED,
+            scheduled_at=scheduled_at
+        )

@@ -12,6 +12,21 @@ from apps.campaigns.services.audience import AudienceService
 
 class CampaignService:
 
+    @classmethod
+    def change_status(cls, campaign, new_status, **update_fields):
+        from apps.tasks.services import TaskStatusService
+        
+        campaign.status = new_status
+        for field, value in update_fields.items():
+            setattr(campaign, field, value)
+            
+        fields_to_save = ["status"] + list(update_fields.keys())
+        campaign.save(update_fields=fields_to_save)
+        
+        TaskStatusService.update_task_status(campaign.task)
+        
+        return campaign
+
     @staticmethod
     def create_campaign(
         validated_data,
@@ -75,8 +90,8 @@ class CampaignService:
 
         return campaign
 
-    @staticmethod
-    def submit_campaign(*, campaign, user):
+    @classmethod
+    def submit_campaign(cls,*, campaign, user):
         from rest_framework.exceptions import ValidationError
         from apps.campaigns.models import CampaignTemplate
         from django.utils import timezone
@@ -99,15 +114,15 @@ class CampaignService:
         if template_count == 0 or template_count != campaign_channels.count():
             raise ValidationError("Every selected channel must have an assigned template.")
 
-        campaign.status = Campaign.Status.PENDING_APPROVAL
-        campaign.submitted_by = user
-        campaign.submitted_at = timezone.now()
-        campaign.save(update_fields=["status", "submitted_by", "submitted_at"])
-        
-        return campaign
+        return cls.change_status(
+            campaign,
+            Campaign.Status.PENDING_APPROVAL,
+            submitted_by=user,
+            submitted_at=timezone.now()
+        )
 
-    @staticmethod
-    def approve_campaign(*, campaign, admin_user):
+    @classmethod
+    def approve_campaign(cls,*, campaign, admin_user):
         from rest_framework.exceptions import ValidationError
         from django.utils import timezone
         
@@ -118,15 +133,15 @@ class CampaignService:
         if campaign.status != Campaign.Status.PENDING_APPROVAL:
             raise ValidationError("Campaign must be pending approval.")
 
-        campaign.status = Campaign.Status.APPROVED
-        campaign.approved_by = admin_user
-        campaign.approved_at = timezone.now()
-        campaign.save(update_fields=["status", "approved_by", "approved_at"])
-        
-        return campaign
+        return cls.change_status(
+            campaign,
+            Campaign.Status.APPROVED,
+            approved_by=admin_user,
+            approved_at=timezone.now()
+        )
 
-    @staticmethod
-    def reject_campaign(*, campaign, admin_user, rejection_reason):
+    @classmethod
+    def reject_campaign(cls,*, campaign, admin_user, rejection_reason):
         from rest_framework.exceptions import ValidationError
         from django.utils import timezone
         
@@ -137,10 +152,10 @@ class CampaignService:
         if campaign.status != Campaign.Status.PENDING_APPROVAL:
             raise ValidationError("Campaign must be pending approval.")
 
-        campaign.status = Campaign.Status.REJECTED
-        campaign.approved_by = admin_user
-        campaign.approved_at = timezone.now()
-        campaign.rejection_reason = rejection_reason
-        campaign.save(update_fields=["status", "approved_by", "approved_at", "rejection_reason"])
-        
-        return campaign
+        return cls.change_status(
+            campaign,
+            Campaign.Status.REJECTED,
+            approved_by=admin_user,
+            approved_at=timezone.now(),
+            rejection_reason=rejection_reason
+        )
