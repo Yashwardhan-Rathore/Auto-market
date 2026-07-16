@@ -18,6 +18,7 @@ from .campaign import (
     CampaignRejectSerializer,
     PendingApprovalSerializer,
     MyCampaignListSerializer,
+    CampaignUpdateSerializer
 )
 
 from .channel import CampaignChannelSerializer
@@ -27,8 +28,11 @@ from .audience import AudiencePreviewSerializer , AudienceCreateSerializer,Audie
 from .template import (
     TemplateCreateSerializer,
     TemplateSerializer,
-CampaignTemplateAssignSerializer
-
+    CampaignTemplateAssignSerializer,
+    TemplateUpdateSerializer
 )
 
-from .schedule import CampaignScheduleSerializer
+from .schedule import (
+    CampaignScheduleSerializer,
+    CampaignScheduleUpdateSerializer
+)

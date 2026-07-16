@@ -13,6 +13,42 @@ from apps.campaigns.services.audience import AudienceService
 class CampaignService:
 
     @classmethod
+    def update_campaign(cls, *, campaign, user, validated_data):
+        from rest_framework.exceptions import ValidationError
+        
+        if campaign.created_by != user:
+            raise PermissionDenied("You can only edit your own campaigns.")
+            
+        if campaign.status not in [Campaign.Status.DRAFT, Campaign.Status.REJECTED]:
+            raise ValidationError("Only draft or rejected campaigns can be edited.")
+            
+        was_rejected = campaign.status == Campaign.Status.REJECTED
+        
+        if "name" in validated_data:
+            campaign.name = validated_data["name"]
+        if "description" in validated_data:
+            campaign.description = validated_data["description"]
+            
+        if was_rejected:
+            cls.handle_rejected_to_draft(campaign)
+            
+        campaign.save(update_fields=["name", "description", "updated_at"])
+        return campaign
+
+    @classmethod
+    def handle_rejected_to_draft(cls, campaign):
+        if campaign.status == Campaign.Status.REJECTED:
+            return cls.change_status(
+                campaign,
+                Campaign.Status.DRAFT,
+                approved_by=None,
+                approved_at=None,
+                rejection_reason=None,
+                review_comments=None
+            )
+        return campaign
+
+    @classmethod
     def change_status(cls, campaign, new_status, **update_fields):
         from apps.tasks.services import TaskStatusService
         
@@ -141,7 +177,7 @@ class CampaignService:
         )
 
     @classmethod
-    def reject_campaign(cls,*, campaign, admin_user, rejection_reason):
+    def reject_campaign(cls,*, campaign, admin_user, rejection_reason, review_comments=None):
         from rest_framework.exceptions import ValidationError
         from django.utils import timezone
         
@@ -157,5 +193,6 @@ class CampaignService:
             Campaign.Status.REJECTED,
             approved_by=admin_user,
             approved_at=timezone.now(),
-            rejection_reason=rejection_reason
+            rejection_reason=rejection_reason,
+            review_comments=review_comments
         )

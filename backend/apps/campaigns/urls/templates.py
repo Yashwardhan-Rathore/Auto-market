@@ -2,7 +2,8 @@ from django.urls import path
 
 from apps.campaigns.views import (
     TemplateCreateAPIView,
-    TemplateListAPIView
+    TemplateListAPIView,
+    TemplateUpdateAPIView
 )
 
 urlpatterns = [
@@ -16,5 +17,11 @@ urlpatterns = [
         "create/",
         TemplateCreateAPIView.as_view(),
         name="template-create",
+    ),
+
+    path(
+        "<int:template_id>/",
+        TemplateUpdateAPIView.as_view(),
+        name="template-update",
     )
 ]

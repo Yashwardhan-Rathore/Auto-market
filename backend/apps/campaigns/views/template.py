@@ -5,7 +5,8 @@ from rest_framework.views import APIView
 from apps.campaigns.serializers import (
     TemplateCreateSerializer,
     TemplateSerializer,
-    CampaignTemplateAssignSerializer
+    CampaignTemplateAssignSerializer,
+    TemplateUpdateSerializer
 )
 from apps.campaigns.services import (
     TemplateService,
@@ -84,3 +85,28 @@ class CampaignTemplateAssignAPIView(APIView):
             status=status.HTTP_201_CREATED,
         )
     
+class TemplateUpdateAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, template_id):
+        from django.shortcuts import get_object_or_404
+        from apps.campaigns.models import Template
+        
+        template = get_object_or_404(Template, id=template_id)
+        
+        serializer = TemplateUpdateSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+
+        template = TemplateService.update_template(
+            template=template,
+            user=request.user,
+            validated_data=serializer.validated_data,
+        )
+
+        return Response(
+            {
+                "message": "Template updated successfully.",
+                "campaign_status": "DRAFT"
+            },
+            status=status.HTTP_200_OK,
+        )

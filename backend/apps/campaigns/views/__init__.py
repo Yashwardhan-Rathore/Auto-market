@@ -10,11 +10,15 @@ from .audience import AudiencePreviewAPIView,    AudienceCreateAPIView,AudienceL
 from .template import (
     TemplateCreateAPIView,
     TemplateListAPIView,
-    CampaignTemplateAssignAPIView
+    CampaignTemplateAssignAPIView,
+    TemplateUpdateAPIView
 )
 from .preview import CampaignPreviewAPIView
 
-from .schedule import CampaignScheduleAPIView
+from .schedule import (
+    CampaignScheduleAPIView,
+    CampaignScheduleUpdateAPIView
+)
 
 from .send import CampaignSendAPIView
 

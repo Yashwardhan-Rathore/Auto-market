@@ -120,6 +120,11 @@ class Campaign(models.Model):
         null=True,
     )
 
+    review_comments = models.TextField(
+        blank=True,
+        null=True,
+    )
+
     is_active = models.BooleanField(
         default=True,
     )

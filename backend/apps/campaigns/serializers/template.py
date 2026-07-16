@@ -28,6 +28,15 @@ class TemplateCreateSerializer(serializers.ModelSerializer):
         ]
 
 
+class TemplateUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Template
+        fields = [
+            "subject",
+            "body",
+        ]
+
+
 class TemplateSerializer(serializers.ModelSerializer):
 
     channel_name = serializers.CharField(
