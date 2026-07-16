@@ -1,6 +1,7 @@
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.db.models import Q
 
 from apps.communications.models import (
     CommunicationEvent,
@@ -18,9 +19,7 @@ from apps.communications.serializers import (
 
 class EmailProviderListCreateView(APIView):
     def get(self, request):
-        providers = OrganizationEmailProvider.objects.filter(
-            organization=request.user
-        )
+        providers = OrganizationEmailProvider.objects.all()
         serializer = OrganizationEmailProviderSerializer(
             providers,
             many=True,
@@ -34,9 +33,7 @@ class EmailProviderListCreateView(APIView):
         serializer.is_valid(
             raise_exception=True
         )
-        serializer.save(
-            organization=request.user
-        )
+        serializer.save()
         return Response(
             serializer.data,
             status=status.HTTP_201_CREATED,
@@ -44,33 +41,34 @@ class EmailProviderListCreateView(APIView):
 
 class SMSProviderListCreateView(APIView):
     def get(self, request):
-        providers = OrganizationSMSProvider.objects.filter(organization=request.user)
+        providers = OrganizationSMSProvider.objects.all()
         serializer = OrganizationSMSProviderSerializer(providers, many=True)
         return Response(serializer.data)
 
     def post(self, request):
         serializer = OrganizationSMSProviderSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save(organization=request.user)
+        serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 class WhatsAppProviderListCreateView(APIView):
     def get(self, request):
-        providers = OrganizationWhatsAppProvider.objects.filter(organization=request.user)
+        providers = OrganizationWhatsAppProvider.objects.all()
         serializer = OrganizationWhatsAppProviderSerializer(providers, many=True)
         return Response(serializer.data)
 
     def post(self, request):
         serializer = OrganizationWhatsAppProviderSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save(organization=request.user)
+        serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class CommunicationEventListView(APIView):
     def get(self, request):
         events = CommunicationEvent.objects.filter(
-            organization=request.user
+            Q(campaign__task__created_by=request.user) | 
+            Q(execution__automation__owner=request.user)
         ).order_by("-created_at")[:200]
         serializer = CommunicationEventSerializer(
             events,

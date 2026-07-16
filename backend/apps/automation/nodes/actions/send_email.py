@@ -22,7 +22,6 @@ class SendEmailAction:
         )
 
         send_email(
-            organization=execution.automation.owner,
             subject=subject,
             message=message,
             recipients=recipients,

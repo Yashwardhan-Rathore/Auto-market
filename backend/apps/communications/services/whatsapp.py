@@ -2,12 +2,11 @@ from apps.communications.models import CommunicationEvent
 from apps.communications.providers.whatsapp import MetaWhatsAppProvider
 
 
-def get_whatsapp_provider(organization):
+def get_whatsapp_provider():
     from apps.communications.models import OrganizationWhatsAppProvider
 
     organization_provider = (
         OrganizationWhatsAppProvider.objects.filter(
-            organization=organization,
             is_active=True,
         )
         .order_by("-created_at")
@@ -15,7 +14,7 @@ def get_whatsapp_provider(organization):
     )
 
     if not organization_provider:
-        raise ValueError(f"No active WhatsApp provider configured for {organization}")
+        raise ValueError(f"No active WhatsApp provider configured")
 
     return MetaWhatsAppProvider(
         access_token=organization_provider.access_token,
@@ -23,9 +22,9 @@ def get_whatsapp_provider(organization):
     )
 
 
-def send_whatsapp(organization, to, message, config=None, execution=None, campaign=None):
+def send_whatsapp(to, message, config=None, execution=None, campaign=None):
     config = config or {}
-    provider = get_whatsapp_provider(organization)
+    provider = get_whatsapp_provider()
     response = provider.send(
         to,
         message,
@@ -33,7 +32,6 @@ def send_whatsapp(organization, to, message, config=None, execution=None, campai
     )
 
     CommunicationEvent.objects.create(
-        organization=organization,
         execution=execution,
         campaign=campaign,
         channel="WHATSAPP",

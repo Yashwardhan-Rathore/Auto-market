@@ -5,12 +5,11 @@ from apps.communications.providers.push import (
 )
 
 
-def get_push_provider(organization, provider_name):
+def get_push_provider(provider_name):
     from apps.communications.models import OrganizationPushProvider
 
     organization_provider = (
         OrganizationPushProvider.objects.filter(
-            organization=organization,
             is_active=True,
             provider="FCM" if provider_name == "MOBILE" else "VAPID",
         )
@@ -19,7 +18,7 @@ def get_push_provider(organization, provider_name):
     )
 
     if not organization_provider:
-        raise ValueError(f"No active {provider_name} push provider configured for {organization}")
+        raise ValueError(f"No active {provider_name} push provider configured")
 
     provider = (
         MobilePushProvider()
@@ -32,10 +31,10 @@ def get_push_provider(organization, provider_name):
     return provider
 
 
-def send_notification(organization, recipient, title, body, config=None, execution=None, campaign=None):
+def send_notification(recipient, title, body, config=None, execution=None, campaign=None):
     config = config or {}
     provider_name = (config.get("provider") or "BROWSER").upper()
-    provider = get_push_provider(organization, provider_name)
+    provider = get_push_provider(provider_name)
 
     provider.send(
         recipient,
@@ -45,7 +44,6 @@ def send_notification(organization, recipient, title, body, config=None, executi
     )
 
     CommunicationEvent.objects.create(
-        organization=organization,
         execution=execution,
         campaign=campaign,
         channel="NOTIFICATION",

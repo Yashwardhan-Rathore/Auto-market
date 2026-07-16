@@ -5,8 +5,8 @@ from apps.communications.providers.email import (
 )
 
 
-def send_email(organization, subject, message, recipients, sender=None, execution=None, campaign=None):
-    provider = get_email_provider(organization)
+def send_email(subject, message, recipients, sender=None, execution=None, campaign=None):
+    provider = get_email_provider()
     organization_provider = getattr(
         provider,
         "organization_provider",
@@ -23,7 +23,6 @@ def send_email(organization, subject, message, recipients, sender=None, executio
 
     for recipient in recipients:
         CommunicationEvent.objects.create(
-            organization=organization,
             execution=execution,
             campaign=campaign,
             channel="EMAIL",

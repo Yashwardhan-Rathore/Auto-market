@@ -13,11 +13,7 @@ class Dispatcher:
     @classmethod
     def send(cls, *, delivery):
         channel_code = delivery.channel.code.upper()
-        organization = delivery.campaign.task.created_by
-        if organization is None:
-            raise ValueError(
-                "Task owner is missing. Cannot determine communication provider."
-            )
+
         recipient = None
 
         try:
@@ -27,7 +23,6 @@ class Dispatcher:
                     raise ValueError("Customer email not found.")
                 
                 send_email(
-                    organization=organization,
                     subject=delivery.campaign.name,
                     message=delivery.rendered_message,
                     recipients=[recipient],
@@ -40,7 +35,6 @@ class Dispatcher:
                     raise ValueError("Customer phone not found.")
                 
                 send_sms(
-                    organization=organization,
                     to=recipient,
                     message=delivery.rendered_message,
                     campaign=delivery.campaign,
@@ -52,7 +46,6 @@ class Dispatcher:
                     raise ValueError("Customer phone not found.")
                 
                 send_whatsapp(
-                    organization=organization,
                     to=recipient,
                     message=delivery.rendered_message,
                     campaign=delivery.campaign,

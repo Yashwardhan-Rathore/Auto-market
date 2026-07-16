@@ -13,9 +13,13 @@ def rate(numerator, denominator):
 
 
 def communication_metrics(organization):
-    events = filter_by_tenant(
-        CommunicationEvent.objects.all(), organization, "organization"
+    campaign_events = filter_by_tenant(
+        CommunicationEvent.objects.filter(campaign__isnull=False), organization, "campaign__task__created_by"
     )
+    automation_events = filter_by_tenant(
+        CommunicationEvent.objects.filter(execution__isnull=False), organization, "execution__automation__owner"
+    )
+    events = campaign_events | automation_events
 
     email_sent = events.filter(
         channel="EMAIL",

@@ -68,12 +68,11 @@ class SESEmailProvider(BaseEmailProvider):
         )
 
 
-def get_email_provider(organization):
+def get_email_provider():
     from apps.communications.models import OrganizationEmailProvider
 
     organization_provider = (
         OrganizationEmailProvider.objects.filter(
-            organization=organization,
             is_active=True,
         )
         .order_by("-created_at")

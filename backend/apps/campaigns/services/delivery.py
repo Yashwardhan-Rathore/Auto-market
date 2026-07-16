@@ -40,6 +40,9 @@ class DeliveryService:
         Execute the complete campaign.
         """
 
+        # Lock the campaign to prevent race conditions during state transition
+        campaign = Campaign.objects.select_for_update().get(id=campaign.id)
+
         cls._validate_campaign(campaign)
         cls._validate_no_existing_deliveries(campaign)
 

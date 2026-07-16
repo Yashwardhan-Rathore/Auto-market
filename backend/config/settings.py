@@ -227,3 +227,7 @@ CACHES = {
     }
 }
 
+# --------------------------------------------------
+# Celery Configuration for Demo (Bypass Redis)
+# --------------------------------------------------
+CELERY_TASK_ALWAYS_EAGER = True

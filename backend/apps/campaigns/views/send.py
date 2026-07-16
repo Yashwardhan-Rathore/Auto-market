@@ -34,11 +34,6 @@ class CampaignSendAPIView(APIView):
 
         # Trigger background task
         send_campaign_background.delay(campaign.id)
-        
-        # Update status to sending
-        from apps.campaigns.models import Campaign
-        campaign.status = Campaign.Status.SENDING
-        campaign.save(update_fields=['status'])
 
         return Response(
             {
