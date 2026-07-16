@@ -41,6 +41,23 @@ class CampaignRetrieveUpdateSerializer(serializers.ModelSerializer):
         return value
     
 
+class CampaignUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Campaign
+        fields = [
+            "name",
+            "description",
+        ]
+        
+    def validate_name(self, value):
+        value = value.strip()
+        if len(value) < 3:
+            raise serializers.ValidationError(
+                "Campaign name must be at least 3 characters."
+            )
+        return value
+    
+
 class CampaignPreviewSerializer(serializers.Serializer):
 
     campaign = serializers.PrimaryKeyRelatedField(
@@ -113,6 +130,7 @@ class CampaignApproveSerializer(serializers.Serializer):
 
 class CampaignRejectSerializer(serializers.Serializer):
     rejection_reason = serializers.CharField(required=True)
+    review_comments = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
 class PendingApprovalSerializer(serializers.ModelSerializer):
     task_name = serializers.CharField(source="task.title", read_only=True)
@@ -162,6 +180,7 @@ class MyCampaignListSerializer(serializers.ModelSerializer):
             "approved_at",
             "approved_by",
             "rejection_reason",
+            "review_comments",
             "available_actions",
         ]
 

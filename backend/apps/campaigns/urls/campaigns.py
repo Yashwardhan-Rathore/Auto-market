@@ -2,6 +2,7 @@ from django.urls import path
 
 from apps.campaigns.views.campaign import (
     CampaignCreateAPIView,
+    CampaignUpdateAPIView,
     CampaignSubmitAPIView,
     CampaignApproveAPIView,
     CampaignRejectAPIView,
@@ -13,6 +14,7 @@ from apps.campaigns.views import (
     CampaignTemplateAssignAPIView,
     CampaignPreviewAPIView,
     CampaignScheduleAPIView,
+    CampaignScheduleUpdateAPIView,
     CampaignSendAPIView,
     CampaignAnalyticsAPIView,
 )
@@ -60,6 +62,16 @@ urlpatterns = [
         name="campaign-pending-approval",
     ),
 
+    path(
+        "<int:campaign_id>/update/",
+        CampaignUpdateAPIView.as_view(),
+        name="campaign-update",
+    ),
+    path(
+        "<int:campaign_id>/schedule/",
+        CampaignScheduleUpdateAPIView.as_view(),
+        name="campaign-schedule-update",
+    ),
     path(
         "<int:campaign_id>/submit/",
         CampaignSubmitAPIView.as_view(),

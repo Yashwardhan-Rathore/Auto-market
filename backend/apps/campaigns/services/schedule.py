@@ -76,3 +76,33 @@ class CampaignScheduleService:
             Campaign.Status.SCHEDULED,
             scheduled_at=scheduled_at
         )
+
+    @staticmethod
+    def update_schedule(
+        *,
+        campaign,
+        scheduled_at,
+        user,
+    ):
+        if campaign.created_by != user:
+            raise PermissionDenied(
+                "You can only update your own campaign schedule."
+            )
+
+        if campaign.status not in [Campaign.Status.DRAFT, Campaign.Status.REJECTED]:
+            raise ValidationError(
+                "Only draft or rejected campaigns can have their schedule updated."
+            )
+
+        if scheduled_at <= timezone.now():
+            raise ValidationError(
+                "Schedule time must be in the future."
+            )
+
+        campaign.scheduled_at = scheduled_at
+        campaign.save(update_fields=["scheduled_at", "updated_at"])
+
+        from apps.campaigns.services.campaign import CampaignService
+        CampaignService.handle_rejected_to_draft(campaign)
+
+        return campaign

@@ -44,6 +44,41 @@ class TemplateService:
         templates = Template.objects.filter(status=Template.Status.ACTIVE)
         return filter_by_tenant(templates, user, "created_by").order_by("name")
 
+    @staticmethod
+    def update_template(
+        *,
+        template,
+        user,
+        validated_data,
+    ):
+        if template.created_by != user:
+            raise ValidationError(
+                "You can only edit your own templates."
+            )
+
+        # Check all associated campaigns
+        campaign_templates = template.campaign_templates.select_related("campaign")
+        campaigns = [ct.campaign for ct in campaign_templates]
+
+        for campaign in campaigns:
+            if campaign.status not in [Campaign.Status.DRAFT, Campaign.Status.REJECTED]:
+                raise ValidationError(
+                    f"Template is used by a campaign in {campaign.status} status and cannot be edited."
+                )
+
+        if "subject" in validated_data:
+            template.subject = validated_data["subject"]
+        if "body" in validated_data:
+            template.body = validated_data["body"]
+            
+        template.save(update_fields=["subject", "body", "updated_at"])
+
+        from apps.campaigns.services.campaign import CampaignService
+        for campaign in campaigns:
+            CampaignService.handle_rejected_to_draft(campaign)
+
+        return template
+
 
 class CampaignTemplateService:
 
@@ -94,10 +129,12 @@ class CampaignTemplateService:
             )
 
         # Rule 6: Campaign must be editable
-        if campaign.status != Campaign.Status.DRAFT:
+        if campaign.status not in [Campaign.Status.DRAFT, Campaign.Status.REJECTED]:
             raise ValidationError(
-                "Templates can only be assigned while the campaign is in DRAFT status."
+                "Templates can only be assigned while the campaign is in DRAFT or REJECTED status."
             )
+
+        was_rejected = campaign.status == Campaign.Status.REJECTED
 
         campaign_template, created = CampaignTemplate.objects.update_or_create(
             campaign=campaign,
@@ -106,5 +143,9 @@ class CampaignTemplateService:
                 "template": template,
             },
         )
+
+        if was_rejected:
+            from apps.campaigns.services.campaign import CampaignService
+            CampaignService.handle_rejected_to_draft(campaign)
 
         return campaign_template

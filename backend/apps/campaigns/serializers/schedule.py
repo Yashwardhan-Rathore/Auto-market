@@ -13,3 +13,6 @@ class CampaignScheduleSerializer(serializers.Serializer):
     )
 
     scheduled_at = serializers.DateTimeField()
+
+class CampaignScheduleUpdateSerializer(serializers.Serializer):
+    scheduled_at = serializers.DateTimeField(required=True)
