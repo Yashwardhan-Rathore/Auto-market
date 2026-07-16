@@ -15,11 +15,7 @@ class OrganizationEmailProvider(models.Model):
         default=uuid.uuid4,
         editable=False,
     )
-    organization = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="email_providers",
-    )
+
     provider = models.CharField(
         max_length=50,
         choices=PROVIDERS,
@@ -61,12 +57,12 @@ class OrganizationEmailProvider(models.Model):
     class Meta:
         db_table = "organization_email_provider"
         indexes = [
-            models.Index(fields=["organization", "is_active"]),
+            models.Index(fields=["is_active"]),
             models.Index(fields=["provider"]),
         ]
 
     def __str__(self):
-        return f"{self.organization} - {self.provider}"
+        return f"{self.provider}"
 
 
 class OrganizationSMSProvider(models.Model):
@@ -79,11 +75,7 @@ class OrganizationSMSProvider(models.Model):
         default=uuid.uuid4,
         editable=False,
     )
-    organization = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="sms_providers",
-    )
+
     provider = models.CharField(
         max_length=50,
         choices=PROVIDERS,
@@ -111,12 +103,12 @@ class OrganizationSMSProvider(models.Model):
     class Meta:
         db_table = "organization_sms_provider"
         indexes = [
-            models.Index(fields=["organization", "is_active"]),
+            models.Index(fields=["is_active"]),
             models.Index(fields=["provider"]),
         ]
 
     def __str__(self):
-        return f"{self.organization} - {self.provider}"
+        return f"{self.provider}"
 
 
 class OrganizationWhatsAppProvider(models.Model):
@@ -129,11 +121,7 @@ class OrganizationWhatsAppProvider(models.Model):
         default=uuid.uuid4,
         editable=False,
     )
-    organization = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="whatsapp_providers",
-    )
+
     provider = models.CharField(
         max_length=50,
         choices=PROVIDERS,
@@ -165,12 +153,12 @@ class OrganizationWhatsAppProvider(models.Model):
     class Meta:
         db_table = "organization_whatsapp_provider"
         indexes = [
-            models.Index(fields=["organization", "is_active"]),
+            models.Index(fields=["is_active"]),
             models.Index(fields=["provider"]),
         ]
 
     def __str__(self):
-        return f"{self.organization} - {self.provider}"
+        return f"{self.provider}"
 
 
 class OrganizationPushProvider(models.Model):
@@ -184,11 +172,7 @@ class OrganizationPushProvider(models.Model):
         default=uuid.uuid4,
         editable=False,
     )
-    organization = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="push_providers",
-    )
+
     provider = models.CharField(
         max_length=50,
         choices=PROVIDERS,
@@ -211,12 +195,12 @@ class OrganizationPushProvider(models.Model):
     class Meta:
         db_table = "organization_push_provider"
         indexes = [
-            models.Index(fields=["organization", "is_active"]),
+            models.Index(fields=["is_active"]),
             models.Index(fields=["provider"]),
         ]
 
     def __str__(self):
-        return f"{self.organization} - {self.provider}"
+        return f"{self.provider}"
 
 
 class CommunicationEvent(models.Model):
@@ -243,11 +227,7 @@ class CommunicationEvent(models.Model):
         default=uuid.uuid4,
         editable=False,
     )
-    organization = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="communication_events",
-    )
+
     execution = models.ForeignKey(
         "automation.AutomationExecution",
         on_delete=models.SET_NULL,
@@ -296,7 +276,7 @@ class CommunicationEvent(models.Model):
     class Meta:
         db_table = "communication_event"
         indexes = [
-            models.Index(fields=["organization", "channel", "status"]),
+            models.Index(fields=["channel", "status"]),
             models.Index(fields=["event_name"]),
             models.Index(fields=["created_at"]),
         ]

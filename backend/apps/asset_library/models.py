@@ -4,11 +4,7 @@ from apps.common.models import TimeStampedUUIDModel
 
 
 class AssetFolder(TimeStampedUUIDModel):
-    company = models.ForeignKey(
-        "common.Company",
-        on_delete=models.CASCADE,
-        related_name="asset_folders"
-    )
+
     parent = models.ForeignKey(
         "self",
         on_delete=models.CASCADE,
@@ -20,7 +16,7 @@ class AssetFolder(TimeStampedUUIDModel):
 
     class Meta:
         db_table = "asset_folders"
-        unique_together = [("company", "parent", "name")]
+        unique_together = [("parent", "name")]
         ordering = ["name"]
 
     def __str__(self):
@@ -28,16 +24,12 @@ class AssetFolder(TimeStampedUUIDModel):
 
 
 class AssetTag(TimeStampedUUIDModel):
-    company = models.ForeignKey(
-        "common.Company",
-        on_delete=models.CASCADE,
-        related_name="asset_tags"
-    )
+
     name = models.CharField(max_length=50, db_index=True)
 
     class Meta:
         db_table = "asset_tags"
-        unique_together = [("company", "name")]
+        # unique_together removed
 
     def __str__(self):
         return self.name
@@ -50,11 +42,7 @@ class Asset(TimeStampedUUIDModel):
         VIDEO = "VIDEO", "Video"
         OTHER = "OTHER", "Other"
 
-    company = models.ForeignKey(
-        "common.Company",
-        on_delete=models.CASCADE,
-        related_name="assets"
-    )
+
     folder = models.ForeignKey(
         AssetFolder,
         on_delete=models.SET_NULL,
@@ -74,7 +62,7 @@ class Asset(TimeStampedUUIDModel):
     
     is_personal = models.BooleanField(
         default=False,
-        help_text="If True, only the uploaded_by user can view this. Otherwise, it is shared with the company."
+        help_text="If True, only the uploaded_by user can view this."
     )
 
     tags = models.ManyToManyField(AssetTag, blank=True, related_name="assets")

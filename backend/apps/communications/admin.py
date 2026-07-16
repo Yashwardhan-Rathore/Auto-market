@@ -9,7 +9,6 @@ from apps.communications.models import (
 @admin.register(OrganizationEmailProvider)
 class OrganizationEmailProviderAdmin(admin.ModelAdmin):
     list_display = (
-        "organization",
         "provider",
         "verified_domain",
         "daily_limit",
@@ -21,7 +20,6 @@ class OrganizationEmailProviderAdmin(admin.ModelAdmin):
         "is_active",
     )
     search_fields = (
-        "organization__email",
         "verified_domain",
     )
     readonly_fields = (
@@ -38,7 +36,6 @@ class CommunicationEventAdmin(admin.ModelAdmin):
         "event_name",
         "recipient",
         "status",
-        "organization",
         "created_at",
     )
     list_filter = (
@@ -49,7 +46,6 @@ class CommunicationEventAdmin(admin.ModelAdmin):
     search_fields = (
         "recipient",
         "provider_message_id",
-        "organization__email",
     )
     readonly_fields = (
         "id",

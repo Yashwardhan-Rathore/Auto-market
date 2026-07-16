@@ -18,7 +18,6 @@ class TrackEventView(APIView):
 
         data = serializer.validated_data
         event = WebsiteEvent.objects.create(
-            organization=request.user,
             event_name=data["event"],
             user_identifier=data["user"],
             session_id=data.get("session_id", ""),

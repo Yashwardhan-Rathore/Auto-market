@@ -73,11 +73,11 @@ class ContentDraftSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContentDraft
         fields = [
-            'id', 'owner', 'company', 'original_prompt', 'enhanced_prompt',
+            'id', 'owner', 'original_prompt', 'enhanced_prompt',
             'workflow_state', 'current_version', 'platforms', 'approvals', 'versions',
             'created_at', 'updated_at'
         ]
-        read_only_fields = ['owner', 'company', 'workflow_state', 'current_version']
+        read_only_fields = ['owner', 'workflow_state', 'current_version']
 
 class ContentDraftCreateSerializer(serializers.Serializer):
     platforms = serializers.ListField(

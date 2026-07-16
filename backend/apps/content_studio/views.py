@@ -17,14 +17,8 @@ class GenerateContentAPIView(APIView):
         if not prompt or not content_type:
             return Response({"error": "prompt and content_type are required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Get company from user (assuming one company for now)
-        company = request.user.company
-        if not company:
-            return Response({"error": "User does not belong to a company"}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
             generated, version = ContentStudioService.generate_initial_content(
-                company=company,
                 user=request.user,
                 prompt=prompt,
                 content_type=content_type,
@@ -92,20 +86,12 @@ class BrandVoiceAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        company = request.user.company
-        if not company:
-            return Response({"error": "User does not belong to a company"}, status=status.HTTP_400_BAD_REQUEST)
-        
-        brand_voice, created = BrandVoice.objects.get_or_create(company=company)
+        brand_voice, created = BrandVoice.objects.get_or_create()
         serializer = BrandVoiceSerializer(brand_voice)
         return Response(serializer.data)
 
     def put(self, request):
-        company = request.user.company
-        if not company:
-            return Response({"error": "User does not belong to a company"}, status=status.HTTP_400_BAD_REQUEST)
-        
-        brand_voice, created = BrandVoice.objects.get_or_create(company=company)
+        brand_voice, created = BrandVoice.objects.get_or_create()
         serializer = BrandVoiceSerializer(brand_voice, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
@@ -117,28 +103,24 @@ class ContentTemplateListCreateAPIView(generics.ListCreateAPIView):
     serializer_class = ContentTemplateSerializer
 
     def get_queryset(self):
-        company = self.request.user.company
-        return ContentTemplate.objects.filter(company=company)
+        return ContentTemplate.objects.all()
 
     def perform_create(self, serializer):
-        company = self.request.user.company
-        serializer.save(company=company)
+        serializer.save()
 
 class ContentTemplateDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = ContentTemplateSerializer
 
     def get_queryset(self):
-        company = self.request.user.company
-        return ContentTemplate.objects.filter(company=company)
+        return ContentTemplate.objects.all()
 
 class GeneratedContentListAPIView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = GeneratedContentSerializer
 
     def get_queryset(self):
-        company = self.request.user.company
-        return GeneratedContent.objects.filter(company=company)
+        return GeneratedContent.objects.all()
 
 class RegenerateContentAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -181,19 +163,14 @@ class ContentDraftViewSet(viewsets.ModelViewSet):
     serializer_class = ContentDraftSerializer
 
     def get_queryset(self):
-        company = self.request.user.company
-        return ContentDraft.objects.filter(company=company)
+        return ContentDraft.objects.all()
 
     def create(self, request, *args, **kwargs):
         serializer = ContentDraftCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        
-        company = request.user.company
-        if not company:
-            return Response({"error": "User does not belong to a company"}, status=status.HTTP_400_BAD_REQUEST)
             
         platforms = serializer.validated_data['platforms']
-        draft = ContentDraftService.create_content_draft(request.user, company, platforms)
+        draft = ContentDraftService.create_content_draft(request.user, platforms)
         
         return Response(ContentDraftSerializer(draft).data, status=status.HTTP_201_CREATED)
 

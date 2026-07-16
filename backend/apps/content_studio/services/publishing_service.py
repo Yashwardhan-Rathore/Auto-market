@@ -49,7 +49,7 @@ class PublishingService:
                 
                 # SocialService publish_post acts as a unified facade for Integrations
                 response = SocialService.publish_post(
-                    company=draft.company,
+
                     platform=platform.platform,
                     content=content,
                     image_url=image_url
@@ -89,7 +89,7 @@ class PublishingService:
         """
         # Find a suitable folder, or create one for content Auto-saves
         folder, _ = AssetFolder.objects.get_or_create(
-            company=draft.company,
+
             name="Content Studio Generations",
             defaults={'parent': None}
         )
@@ -107,7 +107,7 @@ class PublishingService:
             mock_url = f"https://s3.amazonaws.com/mock-bucket/generated_{draft.id}_{platform.platform}.png"
             
             asset = Asset.objects.create(
-                company=draft.company,
+
                 folder=folder,
                 uploaded_by=user,
                 name=f"Generated for {platform.platform} - {draft.id}",

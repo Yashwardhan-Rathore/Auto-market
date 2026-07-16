@@ -19,7 +19,7 @@ class GenerateAIContentAction:
         owner = execution.automation.owner
 
         generated, version = ContentStudioService.generate_initial_content(
-            company=owner.company if hasattr(owner, "company") else None,
+
             user=owner,
             prompt=prompt,
             content_type=content_type,

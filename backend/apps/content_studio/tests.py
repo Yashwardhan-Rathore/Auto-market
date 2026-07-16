@@ -9,16 +9,14 @@ from apps.content_studio.models import GeneratedContent, ContentVersion
 
 class ContentStudioServiceTest(TestCase):
     def setUp(self):
-        self.company = Company.objects.create(name="Test Company")
-        self.user = User.objects.create_user(email="test@test.com", password="pwd", company=self.company)
-        self.wallet = Wallet.objects.create(company=self.company, balance=15)
+        self.user = User.objects.create_user(email="test@test.com", password="pwd")
+        self.wallet = Wallet.objects.create(balance=15)
 
     @patch('apps.integrations.openai_service.OpenAIService.generate_content')
     def test_generate_initial_content_success(self, mock_generate):
         mock_generate.return_value = "Mocked AI Response"
         
         generated, version = ContentStudioService.generate_initial_content(
-            company=self.company,
             user=self.user,
             prompt="Write a test",
             content_type="BLOG",
@@ -37,7 +35,6 @@ class ContentStudioServiceTest(TestCase):
         
         with self.assertRaises(InsufficientCreditsError):
             ContentStudioService.generate_initial_content(
-                company=self.company,
                 user=self.user,
                 prompt="Write a test",
                 content_type="BLOG",
@@ -49,18 +46,16 @@ class ContentStudioServiceTest(TestCase):
 
 from django.utils import timezone
 from apps.content_studio.models import ContentDraft, ContentPlatform, Approval
-from apps.content_studio.services.Content_service import ContentDraftService
+from apps.content_studio.services.content_draft_service import ContentDraftService
 from apps.content_studio.services.approval_service import ApprovalService
 
 class ContentWorkflowTest(TestCase):
     def setUp(self):
-        self.company = Company.objects.create(name="Test Company")
-        self.user = User.objects.create_user(email="test2@test.com", password="pwd", company=self.company)
+        self.user = User.objects.create_user(email="test2@test.com", password="pwd")
 
     def test_Content_draft_creation(self):
-        draft = ContentDraftService.create_Content_draft(
+        draft = ContentDraftService.create_content_draft(
             user=self.user,
-            company=self.company,
             platforms=[ContentPlatform.PlatformChoices.LINKEDIN, ContentPlatform.PlatformChoices.X]
         )
         
@@ -68,9 +63,8 @@ class ContentWorkflowTest(TestCase):
         self.assertEqual(draft.platforms.count(), 2)
 
     def test_approval_workflow(self):
-        draft = ContentDraftService.create_Content_draft(
+        draft = ContentDraftService.create_content_draft(
             user=self.user,
-            company=self.company,
             platforms=[ContentPlatform.PlatformChoices.LINKEDIN]
         )
         
@@ -94,12 +88,10 @@ from apps.billing.models import Wallet
 
 class AIEngineTest(TestCase):
     def setUp(self):
-        self.company = Company.objects.create(name="AI Test Company")
-        self.user = User.objects.create_user(email="ai@test.com", password="pwd", company=self.company)
-        self.wallet = Wallet.objects.create(company=self.company, balance=50)
-        self.draft = ContentDraftService.create_Content_draft(
+        self.user = User.objects.create_user(email="ai@test.com", password="pwd")
+        self.wallet = Wallet.objects.create(balance=50)
+        self.draft = ContentDraftService.create_content_draft(
             user=self.user,
-            company=self.company,
             platforms=[ContentPlatform.PlatformChoices.INSTAGRAM]
         )
         self.platform = self.draft.platforms.first()

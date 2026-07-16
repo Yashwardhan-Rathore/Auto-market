@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 class ContentStudioService:
     @staticmethod
     @transaction.atomic
-    def generate_initial_content(company, user, prompt, content_type, platform="NONE", template_id=None):
+    def generate_initial_content(user, prompt, content_type, platform="NONE", template_id=None):
         """
         Creates a new GeneratedContent and its first version.
         Charges 10 credits.
@@ -18,34 +18,33 @@ class ContentStudioService:
         
         if template_id:
             try:
-                template = ContentTemplate.objects.get(id=template_id, company=company)
+                template = ContentTemplate.objects.get(id=template_id)
                 enhanced_prompt = f"Template: {template.prompt_template}\n\nUser Input: {prompt}"
             except ContentTemplate.DoesNotExist:
                 pass
                 
         try:
-            brand_voice = BrandVoice.objects.get(company=company)
-            enhanced_prompt += f"\n\nBrand Tone: {brand_voice.tone}"
-            if brand_voice.guidelines:
-                enhanced_prompt += f"\nBrand Guidelines: {brand_voice.guidelines}"
-            if brand_voice.target_audience:
-                enhanced_prompt += f"\nTarget Audience: {brand_voice.target_audience}"
+            brand_voice = BrandVoice.objects.first()
+            if brand_voice:
+                enhanced_prompt += f"\n\nBrand Tone: {brand_voice.tone}"
+                if brand_voice.guidelines:
+                    enhanced_prompt += f"\nBrand Guidelines: {brand_voice.guidelines}"
+                if brand_voice.target_audience:
+                    enhanced_prompt += f"\nTarget Audience: {brand_voice.target_audience}"
         except BrandVoice.DoesNotExist:
             pass
 
         # Consume credits first
         BillingService.consume_credits(
-            company=company,
             amount=10,
             description=f"Generated {content_type} content",
         )
 
         # Call OpenAI
-        ai_response = OpenAIService.generate_content(company, enhanced_prompt, content_type)
+        ai_response = OpenAIService.generate_content(enhanced_prompt, content_type)
 
         # Create GeneratedContent
         generated = GeneratedContent.objects.create(
-            company=company,
             created_by=user,
             content_type=content_type,
             platform=platform,
@@ -70,29 +69,28 @@ class ContentStudioService:
         Generates a new version for an existing GeneratedContent.
         Charges 5 credits.
         """
-        company = generated_content.company
         enhanced_prompt = new_prompt
         
         try:
-            brand_voice = BrandVoice.objects.get(company=company)
-            enhanced_prompt += f"\n\nBrand Tone: {brand_voice.tone}"
-            if brand_voice.guidelines:
-                enhanced_prompt += f"\nBrand Guidelines: {brand_voice.guidelines}"
-            if brand_voice.target_audience:
-                enhanced_prompt += f"\nTarget Audience: {brand_voice.target_audience}"
+            brand_voice = BrandVoice.objects.first()
+            if brand_voice:
+                enhanced_prompt += f"\n\nBrand Tone: {brand_voice.tone}"
+                if brand_voice.guidelines:
+                    enhanced_prompt += f"\nBrand Guidelines: {brand_voice.guidelines}"
+                if brand_voice.target_audience:
+                    enhanced_prompt += f"\nTarget Audience: {brand_voice.target_audience}"
         except BrandVoice.DoesNotExist:
             pass
 
         # Consume credits
         BillingService.consume_credits(
-            company=company,
             amount=5,
             description=f"Regenerated content {generated_content.id}",
             reference_id=str(generated_content.id)
         )
 
         # Call OpenAI
-        ai_response = OpenAIService.generate_content(company, enhanced_prompt, generated_content.content_type)
+        ai_response = OpenAIService.generate_content(enhanced_prompt, generated_content.content_type)
 
         # Get latest version number
         latest_version = generated_content.versions.first()

@@ -20,11 +20,7 @@ class WebsiteEvent(models.Model):
         default=uuid.uuid4,
         editable=False,
     )
-    organization = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="website_events",
-    )
+
     event_name = models.CharField(
         max_length=100,
         choices=SUPPORTED_EVENTS,
@@ -55,8 +51,8 @@ class WebsiteEvent(models.Model):
     class Meta:
         db_table = "website_event"
         indexes = [
-            models.Index(fields=["organization", "event_name"]),
-            models.Index(fields=["organization", "user_identifier"]),
+            models.Index(fields=["event_name"]),
+            models.Index(fields=["user_identifier"]),
             models.Index(fields=["created_at"]),
         ]
 

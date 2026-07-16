@@ -10,27 +10,13 @@ class TimeStampedUUIDModel(models.Model):
         abstract = True
 
 
-class Company(TimeStampedUUIDModel):
-    name = models.CharField(max_length=255, db_index=True)
-    subdomain = models.CharField(max_length=100, unique=True, null=True, blank=True)
-    is_active = models.BooleanField(default=True)
-
-    class Meta:
-        db_table = "companies"
-        verbose_name_plural = "Companies"
-
-    def __str__(self):
-        return self.name
-
-
 class Department(TimeStampedUUIDModel):
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="departments")
+
     name = models.CharField(max_length=255, db_index=True)
     is_active = models.BooleanField(default=True)
 
     class Meta:
         db_table = "departments"
-        unique_together = [("company", "name")]
 
     def __str__(self):
-        return f"{self.name} ({self.company.name})"
+        return f"{self.name}"

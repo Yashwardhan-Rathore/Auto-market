@@ -24,11 +24,7 @@ class GeneratedContent(TimeStampedUUIDModel):
         LINKEDIN = "LINKEDIN", "LinkedIn"
         X = "X", "X (Twitter)"
 
-    company = models.ForeignKey(
-        "common.Company",
-        on_delete=models.CASCADE,
-        related_name="generated_contents"
-    )
+
 
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -88,11 +84,7 @@ class ContentVersion(TimeStampedUUIDModel):
 
 
 class BrandVoice(TimeStampedUUIDModel):
-    company = models.OneToOneField(
-        "common.Company",
-        on_delete=models.CASCADE,
-        related_name="brand_voice"
-    )
+
     tone = models.CharField(max_length=100, default="Professional", help_text="e.g., Professional, Casual, Humorous")
     target_audience = models.TextField(blank=True, help_text="Describe the target audience")
     guidelines = models.TextField(blank=True, help_text="Specific rules, do's and don'ts")
@@ -101,15 +93,11 @@ class BrandVoice(TimeStampedUUIDModel):
         db_table = "brand_voices"
 
     def __str__(self):
-        return f"Brand Voice for {self.company.name}"
+        return "Brand Voice"
 
 
 class ContentTemplate(TimeStampedUUIDModel):
-    company = models.ForeignKey(
-        "common.Company",
-        on_delete=models.CASCADE,
-        related_name="content_templates"
-    )
+
     name = models.CharField(max_length=255, db_index=True)
     description = models.TextField(blank=True)
     prompt_template = models.TextField(help_text="Use {{variables}} for dynamic injection")
@@ -129,7 +117,7 @@ class ContentTemplate(TimeStampedUUIDModel):
         ordering = ["name"]
 
     def __str__(self):
-        return f"{self.name} ({self.company.name})"
+        return self.name
 
 
 # --- New Campaign Workflow Models ---
@@ -146,11 +134,7 @@ class ContentDraft(TimeStampedUUIDModel):
         on_delete=models.CASCADE,
         related_name="content_drafts"
     )
-    company = models.ForeignKey(
-        "common.Company",
-        on_delete=models.CASCADE,
-        related_name="content_drafts"
-    )
+
     
     original_prompt = models.TextField(blank=True)
     enhanced_prompt = models.TextField(blank=True)

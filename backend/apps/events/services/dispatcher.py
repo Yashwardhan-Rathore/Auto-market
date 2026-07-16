@@ -5,7 +5,6 @@ from apps.automation.services.dispatcher import dispatch_workflow
 def dispatch_website_event(event):
     automations = (
         Automation.objects.filter(
-            owner=event.organization,
             status=Automation.Status.PUBLISHED,
             is_active=True,
             nodes__node_type="TRIGGER",
@@ -29,7 +28,7 @@ def dispatch_website_event(event):
     return [
         dispatch_workflow(
             automation,
-            event.organization,
+            None,
             context=context,
         )
         for automation in automations

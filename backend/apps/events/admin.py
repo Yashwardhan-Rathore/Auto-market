@@ -7,7 +7,6 @@ from apps.events.models import WebsiteEvent
 class WebsiteEventAdmin(admin.ModelAdmin):
     list_display = (
         "event_name",
-        "organization",
         "user_identifier",
         "session_id",
         "url",

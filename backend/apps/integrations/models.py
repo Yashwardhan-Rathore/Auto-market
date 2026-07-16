@@ -11,15 +11,12 @@ class IntegrationProvider(TimeStampedUUIDModel):
         LINKEDIN = "LINKEDIN", "LinkedIn"
         X = "X", "X (Twitter)"
 
-    company = models.ForeignKey(
-        "common.Company",
-        on_delete=models.CASCADE,
-        related_name="integrations"
-    )
+
 
     provider_type = models.CharField(
         max_length=20,
         choices=ProviderType.choices,
+        unique=True,
         db_index=True
     )
 
@@ -32,7 +29,7 @@ class IntegrationProvider(TimeStampedUUIDModel):
 
     class Meta:
         db_table = "integration_providers"
-        unique_together = [("company", "provider_type")]
+
 
     def __str__(self):
-        return f"{self.provider_type} - {self.company.name}"
+        return f"{self.provider_type}"

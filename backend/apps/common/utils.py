@@ -1,8 +1,8 @@
 def filter_by_tenant(queryset, user, user_field="created_by"):
     """
     Filters a queryset based on user hierarchy for data isolation:
-    - is_superuser: System global admin, sees all data across all companies.
-    - SUPER_ADMIN: Head of the company, sees everything in their company.
+    - is_superuser: System global admin, sees all data.
+    - SUPER_ADMIN: Sees all data in the database.
     - ADMIN: Head of the department, sees everything in their department.
     - USER: Employee, sees only their own data.
     """
@@ -19,13 +19,9 @@ def filter_by_tenant(queryset, user, user_field="created_by"):
     
     role = ma_user.role if ma_user else "USER"
     
-    # 1. SUPER_ADMIN: Filter by company
+    # 1. SUPER_ADMIN: Filter by company (Now sees all in DB)
     if role == "SUPER_ADMIN":
-        company_id = getattr(user, "company_id", None)
-        if company_id:
-            return queryset.filter(**{f"{user_field}__company_id": company_id})
-        # If a SUPER_ADMIN lacks a company, fallback to their own data only
-        return queryset.filter(**{user_field: user})
+        return queryset
 
     # 2. ADMIN: Filter by department
     if role == "ADMIN":

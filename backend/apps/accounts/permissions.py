@@ -41,9 +41,9 @@ class IsSuperAdminOrOwnManagedUser(BasePermission):
             return False
 
         if ma.role == 'SUPER_ADMIN':
-            return target_ma.role == 'ADMIN' and obj.company == request.user.company
+            return target_ma.role == 'ADMIN'
         elif ma.role == 'ADMIN':
-            return getattr(target_ma, 'managed_by_id', None) == ma.id and obj.company == request.user.company
+            return getattr(target_ma, 'managed_by_id', None) == ma.id
             
         return False
 

@@ -3,18 +3,14 @@ from apps.common.models import TimeStampedUUIDModel
 
 
 class Wallet(TimeStampedUUIDModel):
-    company = models.OneToOneField(
-        "common.Company",
-        on_delete=models.CASCADE,
-        related_name="wallet"
-    )
+
     balance = models.PositiveIntegerField(default=0)
 
     class Meta:
         db_table = "wallets"
 
     def __str__(self):
-        return f"{self.company.name} Wallet - Balance: {self.balance}"
+        return f"Wallet - Balance: {self.balance}"
 
 
 class Transaction(TimeStampedUUIDModel):
@@ -47,4 +43,4 @@ class Transaction(TimeStampedUUIDModel):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"{self.transaction_type} {self.amount} - {self.wallet.company.name}"
+        return f"{self.transaction_type} {self.amount}"

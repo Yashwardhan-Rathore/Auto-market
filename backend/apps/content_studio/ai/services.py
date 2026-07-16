@@ -16,25 +16,26 @@ class AILifecycleService:
     def __init__(self):
         self.orchestrator = AIOrchestrator()
         
-    def _get_brand_identity(self, company) -> dict:
+    def _get_brand_identity(self) -> dict:
         try:
-            bv = BrandVoice.objects.get(company=company)
-            return {
-                "tone": bv.tone,
-                "target_audience": bv.target_audience,
-                "guidelines": bv.guidelines
-            }
-        except BrandVoice.DoesNotExist:
+            bv = BrandVoice.objects.first()
+            if bv:
+                return {
+                    "tone": bv.tone,
+                    "target_audience": bv.target_audience,
+                    "guidelines": bv.guidelines
+                }
+            return {}
+        except Exception:
             return {}
 
     @transaction.atomic
-    def process_content_spec_and_questions(self, company, user_prompt: str) -> dict:
+    def process_content_spec_and_questions(self, user_prompt: str) -> dict:
         """
         Deducts credits, extracts the spec, and generates questions in one workflow step.
         """
         # Deduct credits for the combined spec + questions extraction
         BillingService.consume_credits(
-            company=company,
             amount=5,
             description="Extracted content spec and generated questions"
         )
@@ -43,7 +44,7 @@ class AILifecycleService:
         content_spec = self.orchestrator.extract_content_spec(user_prompt)
         
         # 2. Generate Questions
-        brand_identity = self._get_brand_identity(company)
+        brand_identity = self._get_brand_identity()
         questions = self.orchestrator.generate_questions(content_spec, brand_identity)
         
         return {
@@ -57,7 +58,6 @@ class AILifecycleService:
         Deducts credits, enhances the prompt, and captures a new content version.
         """
         BillingService.consume_credits(
-            company=draft.company,
             amount=3,
             description=f"Enhanced prompt for ContentDraft {draft.id}",
             reference_id=str(draft.id)
@@ -82,13 +82,12 @@ class AILifecycleService:
         draft = platform_record.draft
         
         BillingService.consume_credits(
-            company=draft.company,
             amount=10,
             description=f"Generated Image for {platform_record.platform}",
             reference_id=str(draft.id)
         )
         
-        brand_identity = self._get_brand_identity(draft.company)
+        brand_identity = self._get_brand_identity()
         
         # Determine size logic based on platform
         size = platform_record.image_size or "1024x1024"
@@ -122,13 +121,12 @@ class AILifecycleService:
         draft = platform_record.draft
         
         BillingService.consume_credits(
-            company=draft.company,
             amount=5,
             description=f"Generated Caption for {platform_record.platform}",
             reference_id=str(draft.id)
         )
         
-        brand_identity = self._get_brand_identity(draft.company)
+        brand_identity = self._get_brand_identity()
         
         caption_text = self.orchestrator.build_and_generate_caption(
             enhanced_prompt=draft.enhanced_prompt,

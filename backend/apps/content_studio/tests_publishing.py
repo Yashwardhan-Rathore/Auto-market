@@ -10,18 +10,16 @@ User = get_user_model()
 
 class PublishingServiceTests(TestCase):
     def setUp(self):
-        self.company = Company.objects.create(name="Test Company")
-        self.admin = User.objects.create_user(email="admin@test.com", password="pwd", role="ADMIN")
-        self.admin.company = self.company
+        self.admin = User.objects.create_user(email="admin@test.com", password="pwd")
+        self.admin.role = "ADMIN"
         self.admin.save()
         
-        self.user = User.objects.create_user(email="user@test.com", password="pwd", role="USER")
-        self.user.company = self.company
+        self.user = User.objects.create_user(email="user@test.com", password="pwd")
+        self.user.role = "USER"
         self.user.save()
         
         self.draft = ContentDraft.objects.create(
             owner=self.user,
-            company=self.company,
             workflow_state=ContentDraft.WorkflowState.APPROVED,
             enhanced_prompt="Test prompt"
         )
@@ -38,7 +36,7 @@ class PublishingServiceTests(TestCase):
     def test_successful_publish(self, mock_publish):
         mock_publish.return_value = {"success": True, "platform_post_id": "123"}
         
-        updated_draft = PublishingService.publish_Content(self.draft, self.admin)
+        updated_draft = PublishingService.publish_content(self.draft, self.admin)
         
         self.assertEqual(updated_draft.workflow_state, ContentDraft.WorkflowState.PUBLISHED)
         self.platform1.refresh_from_db()
@@ -47,14 +45,14 @@ class PublishingServiceTests(TestCase):
 
     @patch('apps.content_studio.services.publishing_service.SocialService.publish_post')
     def test_failed_publish_one_platform(self, mock_publish):
-        def side_effect(company, platform, content, image_url):
+        def side_effect(platform, content, image_url):
             if platform == 'FACEBOOK':
                 return {"success": False, "error": "Invalid token"}
             return {"success": True, "platform_post_id": "456"}
             
         mock_publish.side_effect = side_effect
         
-        updated_draft = PublishingService.publish_Content(self.draft, self.admin)
+        updated_draft = PublishingService.publish_content(self.draft, self.admin)
         
         self.assertEqual(updated_draft.workflow_state, ContentDraft.WorkflowState.APPROVED) # Overall not published because one failed
         
@@ -70,7 +68,7 @@ class PublishingServiceTests(TestCase):
         self.draft.save()
         
         with self.assertRaises(ValueError):
-            PublishingService.publish_Content(self.draft, self.user)
+            PublishingService.publish_content(self.draft, self.user)
             
     @patch('apps.content_studio.services.publishing_service.SocialService.publish_post')
     def test_admin_can_bypass_approval(self, mock_publish):
@@ -79,5 +77,5 @@ class PublishingServiceTests(TestCase):
         self.draft.save()
         
         # Admin can publish even if draft
-        updated_draft = PublishingService.publish_Content(self.draft, self.admin)
+        updated_draft = PublishingService.publish_content(self.draft, self.admin)
         self.assertEqual(updated_draft.workflow_state, ContentDraft.WorkflowState.PUBLISHED)

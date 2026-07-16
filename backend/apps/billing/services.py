@@ -10,18 +10,20 @@ class InsufficientCreditsError(Exception):
 class BillingService:
     @staticmethod
     @transaction.atomic
-    def consume_credits(company, amount, description="", reference_id=None):
+    def consume_credits(amount, description="", reference_id=None):
         """
-        Deducts the specified amount of credits from the company's wallet.
+        Deducts the specified amount of credits from the wallet.
         Raises InsufficientCreditsError if the balance is too low.
         """
         if amount <= 0:
             return
 
-        wallet = Wallet.objects.select_for_update().get(company=company)
+        wallet = Wallet.objects.select_for_update().first()
+        if not wallet:
+            raise InsufficientCreditsError("Wallet not found.")
 
         if wallet.balance < amount:
-            raise InsufficientCreditsError(f"Company {company.name} does not have enough credits.")
+            raise InsufficientCreditsError("Not enough credits.")
 
         wallet.balance -= amount
         wallet.save(update_fields=["balance", "updated_at"])
@@ -34,18 +36,20 @@ class BillingService:
             reference_id=reference_id
         )
 
-        logger.info(f"Consumed {amount} credits for company {company.id}. New balance: {wallet.balance}")
+        logger.info(f"Consumed {amount} credits. New balance: {wallet.balance}")
 
     @staticmethod
     @transaction.atomic
-    def add_credits(company, amount, description="", reference_id=None):
+    def add_credits(amount, description="", reference_id=None):
         """
-        Adds the specified amount of credits to the company's wallet.
+        Adds the specified amount of credits to the wallet.
         """
         if amount <= 0:
             return
 
-        wallet, _ = Wallet.objects.select_for_update().get_or_create(company=company)
+        wallet = Wallet.objects.select_for_update().first()
+        if not wallet:
+            wallet = Wallet.objects.create(balance=0)
 
         wallet.balance += amount
         wallet.save(update_fields=["balance", "updated_at"])
@@ -58,4 +62,4 @@ class BillingService:
             reference_id=reference_id
         )
 
-        logger.info(f"Added {amount} credits for company {company.id}. New balance: {wallet.balance}")
+        logger.info(f"Added {amount} credits. New balance: {wallet.balance}")
