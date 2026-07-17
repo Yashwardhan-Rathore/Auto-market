@@ -79,9 +79,9 @@ class CampaignTemplateAssignAPIView(APIView):
         )
 
         return Response(
-            CampaignTemplateAssignSerializer(
-                campaign_template,
-            ).data,
+            {
+                "message": "Template assigned to campaign successfully."
+            },
             status=status.HTTP_201_CREATED,
         )
     
