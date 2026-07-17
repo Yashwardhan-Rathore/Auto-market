@@ -94,3 +94,22 @@ api_catalog.md
 landing-page.zip
 landing_page.zip
 *landing*.zip
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# VS Code
+.vscode/
+
+# Environment variables
+.env
+
+# Logs
+*.log
