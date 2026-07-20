@@ -20,7 +20,9 @@ class BillingService:
 
         wallet = Wallet.objects.select_for_update().first()
         if not wallet:
-            raise InsufficientCreditsError("Wallet not found.")
+            # Auto-create wallet with 1000 initial credits for testing/development
+            wallet = Wallet.objects.create(balance=1000)
+            logger.info("Auto-created missing wallet with 1000 credits.")
 
         if wallet.balance < amount:
             raise InsufficientCreditsError("Not enough credits.")

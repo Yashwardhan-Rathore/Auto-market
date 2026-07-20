@@ -87,7 +87,7 @@ class FormDetailView(
 
     def get_serializer_class(self):
 
-        if self.request.method == "GET":
+        if getattr(self, "request", None) and self.request.method == "GET":
             return FormDetailSerializer
 
         return FormCreateSerializer
@@ -102,8 +102,10 @@ class FormDetailView(
             data=serializer.validated_data,
         )
 
+from rest_framework.views import APIView
+
 class PublishFormView(
-    generics.GenericAPIView
+    APIView
 ):
 
     permission_classes = [

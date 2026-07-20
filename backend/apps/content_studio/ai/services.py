@@ -103,12 +103,19 @@ class AILifecycleService:
         ContentDraftService.create_content_version(draft, user, reason=reason)
         
         # In a real system, we'd upload `image_url` to Asset Library.
-        # For now, we simulate an Asset object or create a direct ImageReference
-        # assuming `asset` is mocked or we just skip asset creation for this foundation.
+        # Now we create an Asset object with the local url.
+        from apps.asset_library.models import Asset
         
-        # We will create an ImageReference without asset for the sake of the structural test
+        asset = Asset.objects.create(
+            uploaded_by=user,
+            name=f"Generated Image for {platform_record.platform}",
+            file_url=image_url,
+            asset_type=Asset.AssetType.IMAGE
+        )
+        
         image_ref = ImageReference.objects.create(
-            platform=platform_record
+            platform=platform_record,
+            asset=asset
         )
         
         return image_url, image_ref

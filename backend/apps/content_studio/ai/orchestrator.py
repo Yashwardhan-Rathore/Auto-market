@@ -1,6 +1,7 @@
 import json
 import logging
-from .providers.openai_provider import OpenAIProvider
+from .providers.gemini_provider import GeminiProvider
+from .providers.huggingface_provider import HuggingFaceProvider
 from .prompt_builders import (
     SpecPromptBuilder,
     QuestionPromptBuilder,
@@ -20,16 +21,28 @@ class AIOrchestrator:
     
     def __init__(self):
         # In the future, provider selection could be dynamic based on user preference or availability.
-        self.provider = OpenAIProvider()
+        self.text_provider = GeminiProvider()
+        self.image_provider = HuggingFaceProvider()
+
+    def _clean_json_response(self, text: str) -> str:
+        text = text.strip()
+        if text.startswith("```json"):
+            text = text[7:]
+        if text.startswith("```"):
+            text = text[3:]
+        if text.endswith("```"):
+            text = text[:-3]
+        return text.strip()
 
     def extract_content_spec(self, user_prompt: str) -> dict:
         """
-        Extracts a structured content spec (JSON) from raw input.
+        Extracts a structured JSON spec from raw user text.
         """
         builder = SpecPromptBuilder()
         prompt = builder.build(user_prompt)
         
-        raw_response = self.provider.generate_text(prompt, model="gpt-4", json_response=True)
+        raw_response = self.text_provider.generate_text(prompt, json_response=True)
+        raw_response = self._clean_json_response(raw_response)
         try:
             return json.loads(raw_response)
         except json.JSONDecodeError as e:
@@ -38,45 +51,45 @@ class AIOrchestrator:
 
     def generate_questions(self, content_spec: dict, brand_identity: dict) -> list:
         """
-        Generates dynamic follow-up questions based on the content spec.
+        Generates clarifying questions based on the spec and brand identity.
         """
         builder = QuestionPromptBuilder()
         prompt = builder.build(content_spec, brand_identity)
         
-        raw_response = self.provider.generate_text(prompt, model="gpt-4", json_response=True)
+        raw_response = self.text_provider.generate_text(prompt, json_response=True)
+        raw_response = self._clean_json_response(raw_response)
         try:
-            return json.loads(raw_response)
+            parsed = json.loads(raw_response)
+            return parsed.get("questions", [])
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse questions JSON: {raw_response}")
-            raise AIProviderError("AI returned invalid JSON for questions.") from e
+            raise AIProviderError("AI returned invalid JSON for the Questions.") from e
 
     def enhance_prompt(self, content_spec: dict, user_answers: dict) -> str:
         """
-        Merges spec and user answers into a final enhanced prompt.
+        Enhances the prompt into a master generative prompt.
         """
         builder = EnhancerPromptBuilder()
         prompt = builder.build(content_spec, user_answers)
         
-        # This is a text-based generation, not strictly JSON
-        return self.provider.generate_text(prompt, model="gpt-4")
+        return self.text_provider.generate_text(prompt)
 
     def build_and_generate_image(self, enhanced_prompt: str, brand_identity: dict, platform: str, size: str) -> str:
         """
-        Builds the image prompt and calls the image generation model.
-        Returns the image URL.
+        Generates an image specific to the platform.
         """
         builder = ImagePromptBuilder()
         image_prompt = builder.build(enhanced_prompt, brand_identity, platform, size)
         
         logger.info(f"Generated optimized image prompt: {image_prompt}")
         
-        return self.provider.generate_image(image_prompt, size=size)
+        return self.image_provider.generate_image(image_prompt, size)
 
     def build_and_generate_caption(self, enhanced_prompt: str, platform: str, brand_identity: dict) -> str:
         """
-        Builds the platform-specific caption prompt and calls the text generation model.
+        Generates a caption specific to the platform.
         """
         builder = CaptionPromptBuilder()
         caption_prompt = builder.build(enhanced_prompt, platform, brand_identity)
         
-        return self.provider.generate_text(caption_prompt, model="gpt-4", max_tokens=500)
+        return self.text_provider.generate_text(caption_prompt)

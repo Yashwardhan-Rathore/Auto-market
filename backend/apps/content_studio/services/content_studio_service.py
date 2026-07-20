@@ -2,7 +2,7 @@ import logging
 from django.db import transaction
 from ..models import GeneratedContent, ContentVersion, BrandVoice, ContentTemplate
 from apps.billing.services import BillingService
-from apps.integrations.openai_service import OpenAIService
+from apps.integrations.gemini_service import GeminiService
 
 logger = logging.getLogger(__name__)
 
@@ -34,14 +34,26 @@ class ContentStudioService:
         except BrandVoice.DoesNotExist:
             pass
 
+        # Check if this is an image generation request
+        is_image_only = "[IMAGE ONLY]" in prompt
+        
         # Consume credits first
         BillingService.consume_credits(
-            amount=10,
+            amount=10 if is_image_only else 10,
             description=f"Generated {content_type} content",
         )
 
-        # Call OpenAI
-        ai_response = OpenAIService.generate_content(enhanced_prompt, content_type)
+        ai_response = ""
+        image_url = None
+        
+        if is_image_only:
+            from apps.content_studio.ai.orchestrator import AIOrchestrator
+            clean_prompt = enhanced_prompt.replace("[IMAGE ONLY]", "").strip()
+            orchestrator = AIOrchestrator()
+            image_url = orchestrator.build_and_generate_image(clean_prompt, {"tone": "Professional"}, platform, "1024x1024")
+        else:
+            # Call Gemini for text
+            ai_response = GeminiService.generate_content(enhanced_prompt, content_type)
 
         # Create GeneratedContent
         generated = GeneratedContent.objects.create(
@@ -56,7 +68,8 @@ class ContentStudioService:
             generated_content=generated,
             version_number=1,
             prompt=prompt,
-            text_content=ai_response
+            text_content=ai_response if not is_image_only else "",
+            image_url=image_url
         )
 
         logger.info(f"Successfully generated initial content {generated.id}")
@@ -82,6 +95,9 @@ class ContentStudioService:
         except BrandVoice.DoesNotExist:
             pass
 
+        # Check if this is an image generation request
+        is_image_only = "[IMAGE ONLY]" in new_prompt
+        
         # Consume credits
         BillingService.consume_credits(
             amount=5,
@@ -89,8 +105,17 @@ class ContentStudioService:
             reference_id=str(generated_content.id)
         )
 
-        # Call OpenAI
-        ai_response = OpenAIService.generate_content(enhanced_prompt, generated_content.content_type)
+        ai_response = ""
+        image_url = None
+        
+        if is_image_only:
+            from apps.content_studio.ai.orchestrator import AIOrchestrator
+            clean_prompt = enhanced_prompt.replace("[IMAGE ONLY]", "").strip()
+            orchestrator = AIOrchestrator()
+            image_url = orchestrator.build_and_generate_image(clean_prompt, {"tone": "Professional"}, generated_content.platform, "1024x1024")
+        else:
+            # Call Gemini
+            ai_response = GeminiService.generate_content(enhanced_prompt, generated_content.content_type)
 
         # Get latest version number
         latest_version = generated_content.versions.first()
@@ -101,7 +126,8 @@ class ContentStudioService:
             generated_content=generated_content,
             version_number=next_version_num,
             prompt=new_prompt,
-            text_content=ai_response
+            text_content=ai_response if not is_image_only else "",
+            image_url=image_url
         )
 
         logger.info(f"Successfully regenerated content {generated_content.id} (v{next_version_num})")

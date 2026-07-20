@@ -80,6 +80,7 @@ class ContentDraftSerializer(serializers.ModelSerializer):
         read_only_fields = ['owner', 'workflow_state', 'current_version']
 
 class ContentDraftCreateSerializer(serializers.Serializer):
+    original_prompt = serializers.CharField(required=True, allow_blank=False)
     platforms = serializers.ListField(
         child=serializers.ChoiceField(choices=ContentPlatform.PlatformChoices.choices),
         min_length=1
@@ -88,6 +89,13 @@ class ContentDraftCreateSerializer(serializers.Serializer):
 class ContentDraftUpdateSerializer(serializers.Serializer):
     original_prompt = serializers.CharField(required=False, allow_blank=True)
     enhanced_prompt = serializers.CharField(required=False, allow_blank=True)
+
+class AnalyzePromptSerializer(serializers.Serializer):
+    prompt = serializers.CharField(required=True)
+
+class EnhancePromptSerializer(serializers.Serializer):
+    content_spec = serializers.DictField(required=True)
+    user_answers = serializers.DictField(required=True)
 
 class ContentScheduleSerializer(serializers.Serializer):
     schedules = serializers.DictField(

@@ -165,12 +165,52 @@ class ContentDraftViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return ContentDraft.objects.all()
 
+    @action(detail=False, methods=['post'])
+    def analyze_prompt(self, request):
+        from .serializers import AnalyzePromptSerializer
+        from .ai.services import AILifecycleService
+        
+        serializer = AnalyzePromptSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        prompt = serializer.validated_data['prompt']
+        lifecycle = AILifecycleService()
+        
+        try:
+            result = lifecycle.process_content_spec_and_questions(prompt)
+            return Response(result, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'])
+    def enhance_prompt(self, request, pk=None):
+        from .serializers import EnhancePromptSerializer
+        from .ai.services import AILifecycleService
+        
+        draft = self.get_object()
+        serializer = EnhancePromptSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        content_spec = serializer.validated_data['content_spec']
+        user_answers = serializer.validated_data['user_answers']
+        
+        lifecycle = AILifecycleService()
+        try:
+            enhanced_prompt, version = lifecycle.enhance_content_prompt(draft, content_spec, user_answers, request.user)
+            return Response({
+                "enhanced_prompt": enhanced_prompt,
+                "version_id": version.id
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
     def create(self, request, *args, **kwargs):
         serializer = ContentDraftCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
             
         platforms = serializer.validated_data['platforms']
-        draft = ContentDraftService.create_content_draft(request.user, platforms)
+        original_prompt = serializer.validated_data['original_prompt']
+        draft = ContentDraftService.create_content_draft(request.user, original_prompt, platforms)
         
         return Response(ContentDraftSerializer(draft).data, status=status.HTTP_201_CREATED)
 
@@ -231,14 +271,23 @@ class ContentDraftViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def regenerate(self, request, pk=None):
-        """Mock regeneration to capture version snapshot"""
+        """Regeneration to capture version snapshot and call AI"""
         draft = self.get_object()
         reason = request.data.get('reason', '')
         
         try:
+            # First create the version snapshot
             version = ContentDraftService.create_content_version(draft, request.user, reason)
+            
+            # Now trigger actual generation for each platform
+            from apps.content_studio.ai.services import AILifecycleService
+            lifecycle = AILifecycleService()
+            for platform in draft.platforms.all():
+                lifecycle.generate_image_for_platform(platform, request.user, reason)
+                lifecycle.generate_caption_for_platform(platform, request.user, reason)
+                
             return Response({
-                "message": "New version captured.",
+                "message": "Content generated successfully.",
                 "version_id": version.id,
                 "version_number": version.version_number
             }, status=status.HTTP_201_CREATED)

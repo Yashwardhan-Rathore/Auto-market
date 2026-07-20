@@ -1,6 +1,6 @@
 # Content Studio API - Postman Testing Guide
 
-This document outlines the step-by-step process for testing the new Content Studio workflow endpoints using Postman.
+This document outlines the step-by-step process for testing the fully autonomous AI-driven Content Studio workflow endpoints using Postman.
 
 **Base URL**: `http://localhost:8000/api/content` (Adjust the port or domain if necessary).
 **Authorization**: All requests require a valid Bearer token for authentication. Ensure you include the header:
@@ -8,14 +8,44 @@ This document outlines the step-by-step process for testing the new Content Stud
 
 ---
 
-## Step 1: Initialize Content Draft
-Create a new content draft and select target platforms.
+## Step 1: Analyze Prompt (AI Interaction)
+Send the user's initial idea to the AI. The AI will extract a structured spec and generate clarifying questions to improve the final content.
+
+**Endpoint**: `POST /content-drafts/analyze_prompt/`
+
+**Request Body (JSON)**:
+```json
+{
+  "prompt": "Write a post about our new summer sale"
+}
+```
+
+**Expected Response (200 OK)**:
+```json
+{
+  "content_spec": {
+    "topic": "Summer Sale",
+    "key_points": ["New summer sale"]
+  },
+  "questions": [
+    "What is the specific discount or offer for the summer sale?",
+    "Who is the target audience for this post?",
+    "What is the primary call to action (CTA)?"
+  ]
+}
+```
+
+---
+
+## Step 2: Initialize Content Draft
+Create a new content draft, passing in the user's initial prompt and selecting the target platforms.
 
 **Endpoint**: `POST /content-drafts/`
 
 **Request Body (JSON)**:
 ```json
 {
+  "original_prompt": "Write a post about our new summer sale",
   "platforms": ["FACEBOOK", "INSTAGRAM", "LINKEDIN"]
 }
 ```
@@ -25,7 +55,7 @@ Create a new content draft and select target platforms.
 {
   "id": "123e4567-e89b-12d3-a456-426614174000",
   "owner": 1,
-  "original_prompt": "",
+  "original_prompt": "Write a post about our new summer sale",
   "enhanced_prompt": "",
   "workflow_state": "DRAFT",
   "platforms": [
@@ -38,38 +68,42 @@ Create a new content draft and select target platforms.
   ]
 }
 ```
-
 *(Save the `id` from this response as `draft_id` for the following steps.)*
 
 ---
 
-## Step 2: Auto-Save Prompts
-Save the original prompt typed by the user or the enhanced AI prompt. 
+## Step 3: Enhance Prompt (AI Interaction)
+Send the content spec and the user's answers to the clarifying questions. The AI will generate a highly optimized `enhanced_prompt` and save it to the draft.
 
-**Endpoint**: `PATCH /content-drafts/{draft_id}/`
+**Endpoint**: `POST /content-drafts/{draft_id}/enhance_prompt/`
 
 **Request Body (JSON)**:
 ```json
 {
-  "original_prompt": "Write a post about our new summer sale",
-  "enhanced_prompt": "Task: Create a professional social media content...\nKey Points:\n- Summer Sale\n- 50% Off"
+  "content_spec": {
+    "topic": "Summer Sale",
+    "key_points": ["New summer sale"]
+  },
+  "user_answers": {
+    "What is the specific discount or offer?": "50% off all shorts",
+    "Who is the target audience?": "Young adults",
+    "What is the primary call to action (CTA)?": "Shop now at the link in bio"
+  }
 }
 ```
 
 **Expected Response (200 OK)**:
 ```json
 {
-  "id": "123e4567-e89b-12d3-a456-426614174000",
-  "original_prompt": "Write a post about our new summer sale",
-  "enhanced_prompt": "Task: Create a professional social media content...\nKey Points:\n- Summer Sale\n- 50% Off",
-  "workflow_state": "DRAFT"
+  "enhanced_prompt": "Task: Create a highly engaging social media post...\nAudience: Young adults...\nOffer: 50% off all shorts...",
+  "version_id": "923e4567-e89b-12d3-a456-426614174009"
 }
 ```
 
 ---
 
-## Step 3: Trigger Mock AI Generation (Regenerate)
-Take a snapshot of the current prompt and advance the version. This acts as the "Generate" / "Regenerate" trigger.
+## Step 4: Generate Content (AI Interaction)
+Trigger the AI to generate the actual images and captions for each platform using the `enhanced_prompt`.
 
 **Endpoint**: `POST /content-drafts/{draft_id}/regenerate/`
 
@@ -83,15 +117,17 @@ Take a snapshot of the current prompt and advance the version. This acts as the 
 **Expected Response (201 Created)**:
 ```json
 {
-  "message": "New version captured.",
+  "message": "Content generated successfully.",
   "version_id": "323e4567-e89b-12d3-a456-426614174002",
   "version_number": 2
 }
 ```
 
+*(You can now fetch the draft `GET /content-drafts/{draft_id}/` to see the generated images and captions attached to each platform).*
+
 ---
 
-## Step 4: Request Approval
+## Step 5: Request Approval
 Move the content draft from `DRAFT` to `IN_REVIEW`.
 
 **Endpoint**: `POST /content-drafts/{draft_id}/request_approval/`
@@ -110,8 +146,8 @@ Move the content draft from `DRAFT` to `IN_REVIEW`.
 
 ---
 
-## Step 5: Approve Content Draft (Admin Only)
-Approve the content draft, setting it to the `APPROVED` state so it can be scheduled or published.
+## Step 6: Approve Content Draft (Admin Only)
+Approve the content draft, setting it to the `APPROVED` state.
 
 **Endpoint**: `POST /content-drafts/{draft_id}/approve/`
 
@@ -128,17 +164,16 @@ Approve the content draft, setting it to the `APPROVED` state so it can be sched
   "message": "Content approved."
 }
 ```
-*(Note: If testing with a regular user account, you will receive a 403 Forbidden. Test with an Admin token.)*
 
 ---
 
-## Step 6: Schedule Posts
-Set the scheduled publishing time for specific platforms within the content draft.
+## Step 7: Schedule Posts
+Set the scheduled publishing time for specific platforms.
 
 **Endpoint**: `POST /content-drafts/{draft_id}/schedule/`
 
 **Request Body (JSON)**:
-*(Replace `platform_id` with the actual UUIDs of the platforms returned in Step 1)*
+*(Replace `platform_id` with the actual UUIDs of the platforms returned in Step 2)*
 ```json
 {
   "schedules": {
@@ -146,7 +181,6 @@ Set the scheduled publishing time for specific platforms within the content draf
   }
 }
 ```
-*(Note: Ensure the key is the exact `platform_id` UUID string and the value is the future ISO datetime string).*
 
 **Expected Response (200 OK)**:
 ```json
@@ -157,8 +191,8 @@ Set the scheduled publishing time for specific platforms within the content draf
 
 ---
 
-## Step 7: Publish Now
-Force publish the approved content draft to live channels immediately.
+## Step 8: Publish Now
+Force publish the approved content draft immediately.
 
 **Endpoint**: `POST /content-drafts/{draft_id}/publish/`
 
@@ -171,14 +205,6 @@ Force publish the approved content draft to live channels immediately.
 ```json
 {
   "id": "123e4567-e89b-12d3-a456-426614174000",
-  "workflow_state": "PUBLISHED",
-  "platforms": [
-    {
-      "id": "223e4567-e89b-12d3-a456-426614174001",
-      "platform": "FACEBOOK",
-      "status": "POSTED",
-      "error_message": ""
-    }
-  ]
+  "workflow_state": "PUBLISHED"
 }
 ```

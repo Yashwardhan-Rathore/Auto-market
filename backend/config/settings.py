@@ -22,6 +22,12 @@ DEBUG = os.getenv("DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 
+HF_TOKEN = os.getenv("HF_TOKEN")
+HF_IMAGE_MODEL = os.getenv("HF_IMAGE_MODEL", "stabilityai/stable-diffusion-xl-base-1.0")
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+# Auto-reload trigger
 # --------------------------------------------------
 # Applications
 # --------------------------------------------------
@@ -146,10 +152,12 @@ USE_I18N = True
 USE_TZ = True
 
 # --------------------------------------------------
-# Static Files
+# Static & Media Files
 # --------------------------------------------------
 
 STATIC_URL = "static/"
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 # --------------------------------------------------
 # Default Primary Key
