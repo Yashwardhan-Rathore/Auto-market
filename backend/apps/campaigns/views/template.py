@@ -89,10 +89,7 @@ class TemplateUpdateAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def patch(self, request, template_id):
-        from django.shortcuts import get_object_or_404
-        from apps.campaigns.models import Template
-        
-        template = get_object_or_404(Template, id=template_id)
+        template = TemplateService.get_template_for_user(template_id, request.user)
         
         serializer = TemplateUpdateSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)

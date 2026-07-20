@@ -42,7 +42,32 @@ class TemplateService:
         user,
     ):
         templates = Template.objects.filter(status=Template.Status.ACTIVE)
-        return filter_by_tenant(templates, user, "created_by").order_by("name")
+        
+        ma_user = getattr(user, "ma_users", None)
+        if ma_user:
+            ma_user = ma_user.first()
+        role = ma_user.role if ma_user else "USER"
+        
+        if getattr(user, "is_superuser", False) or role in ["SUPER_ADMIN", "ADMIN"]:
+            return templates.order_by("name")
+            
+        return templates.filter(created_by=user).order_by("name")
+
+    @staticmethod
+    def get_template_for_user(template_id, user):
+        from django.shortcuts import get_object_or_404
+
+        ma_user = getattr(user, "ma_users", None)
+        if ma_user:
+            ma_user = ma_user.first()
+        role = ma_user.role if ma_user else "USER"
+
+        queryset = Template.objects.all()
+
+        if not (getattr(user, "is_superuser", False) or role in ["SUPER_ADMIN", "ADMIN"]):
+            queryset = queryset.filter(created_by=user)
+
+        return get_object_or_404(queryset, id=template_id)
 
     @staticmethod
     def update_template(
