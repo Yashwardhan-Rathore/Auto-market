@@ -34,11 +34,13 @@ urlpatterns = [
     path(
         "public/<uuid:uuid>/",
         PublicFormView.as_view(),
+        name="public-form",
     ),
 
     path(
         "public/<uuid:uuid>/submit/",
         SubmitFormView.as_view(),
+        name="submit-form",
     ),
 ]
 

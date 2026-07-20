@@ -3,9 +3,9 @@ from rest_framework.permissions import AllowAny,IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import User , MAUser
-from .serializers import LoginSerializer, ProfileSerializer , LogoutSerializer,ForgotPasswordSerializer,ResetPasswordSerializer , CreateSuperAdminSerializer , CreateAdminSerializer , CreateUserSerializer
+from .serializers import LoginSerializer, ProfileSerializer, ProfileUpdateSerializer, LogoutSerializer,ForgotPasswordSerializer,ResetPasswordSerializer , CreateSuperAdminSerializer , CreateAdminSerializer , CreateUserSerializer
 from django.utils import timezone
-from .permissions import IsAdminOrSuperAdmin,IsSuperAdmin , IsAdmin
+from .permissions import IsAdminOrSuperAdmin,IsSuperAdmin , IsAdmin, CanBootstrapSuperAdmin
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -57,6 +57,16 @@ class ProfileView(generics.RetrieveAPIView):
 
     def get_object(self):
         return self.request.user
+
+    def patch(self, request, *args, **kwargs):
+        serializer = ProfileUpdateSerializer(
+            request.user,
+            data=request.data,
+            partial=True,
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(ProfileSerializer(request.user).data)
     
 
 class LogoutView(generics.GenericAPIView):
@@ -115,7 +125,7 @@ class ResetPasswordView(generics.GenericAPIView):
 
 class CreateSuperAdminView(generics.CreateAPIView):
     serializer_class = CreateSuperAdminSerializer
-    permission_classes = [AllowAny]   # Change later
+    permission_classes = [CanBootstrapSuperAdmin]
 
     def create(self, request, *args, **kwargs):
 
@@ -218,6 +228,26 @@ class DeleteUserView(APIView):
     Accessible by Admin or Super Admin.
     """
     permission_classes = [IsAuthenticated, IsAdminOrSuperAdmin]
+
+    def get_object(self, user_id):
+        user = get_object_or_404(User.objects.prefetch_related("ma_users"), id=user_id)
+        ma_user = user.ma_users.first()
+        if not ma_user or ma_user.role != "USER":
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({"detail": "This endpoint only manages User accounts."})
+        return user
+
+    def get(self, request, user_id):
+        from .serializers import UserListSerializer
+        return Response(UserListSerializer(self.get_object(user_id)).data)
+
+    def patch(self, request, user_id):
+        from .serializers import UserListSerializer, UserUpdateSerializer
+        user = self.get_object(user_id)
+        serializer = UserUpdateSerializer(user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(UserListSerializer(user).data)
 
     def delete(self, request, user_id):
         UserManagementService.delete_user(request.user, user_id)

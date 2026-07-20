@@ -1,7 +1,6 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
-from apps.common.models import Company
 from .models import ContentDraft, ContentPlatform
 from .services.publishing_service import PublishingService
 from unittest.mock import patch

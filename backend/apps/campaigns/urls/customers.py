@@ -4,6 +4,7 @@ from apps.campaigns.views import (
     CustomerUploadAPIView,
     CustomerUploadListAPIView,
     CustomerRecordListAPIView,
+    CustomerRecordDetailAPIView,
 )
 
 urlpatterns = [
@@ -21,5 +22,10 @@ urlpatterns = [
         "",
         CustomerRecordListAPIView.as_view(),
         name="customer-list",
+    ),
+    path(
+        "<int:pk>/",
+        CustomerRecordDetailAPIView.as_view(),
+        name="customer-detail",
     ),
 ]

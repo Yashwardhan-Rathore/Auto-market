@@ -1,6 +1,7 @@
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
 
 from apps.communications.models import (
     CommunicationEvent,
@@ -14,13 +15,16 @@ from apps.communications.serializers import (
     OrganizationSMSProviderSerializer,
     OrganizationWhatsAppProviderSerializer,
 )
+from apps.accounts.permissions import IsAdminOrSuperAdmin
 
 
-class EmailProviderListCreateView(APIView):
+class ProviderManagementView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminOrSuperAdmin]
+
+
+class EmailProviderListCreateView(ProviderManagementView):
     def get(self, request):
-        providers = OrganizationEmailProvider.objects.filter(
-            organization=request.user
-        )
+        providers = OrganizationEmailProvider.objects.all()
         serializer = OrganizationEmailProviderSerializer(
             providers,
             many=True,
@@ -34,44 +38,40 @@ class EmailProviderListCreateView(APIView):
         serializer.is_valid(
             raise_exception=True
         )
-        serializer.save(
-            organization=request.user
-        )
+        serializer.save()
         return Response(
             serializer.data,
             status=status.HTTP_201_CREATED,
         )
 
-class SMSProviderListCreateView(APIView):
+class SMSProviderListCreateView(ProviderManagementView):
     def get(self, request):
-        providers = OrganizationSMSProvider.objects.filter(organization=request.user)
+        providers = OrganizationSMSProvider.objects.all()
         serializer = OrganizationSMSProviderSerializer(providers, many=True)
         return Response(serializer.data)
 
     def post(self, request):
         serializer = OrganizationSMSProviderSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save(organization=request.user)
+        serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-class WhatsAppProviderListCreateView(APIView):
+class WhatsAppProviderListCreateView(ProviderManagementView):
     def get(self, request):
-        providers = OrganizationWhatsAppProvider.objects.filter(organization=request.user)
+        providers = OrganizationWhatsAppProvider.objects.all()
         serializer = OrganizationWhatsAppProviderSerializer(providers, many=True)
         return Response(serializer.data)
 
     def post(self, request):
         serializer = OrganizationWhatsAppProviderSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save(organization=request.user)
+        serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class CommunicationEventListView(APIView):
+class CommunicationEventListView(ProviderManagementView):
     def get(self, request):
-        events = CommunicationEvent.objects.filter(
-            organization=request.user
-        ).order_by("-created_at")[:200]
+        events = CommunicationEvent.objects.all().order_by("-created_at")[:200]
         serializer = CommunicationEventSerializer(
             events,
             many=True,

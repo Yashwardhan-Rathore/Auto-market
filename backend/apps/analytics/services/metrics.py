@@ -2,7 +2,33 @@ from django.db.models import Avg, DurationField, ExpressionWrapper, F, Q
 
 from apps.automation.models import AutomationExecution
 from apps.communications.models import CommunicationEvent
-from apps.common.utils import filter_by_tenant
+from apps.accounts.models import MAUser
+
+
+def visible_events(user):
+    role = MAUser.objects.filter(user=user).values_list("role", flat=True).first()
+    events = CommunicationEvent.objects.all()
+    if user.is_superuser or role == "SUPER_ADMIN":
+        return events
+    if role == "ADMIN" and user.department_id:
+        return events.filter(
+            Q(campaign__created_by__department_id=user.department_id)
+            | Q(execution__automation__owner__department_id=user.department_id)
+        ).distinct()
+    return events.filter(
+        Q(campaign__created_by=user)
+        | Q(execution__automation__owner=user)
+    ).distinct()
+
+
+def visible_executions(user):
+    role = MAUser.objects.filter(user=user).values_list("role", flat=True).first()
+    executions = AutomationExecution.objects.all()
+    if user.is_superuser or role == "SUPER_ADMIN":
+        return executions
+    if role == "ADMIN" and user.department_id:
+        return executions.filter(automation__owner__department_id=user.department_id)
+    return executions.filter(automation__owner=user)
 
 
 def rate(numerator, denominator):
@@ -12,10 +38,8 @@ def rate(numerator, denominator):
     return round((numerator / denominator) * 100, 2)
 
 
-def communication_metrics(organization):
-    events = filter_by_tenant(
-        CommunicationEvent.objects.all(), organization, "organization"
-    )
+def communication_metrics(user):
+    events = visible_events(user)
 
     email_sent = events.filter(
         channel="EMAIL",
@@ -71,10 +95,8 @@ def communication_metrics(organization):
     }
 
 
-def workflow_metrics(organization):
-    executions = filter_by_tenant(
-        AutomationExecution.objects.all(), organization, "automation__owner"
-    )
+def workflow_metrics(user):
+    executions = visible_executions(user)
     total = executions.count()
     success = executions.filter(
         status=AutomationExecution.Status.SUCCESS
@@ -107,8 +129,8 @@ def workflow_metrics(organization):
     }
 
 
-def all_metrics(organization):
-    data = communication_metrics(organization)
-    data["workflow"] = workflow_metrics(organization)
+def all_metrics(user):
+    data = communication_metrics(user)
+    data["workflow"] = workflow_metrics(user)
     return data
 

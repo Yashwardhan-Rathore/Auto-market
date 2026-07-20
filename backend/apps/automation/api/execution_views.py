@@ -2,9 +2,13 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.automation.models import (
+    Automation,
     AutomationExecution,
     AutomationExecutionLog,
 )
+from django.shortcuts import get_object_or_404
+from rest_framework.exceptions import PermissionDenied
+from apps.automation.services.permissions import can_view
 
 
 class ExecutionHistoryView(APIView):
@@ -14,6 +18,10 @@ class ExecutionHistoryView(APIView):
         request,
         pk,
     ):
+
+        automation = get_object_or_404(Automation, pk=pk)
+        if not can_view(request.user, automation):
+            raise PermissionDenied("You do not have permission to view these executions.")
 
         executions = (
 
@@ -69,6 +77,13 @@ class ExecutionLogsView(APIView):
         request,
         pk,
     ):
+
+        execution = get_object_or_404(
+            AutomationExecution.objects.select_related("automation"),
+            pk=pk,
+        )
+        if not can_view(request.user, execution.automation):
+            raise PermissionDenied("You do not have permission to view these logs.")
 
         logs = (
 
