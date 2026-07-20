@@ -15,10 +15,9 @@ from apps.communications.serializers import (
     OrganizationSMSProviderSerializer,
     OrganizationWhatsAppProviderSerializer,
 )
-from apps.accounts.permissions import IsAdminOrSuperAdmin
 
 
-class EmailProviderListCreateView(ProviderManagementView):
+class EmailProviderListCreateView(APIView):
     def get(self, request):
         providers = OrganizationEmailProvider.objects.all()
         serializer = OrganizationEmailProviderSerializer(
@@ -40,7 +39,7 @@ class EmailProviderListCreateView(ProviderManagementView):
             status=status.HTTP_201_CREATED,
         )
 
-class SMSProviderListCreateView(ProviderManagementView):
+class SMSProviderListCreateView(APIView):
     def get(self, request):
         providers = OrganizationSMSProvider.objects.all()
         serializer = OrganizationSMSProviderSerializer(providers, many=True)
@@ -52,7 +51,7 @@ class SMSProviderListCreateView(ProviderManagementView):
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-class WhatsAppProviderListCreateView(ProviderManagementView):
+class WhatsAppProviderListCreateView(APIView):
     def get(self, request):
         providers = OrganizationWhatsAppProvider.objects.all()
         serializer = OrganizationWhatsAppProviderSerializer(providers, many=True)
@@ -65,7 +64,7 @@ class WhatsAppProviderListCreateView(ProviderManagementView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class CommunicationEventListView(ProviderManagementView):
+class CommunicationEventListView(APIView):
     def get(self, request):
         events = CommunicationEvent.objects.filter(
             Q(campaign__task__created_by=request.user) | 
