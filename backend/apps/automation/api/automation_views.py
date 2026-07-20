@@ -22,6 +22,16 @@ from apps.automation.services.dispatcher import (
     dispatch_workflow,
 )
 from apps.common.utils import filter_by_tenant
+from django.shortcuts import get_object_or_404
+from rest_framework.exceptions import PermissionDenied
+from apps.automation.services.permissions import can_view, can_edit, can_execute
+
+
+def permitted_automation(user, pk, permission):
+    automation = get_object_or_404(Automation, pk=pk)
+    if not permission(user, automation):
+        raise PermissionDenied("You do not have permission to access this automation.")
+    return automation
 
 
 
@@ -72,11 +82,7 @@ class AutomationDetailView(APIView):
 
     def get(self, request, pk):
 
-        automation = (
-            Automation.objects.get(
-                pk=pk
-            )
-        )
+        automation = permitted_automation(request.user, pk, can_view)
 
         serializer = (
             AutomationSerializer(
@@ -90,11 +96,7 @@ class AutomationDetailView(APIView):
 
     def patch(self, request, pk):
 
-        automation = (
-            Automation.objects.get(
-                pk=pk
-            )
-        )
+        automation = permitted_automation(request.user, pk, can_edit)
 
         serializer = (
             AutomationSerializer(
@@ -116,11 +118,7 @@ class AutomationDetailView(APIView):
 
     def delete(self, request, pk):
 
-        automation = (
-            Automation.objects.get(
-                pk=pk
-            )
-        )
+        automation = permitted_automation(request.user, pk, can_edit)
 
         automation.delete()
 
@@ -132,7 +130,7 @@ class AutomationDetailView(APIView):
 class ValidateAutomationView(APIView):
 
     def post(self, request, pk):
-
+        permitted_automation(request.user, pk, can_edit)
         validate_workflow(pk)
 
         return Response({
@@ -149,11 +147,7 @@ class PublishAutomationView(APIView):
 
     def post(self, request, pk):
 
-        automation = (
-            Automation.objects.get(
-                pk=pk
-            )
-        )
+        automation = permitted_automation(request.user, pk, can_edit)
 
         validate_workflow(pk)
 
@@ -178,11 +172,7 @@ class PauseAutomationView(APIView):
 
     def post(self, request, pk):
 
-        automation = (
-            Automation.objects.get(
-                pk=pk
-            )
-        )
+        automation = permitted_automation(request.user, pk, can_edit)
 
         automation.status = (
             "PAUSED"
@@ -201,11 +191,7 @@ class ExecuteAutomationView(APIView):
 
     def post(self, request, pk):
 
-        automation = (
-            Automation.objects.get(
-                pk=pk
-            )
-        )
+        automation = permitted_automation(request.user, pk, can_execute)
 
         execution = (
             dispatch_workflow(
@@ -228,11 +214,7 @@ class CloneAutomationView(APIView):
 
     def post(self, request, pk):
 
-        source = (
-            Automation.objects.get(
-                pk=pk
-            )
-        )
+        source = permitted_automation(request.user, pk, can_view)
 
         clone = (
             Automation.objects.create(

@@ -2,12 +2,15 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.automation.models import (
-    AutomationNode
+    Automation, AutomationNode
 )
 
 from .node_serializers import (
     AutomationNodeSerializer
 )
+from django.shortcuts import get_object_or_404
+from rest_framework.exceptions import PermissionDenied
+from apps.automation.services.permissions import can_edit
 
 
 class AutomationNodeCreateView(APIView):
@@ -17,6 +20,10 @@ class AutomationNodeCreateView(APIView):
         request,
         automation_id,
     ):
+
+        automation = get_object_or_404(Automation, pk=automation_id)
+        if not can_edit(request.user, automation):
+            raise PermissionDenied("You do not have permission to edit this automation.")
 
         serializer = (
             AutomationNodeSerializer(
@@ -29,7 +36,7 @@ class AutomationNodeCreateView(APIView):
         )
 
         serializer.save(
-            automation_id=automation_id
+            automation=automation
         )
 
         return Response(
@@ -48,11 +55,9 @@ class AutomationNodeDetailView(
         pk,
     ):
 
-        node = (
-            AutomationNode.objects.get(
-                pk=pk
-            )
-        )
+        node = get_object_or_404(AutomationNode.objects.select_related("automation"), pk=pk)
+        if not can_edit(request.user, node.automation):
+            raise PermissionDenied("You do not have permission to edit this automation.")
 
         serializer = (
             AutomationNodeSerializer(
@@ -78,11 +83,9 @@ class AutomationNodeDetailView(
         pk,
     ):
 
-        node = (
-            AutomationNode.objects.get(
-                pk=pk
-            )
-        )
+        node = get_object_or_404(AutomationNode.objects.select_related("automation"), pk=pk)
+        if not can_edit(request.user, node.automation):
+            raise PermissionDenied("You do not have permission to edit this automation.")
 
         node.delete()
 

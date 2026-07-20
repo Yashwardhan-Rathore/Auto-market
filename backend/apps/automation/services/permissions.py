@@ -1,11 +1,18 @@
 from apps.automation.models import (
     AutomationMember,
 )
+from apps.accounts.models import MAUser
+
+
+def get_role(user):
+    if user.is_superuser:
+        return "SUPER_ADMIN"
+    return MAUser.objects.filter(user=user).values_list("role", flat=True).first()
 
 
 def can_view(user, automation):
 
-    if user.role == "SUPER_ADMIN":
+    if get_role(user) == "SUPER_ADMIN":
         return True
 
     if automation.owner_id == user.id:
@@ -25,6 +32,9 @@ def can_view(user, automation):
 
 def can_edit(user, automation):
 
+    if get_role(user) == "SUPER_ADMIN":
+        return True
+
     if automation.owner_id == user.id:
         return True
 
@@ -39,6 +49,9 @@ def can_edit(user, automation):
 
 
 def can_execute(user, automation):
+
+    if get_role(user) == "SUPER_ADMIN":
+        return True
 
     if automation.owner_id == user.id:
         return True
@@ -55,6 +68,9 @@ def can_execute(user, automation):
 
 
 def can_manage(user, automation):
+
+    if get_role(user) == "SUPER_ADMIN":
+        return True
 
     if automation.owner_id == user.id:
         return True

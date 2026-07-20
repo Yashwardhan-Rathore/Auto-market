@@ -158,7 +158,7 @@ class PublicFormView(
 
     def get_queryset(self):
         return Form.objects.filter(
-            status="PUBLISHED"
+            status=FormStatus.PUBLISHED
         )
     
 

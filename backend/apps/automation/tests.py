@@ -3,6 +3,10 @@ from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
+from rest_framework import status
+from rest_framework.test import APITestCase
+
+from apps.accounts.models import MAUser
 
 from apps.automation.models import (
     Automation,
@@ -166,3 +170,44 @@ class AutomationExecutionEngineTests(TestCase):
 
         self.assertEqual(execution.status, "FAILED")
         self.assertIn("permanent", execution.error_message)
+
+
+class AutomationPermissionAPITests(APITestCase):
+    def setUp(self):
+        user_model = get_user_model()
+        self.owner = user_model.objects.create_user(
+            email="automation-owner@example.com",
+            password="StrongPass123!",
+        )
+        self.other = user_model.objects.create_user(
+            email="automation-other@example.com",
+            password="StrongPass123!",
+        )
+        MAUser.objects.create(user=self.owner, role="USER")
+        MAUser.objects.create(user=self.other, role="USER")
+        self.automation = Automation.objects.create(
+            name="Private automation",
+            owner=self.owner,
+        )
+
+    def test_non_owner_cannot_read_or_update_automation(self):
+        self.client.force_authenticate(self.other)
+        detail = f"/api/automations/{self.automation.id}/"
+        self.assertEqual(self.client.get(detail).status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            self.client.patch(detail, {"name": "Stolen"}, format="json").status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+
+    def test_non_owner_cannot_add_node_or_view_execution_history(self):
+        self.client.force_authenticate(self.other)
+        node_response = self.client.post(
+            f"/api/automations/{self.automation.id}/nodes/",
+            {"node_type": "ACTION", "action_name": "END", "label": "End"},
+            format="json",
+        )
+        history_response = self.client.get(
+            f"/api/automations/{self.automation.id}/executions/"
+        )
+        self.assertEqual(node_response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(history_response.status_code, status.HTTP_403_FORBIDDEN)

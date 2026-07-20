@@ -1,6 +1,5 @@
 from django.test import TestCase
 from unittest.mock import patch
-from apps.common.models import Company
 from apps.accounts.models import User
 from apps.billing.models import Wallet
 from apps.content_studio.services import ContentStudioService
@@ -74,7 +73,7 @@ class ContentWorkflowTest(TestCase):
         self.assertEqual(draft.platforms.first().approval_status, ContentPlatform.ApprovalStatus.REQUESTED)
         
         # Approve
-        ApprovalService.approve_Content(draft, self.user, "Looks good")
+        ApprovalService.approve_content(draft, self.user, "Looks good")
         self.assertEqual(draft.workflow_state, ContentDraft.WorkflowState.APPROVED)
         self.assertEqual(draft.platforms.first().approval_status, ContentPlatform.ApprovalStatus.APPROVED)
         self.assertEqual(draft.approvals.first().status, Approval.ApprovalState.APPROVED)
@@ -118,7 +117,7 @@ class AIEngineTest(TestCase):
     def test_lifecycle_enhance_prompt(self, mock_generate):
         mock_generate.return_value = "Tone = Fun\nGoal = Sales"
         
-        enhanced, version = self.lifecycle_service.enhance_Content_prompt(
+        enhanced, version = self.lifecycle_service.enhance_content_prompt(
             draft=self.draft,
             content_spec={"Goal": "Sales"},
             user_answers={"Tone": "Fun"},
@@ -152,7 +151,7 @@ class AIEngineTest(TestCase):
         self.wallet.save()
         
         with self.assertRaises(InsufficientCreditsError):
-            self.lifecycle_service.enhance_Content_prompt(
+            self.lifecycle_service.enhance_content_prompt(
                 draft=self.draft,
                 content_spec={},
                 user_answers={},

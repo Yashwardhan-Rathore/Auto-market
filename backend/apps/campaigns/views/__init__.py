@@ -5,6 +5,7 @@ from .customer import (
     CustomerUploadAPIView,
     CustomerUploadListAPIView,
     CustomerRecordListAPIView,
+    CustomerRecordDetailAPIView,
 )
 from .channel import AssignChannelsView, ChannelListAPIView
 

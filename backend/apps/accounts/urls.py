@@ -3,10 +3,11 @@ from .views import (
     LoginView, ProfileView, LogoutView, ForgotPasswordView, ResetPasswordView,
     CreateSuperAdminView, CreateAdminView, CreateUserView, DeleteAdminView, DeleteUserView
 )
+from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
     path("login/", LoginView.as_view(), name="login"),
-    # path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("profile/", ProfileView.as_view(), name="profile"),
     path("logout/", LogoutView.as_view(), name="logout"),
     path("forgot-password/",ForgotPasswordView.as_view(),name="forgot-password"),

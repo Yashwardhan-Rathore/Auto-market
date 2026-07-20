@@ -1,28 +1,23 @@
-export interface UserProfile {
-  id: string;
+import type { UserRole } from "@/constants/roles";
+
+export interface AuthUser {
+  id: number;
   email: string;
-  first_name: string;
-  last_name: string;
-  role: 'SUPER_ADMIN' | 'ADMIN' | 'USER';
-  company: {
-    id: string;
-    name: string;
-  };
+  username?: string | null;
+  first_name?: string;
+  last_name?: string;
+  is_active: boolean;
+  is_staff?: boolean;
+  is_superuser?: boolean;
+  last_login?: string | null;
+  date_joined?: string;
+  role: UserRole;
 }
 
-export interface AuthResponse {
-  access: string;
-  refresh: string;
-  user: UserProfile;
+export interface LoginResponse {
+  success: boolean;
+  message: string;
+  data: { access: string; refresh: string; user: AuthUser };
 }
 
-export interface LoginCredentials {
-  email: string;
-  password: string;
-}
-
-export interface RegisterCredentials extends LoginCredentials {
-  first_name: string;
-  last_name: string;
-  company_name: string;
-}
+export interface Paginated<T> { count: number; next: string | null; previous: string | null; results: T[] }

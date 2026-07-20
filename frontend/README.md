@@ -1,36 +1,30 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Auto Market Frontend
 
-## Getting Started
+Next.js 16 App Router frontend for the verified Django REST API. It uses a shared role-aware login, rotating bearer JWT sessions, centralized permissions, responsive monochrome portal shell, TanStack Query data loading, and real API error/empty/loading states.
 
-First, run the development server:
+## Run
 
-```bash
+```powershell
+cd "C:\office project\Auto-market\frontend"
+Copy-Item .env.example .env.local
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The default API origin is `http://127.0.0.1:8000`. Set `NEXT_PUBLIC_API_URL` to the backend origin only; never put database or provider secrets in frontend environment variables.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Verify
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```powershell
+npm run lint
+npm run test
+npm run build
+npm run test:e2e
+```
 
-## Learn More
+Credentialed and side-effecting E2E specs are intentionally skipped until dedicated test-role accounts and a safe database/provider environment are supplied.
 
-To learn more about Next.js, take a look at the following resources:
+## Authentication note
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The backend returns bearer access/refresh tokens rather than HTTP-only cookies. Access tokens remain in memory; rotating refresh tokens use per-tab `sessionStorage` to restore a page reload. A future backend cookie flow would be preferable for stronger XSS resistance.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

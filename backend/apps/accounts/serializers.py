@@ -81,6 +81,18 @@ class ProfileSerializer(serializers.ModelSerializer):
         return ma_user.role if ma_user else ("SUPER_ADMIN" if obj.is_superuser else "USER")
 
 
+class ProfileUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["first_name", "last_name"]
+
+    def validate(self, attrs):
+        for field in ("first_name", "last_name"):
+            if field in attrs:
+                attrs[field] = attrs[field].strip()
+        return attrs
+
+
 
 class LogoutSerializer(serializers.Serializer):
     refresh = serializers.CharField()
@@ -222,7 +234,12 @@ class CreateAdminSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["email", "password"]
+        fields = ["email", "password", "first_name", "last_name", "mobile_no"]
+        extra_kwargs = {
+            "first_name": {"required": True, "allow_blank": False},
+            "last_name": {"required": True, "allow_blank": False},
+            "mobile_no": {"required": True, "allow_blank": False},
+        }
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
@@ -233,9 +250,10 @@ class CreateAdminSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
+        password = validated_data.pop("password")
         user = User.objects.create_user(
-            email=validated_data["email"],
-            password=validated_data["password"],
+            password=password,
+            **validated_data,
         )
 
         MAUser.objects.create(
@@ -255,7 +273,12 @@ class CreateUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["email", "password"]
+        fields = ["email", "password", "first_name", "last_name", "mobile_no"]
+        extra_kwargs = {
+            "first_name": {"required": True, "allow_blank": False},
+            "last_name": {"required": True, "allow_blank": False},
+            "mobile_no": {"required": True, "allow_blank": False},
+        }
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
@@ -266,9 +289,10 @@ class CreateUserSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
+        password = validated_data.pop("password")
         user = User.objects.create_user(
-            email=validated_data["email"],
-            password=validated_data["password"],
+            password=password,
+            **validated_data,
         )
 
         MAUser.objects.create(
@@ -279,7 +303,6 @@ class CreateUserSerializer(serializers.ModelSerializer):
         return user
 
 class UserListSerializer(serializers.ModelSerializer):
-    full_name = serializers.SerializerMethodField()
     role = serializers.SerializerMethodField()
     created_at = serializers.SerializerMethodField()
 
@@ -287,15 +310,14 @@ class UserListSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             "id",
-            "full_name",
+            "first_name",
+            "last_name",
             "email",
+            "mobile_no",
             "role",
             "is_active",
             "created_at"
         ]
-
-    def get_full_name(self, obj):
-        return f"{obj.first_name} {obj.last_name}".strip()
 
     def get_role(self, obj):
         # We assume prefetch_related("ma_users") has been called
@@ -305,3 +327,14 @@ class UserListSerializer(serializers.ModelSerializer):
     def get_created_at(self, obj):
         ma_user = obj.ma_users.all()[0] if obj.ma_users.all() else None
         return ma_user.created_at if ma_user else None
+
+
+class UserUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["first_name", "last_name", "email", "mobile_no", "is_active"]
+
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exclude(pk=self.instance.pk).exists():
+            raise serializers.ValidationError("User with this email already exists.")
+        return value

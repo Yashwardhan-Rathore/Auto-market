@@ -113,3 +113,21 @@ class IsMarketingUser(BasePermission):
             return False
 
         return ma_user.role == "USER"
+
+
+class CanBootstrapSuperAdmin(BasePermission):
+    """Allow a one-time anonymous bootstrap, then require a Super Admin."""
+
+    message = "Super Admin creation is restricted to an existing Super Admin."
+
+    def has_permission(self, request, view):
+        if not MAUser.objects.filter(role="SUPER_ADMIN").exists():
+            return True
+
+        if not request.user.is_authenticated:
+            return False
+
+        return MAUser.objects.filter(
+            user=request.user,
+            role="SUPER_ADMIN",
+        ).exists()

@@ -173,7 +173,11 @@ class FormSubmissionSerializer(
     serializers.Serializer
 ):
 
-    answers = serializers.ListField()
+    class AnswerSerializer(serializers.Serializer):
+        field_id = serializers.IntegerField(min_value=1)
+        answer = serializers.CharField(allow_blank=True)
+
+    answers = AnswerSerializer(many=True, allow_empty=False)
 
     def create(self, validated_data):
 
