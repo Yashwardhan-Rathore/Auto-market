@@ -37,9 +37,7 @@ class CampaignSendAPIView(APIView):
 
         return Response(
             {
-                "message": "Campaign sending initiated in background.",
-                "campaign": campaign.id,
-                "status": campaign.status,
+                "message": "Campaign sent successfully."
             },
             status=status.HTTP_200_OK,
         )
