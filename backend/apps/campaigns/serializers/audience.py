@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from apps.campaigns.models import CustomerUpload , Audience
-from apps.common.utils import filter_by_tenant
+from apps.common.ownership import filter_by_tenant
 
 
 class AudiencePreviewSerializer(serializers.Serializer):

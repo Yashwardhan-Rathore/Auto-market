@@ -67,10 +67,9 @@ class AudienceDetailAPIView(APIView):
     ]
 
     def get_object(self, request, audience_id):
-        queryset = filter_by_tenant(
+        queryset = filter_audiences_for_admin(
             Audience.objects.filter(is_active=True),
             request.user,
-            "created_by",
         )
         return get_object_or_404(queryset, id=audience_id)
 
