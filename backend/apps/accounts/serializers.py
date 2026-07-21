@@ -248,6 +248,11 @@ class CreateAdminSerializer(serializers.ModelSerializer):
             )
         return value
 
+    def validate_mobile_no(self, value):
+        if not value.isdigit() or len(value) != 10:
+            raise serializers.ValidationError("Mobile number must be exactly 10 digits.")
+        return value
+
     @transaction.atomic
     def create(self, validated_data):
         password = validated_data.pop("password")
@@ -285,6 +290,11 @@ class CreateUserSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "User with this email already exists."
             )
+        return value
+
+    def validate_mobile_no(self, value):
+        if not value.isdigit() or len(value) != 10:
+            raise serializers.ValidationError("Mobile number must be exactly 10 digits.")
         return value
 
     @transaction.atomic
@@ -344,4 +354,9 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     def validate_email(self, value):
         if User.objects.filter(email=value).exclude(pk=self.instance.pk).exists():
             raise serializers.ValidationError("User with this email already exists.")
+        return value
+
+    def validate_mobile_no(self, value):
+        if not value.isdigit() or len(value) != 10:
+            raise serializers.ValidationError("Mobile number must be exactly 10 digits.")
         return value
