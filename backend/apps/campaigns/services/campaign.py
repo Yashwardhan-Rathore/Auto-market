@@ -159,9 +159,10 @@ class CampaignService:
         from rest_framework.exceptions import ValidationError
         from django.utils import timezone
         
-        ma_user = MAUser.objects.filter(user_id=admin_user).first()
-        if not ma_user or ma_user.role not in ["ADMIN", "SUPER_ADMIN"]:
-            raise PermissionDenied("Only ADMIN or SUPER_ADMIN can approve campaigns.")
+        from apps.common.ownership import can_manage_campaign
+        
+        if not can_manage_campaign(admin_user, campaign):
+            raise PermissionDenied("You do not have permission to approve this campaign.")
 
         if campaign.status != Campaign.Status.PENDING_APPROVAL:
             raise ValidationError("Campaign must be pending approval.")
@@ -178,9 +179,10 @@ class CampaignService:
         from rest_framework.exceptions import ValidationError
         from django.utils import timezone
         
-        ma_user = MAUser.objects.filter(user_id=admin_user).first()
-        if not ma_user or ma_user.role not in ["ADMIN", "SUPER_ADMIN"]:
-            raise PermissionDenied("Only ADMIN or SUPER_ADMIN can reject campaigns.")
+        from apps.common.ownership import can_manage_campaign
+        
+        if not can_manage_campaign(admin_user, campaign):
+            raise PermissionDenied("You do not have permission to reject this campaign.")
 
         if campaign.status != Campaign.Status.PENDING_APPROVAL:
             raise ValidationError("Campaign must be pending approval.")

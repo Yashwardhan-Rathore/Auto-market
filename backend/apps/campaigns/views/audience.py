@@ -7,7 +7,7 @@ from apps.campaigns.models import Audience
 from apps.accounts.permissions import IsAdminOrSuperAdmin
 from apps.campaigns.serializers import AudiencePreviewSerializer , AudienceCreateSerializer , AudienceSerializer
 from apps.campaigns.services import AudienceService
-from apps.common.utils import filter_by_tenant
+from apps.common.ownership import filter_audiences_for_admin
 
 class AudienceCreateAPIView(APIView):
 
@@ -46,10 +46,9 @@ class AudienceListAPIView(APIView):
 
     def get(self, request):
 
-        audiences = filter_by_tenant(
+        audiences = filter_audiences_for_admin(
             Audience.objects.filter(is_active=True), 
-            request.user, 
-            "created_by"
+            request.user
         ).order_by("name")
 
         return Response(

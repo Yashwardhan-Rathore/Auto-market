@@ -21,7 +21,7 @@ from apps.automation.services.validator import (
 from apps.automation.services.dispatcher import (
     dispatch_workflow,
 )
-from apps.common.utils import filter_by_tenant
+from apps.common.ownership import _filter_resource_for_admin
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import PermissionDenied
 from apps.automation.services.permissions import can_view, can_edit, can_execute
@@ -39,11 +39,11 @@ class AutomationListCreateView(APIView):
 
     def get(self, request):
 
-        automations = filter_by_tenant(
-            Automation.objects.all(),
-            request.user,
-            "owner"
-        )
+        automations = _filter_resource_for_admin(
+            Automation.objects.filter(is_active=True), 
+            request.user, 
+            "created_by"
+        ).order_by("-updated_at")
 
         serializer = (
             AutomationSerializer(

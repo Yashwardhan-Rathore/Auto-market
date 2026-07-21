@@ -18,7 +18,7 @@ from .serializers import (
     SubmissionListSerializer,
 )
 from .services import FormService
-from apps.common.utils import filter_by_tenant
+from apps.common.ownership import _filter_resource_for_admin
 
 
 class FormListCreateView(
@@ -34,7 +34,7 @@ class FormListCreateView(
 
     def get_queryset(self):
 
-        return filter_by_tenant(
+        return _filter_resource_for_admin(
             Form.objects.all(),
             self.request.user,
             "created_by"
@@ -79,7 +79,7 @@ class FormDetailView(
     ]
 
     def get_queryset(self):
-        return filter_by_tenant(
+        return _filter_resource_for_admin(
             Form.objects.all(),
             self.request.user,
             "created_by"

@@ -7,7 +7,6 @@ from apps.campaigns.models import (
     CampaignTemplate,
     Campaign
 )
-from apps.common.utils import filter_by_tenant
 
 
 class TemplateService:
@@ -43,29 +42,15 @@ class TemplateService:
     ):
         templates = Template.objects.filter(status=Template.Status.ACTIVE)
         
-        ma_user = getattr(user, "ma_users", None)
-        if ma_user:
-            ma_user = ma_user.first()
-        role = ma_user.role if ma_user else "USER"
-        
-        if getattr(user, "is_superuser", False) or role in ["SUPER_ADMIN", "ADMIN"]:
-            return templates.order_by("name")
-            
-        return templates.filter(created_by=user).order_by("name")
+        from apps.common.ownership import filter_templates_for_admin
+        return filter_templates_for_admin(templates, user).order_by("name")
 
     @staticmethod
     def get_template_for_user(template_id, user):
         from django.shortcuts import get_object_or_404
 
-        ma_user = getattr(user, "ma_users", None)
-        if ma_user:
-            ma_user = ma_user.first()
-        role = ma_user.role if ma_user else "USER"
-
-        queryset = Template.objects.all()
-
-        if not (getattr(user, "is_superuser", False) or role in ["SUPER_ADMIN", "ADMIN"]):
-            queryset = queryset.filter(created_by=user)
+        from apps.common.ownership import filter_templates_for_admin
+        queryset = filter_templates_for_admin(Template.objects.all(), user)
 
         return get_object_or_404(queryset, id=template_id)
 

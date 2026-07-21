@@ -4,7 +4,7 @@ from apps.campaigns.models import (
     Campaign,
     CampaignDelivery,
 )
-from apps.common.utils import filter_by_tenant
+from apps.common.ownership import filter_dashboard_queryset
 
 
 class DashboardService:
@@ -42,7 +42,7 @@ class DashboardService:
         Base queryset for campaigns.
         """
 
-        return filter_by_tenant(Campaign.objects.all(), user, "created_by")
+        return filter_dashboard_queryset(Campaign.objects.all(), user, "created_by")
 
 
     @staticmethod
@@ -51,7 +51,7 @@ class DashboardService:
         Base queryset for deliveries.
         """
 
-        return filter_by_tenant(CampaignDelivery.objects.all(), user, "campaign__created_by").select_related(
+        return filter_dashboard_queryset(CampaignDelivery.objects.all(), user, "campaign__created_by").select_related(
             "campaign",
             "customer",
             "channel",

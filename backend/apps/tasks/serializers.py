@@ -162,6 +162,25 @@ class CreateTaskSerializer(serializers.ModelSerializer):
             "users",
         ]
 
+    def validate_users(self, value):
+        request = self.context.get('request')
+        if not request or not hasattr(request, 'user'):
+            return value
+
+        from apps.common.ownership import get_managed_user_ids, is_super_admin
+        if is_super_admin(request.user):
+            return value
+            
+        managed_user_ids = get_managed_user_ids(request.user)
+        invalid_users = [u for u in value if u not in managed_user_ids]
+        
+        if invalid_users:
+            raise serializers.ValidationError(
+                f"You do not have permission to assign tasks to users: {invalid_users}"
+            )
+            
+        return value
+
 
 class TaskUpdateSerializer(CreateTaskSerializer):
     users = serializers.ListField(
