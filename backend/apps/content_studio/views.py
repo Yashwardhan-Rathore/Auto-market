@@ -163,7 +163,18 @@ class ContentDraftViewSet(viewsets.ModelViewSet):
     serializer_class = ContentDraftSerializer
 
     def get_queryset(self):
-        return ContentDraft.objects.all()
+        from apps.common.utils import filter_by_tenant
+
+        return filter_by_tenant(
+            ContentDraft.objects.select_related('owner').prefetch_related(
+                'platforms__caption',
+                'platforms__images__asset',
+                'approvals',
+                'versions',
+            ),
+            self.request.user,
+            'owner',
+        )
 
     @action(detail=False, methods=['post'])
     def analyze_prompt(self, request):

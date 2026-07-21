@@ -6,7 +6,7 @@ export const moduleDefinitions: Record<string, ModuleDefinition> = {
   admins: { title: "Administrators", endpoint: "/api/admins/", description: "Admin accounts and access" },
   users: { title: "Users", endpoint: "/api/users/", description: "Operational user accounts" },
   analytics: { title: "Analytics", endpoint: "/api/analytics/summary/", description: "Communication and workflow metrics" },
-  audiences: { title: "Audiences", endpoint: "/api/audiences/", description: "Verified customer segments" },
+  audiences: { title: "Segmentation", endpoint: "/api/audiences/", description: "Manage and organize customer segments" },
   automations: { title: "Automations", endpoint: "/api/automations/", description: "Workflow definitions and status" },
   campaigns: { title: "Campaigns", endpoint: "/api/campaigns/my/", description: "Campaign workflow and approvals" },
   channels: { title: "Channels", endpoint: "/api/channels/", description: "Available delivery channels" },

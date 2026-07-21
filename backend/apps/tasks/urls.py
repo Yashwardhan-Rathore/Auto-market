@@ -7,6 +7,7 @@ from .views import (
     UpdateTaskStatusView,
     ApproveTaskView,
     RejectTaskView,
+    TaskDetailView,
 )
 
 urlpatterns = [
@@ -30,6 +31,11 @@ urlpatterns = [
         "team/",
         TeamTasksView.as_view(),
         name="team-tasks",
+    ),
+    path(
+        "<int:task_id>/",
+        TaskDetailView.as_view(),
+        name="task-detail",
     ),
 
     # User updates status

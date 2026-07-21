@@ -3,10 +3,17 @@ from django.db.models import Q
 
 OPERATOR_MAP = {
     "=": "",
+    "is": "",
     "!=": "",
     "contains": "__icontains",
     "startswith": "__istartswith",
     "endswith": "__iendswith",
+    ">": "__gt",
+    "greater_than": "__gt",
+    "<": "__lt",
+    "less_than": "__lt",
+    ">=": "__gte",
+    "<=": "__lte",
 }
 
 class AudienceService:
@@ -42,55 +49,51 @@ class AudienceService:
             upload=customer_upload,
         )
 
-        conditions = audience_definition.get(
-            "conditions",
-            [],
-        )
-
-        group_operator = audience_definition.get(
-            "operator",
-            "AND",
-        ).upper()
-
         from apps.campaigns.utils import normalize_column_name
-        query = Q()
+        def numeric_value(value):
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return value
 
-        for condition in conditions:
-
+        def condition_query(condition):
             field = normalize_column_name(condition["field"])
-            operator = condition["operator"]
-            value = condition["value"]
-
+            operator = str(condition.get("operator", "=")).lower()
+            value = condition.get("value")
+            if operator == "between":
+                return Q(**{f"data__{field}__gte": numeric_value(value)}) & Q(
+                    **{f"data__{field}__lte": numeric_value(condition.get("value_to"))}
+                )
             lookup = OPERATOR_MAP.get(operator)
-
             if lookup is None:
-                raise ValueError(
-                    f"Unsupported operator: {operator}"
-                )
+                raise ValueError(f"Unsupported operator: {operator}")
+            if operator in {">", "<", ">=", "<=", "greater_than", "less_than"}:
+                value = numeric_value(value)
+            query_part = Q(**{f"data__{field}{lookup}": value})
+            return ~query_part if operator == "!=" else query_part
 
-            if operator == "!=":
-                condition_query = ~Q(
-                    **{
-                        f"data__{field}": value
-                    }
-                )
-            else:
-                condition_query = Q(
-                    **{
-                        f"data__{field}{lookup}": value
-                    }
-                )
+        def combine(conditions, operator="AND"):
+            combined = Q()
+            for condition in conditions:
+                part = condition_query(condition)
+                combined = combined & part if operator.upper() == "AND" else combined | part
+            return combined
 
-            if group_operator == "AND":
-                query &= condition_query
-
-            elif group_operator == "OR":
-                query |= condition_query
-
-            else:
-                raise ValueError(
-                    "Group operator must be AND or OR."
+        groups = audience_definition.get("groups") or []
+        if groups:
+            query = Q()
+            groups_operator = str(audience_definition.get("groups_operator", "OR")).upper()
+            for group in groups:
+                group_query = combine(
+                    group.get("conditions", []),
+                    str(group.get("operator", "AND")),
                 )
+                query = query & group_query if groups_operator == "AND" else query | group_query
+        else:
+            query = combine(
+                audience_definition.get("conditions", []),
+                str(audience_definition.get("operator", "AND")),
+            )
 
         return queryset.filter(query)
 

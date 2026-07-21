@@ -99,8 +99,8 @@ class UserManagementService:
     @classmethod
     @transaction.atomic
     def delete_admin(cls, request_user, target_id):
-        request_ma_user = MAUser.objects.filter(user=request_user).first()
-        if not request_ma_user or request_ma_user.role != "SUPER_ADMIN":
+        from .permissions import get_request_role
+        if get_request_role(request_user) != "SUPER_ADMIN":
             raise PermissionDenied("You do not have permission to perform this action.")
 
         try:
@@ -119,8 +119,9 @@ class UserManagementService:
     @classmethod
     @transaction.atomic
     def delete_user(cls, request_user, target_id):
-        request_ma_user = MAUser.objects.filter(user=request_user).first()
-        if not request_ma_user or request_ma_user.role not in ["ADMIN", "SUPER_ADMIN"]:
+        from .permissions import get_request_role
+        request_role = get_request_role(request_user)
+        if request_role not in ["ADMIN", "SUPER_ADMIN"]:
             raise PermissionDenied("You do not have permission to perform this action.")
 
         try:
@@ -134,7 +135,7 @@ class UserManagementService:
 
         target_email = target_user.email
         target_user.delete()
-        logger.info(f"User {target_email} deleted by {request_ma_user.role} {request_user.email}.")
+        logger.info(f"User {target_email} deleted by {request_role} {request_user.email}.")
 
     @classmethod
     def get_admins_queryset(cls):

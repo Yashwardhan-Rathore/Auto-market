@@ -9,7 +9,7 @@ from .customer import (
 )
 from .channel import AssignChannelsView, ChannelListAPIView
 
-from .audience import AudiencePreviewAPIView,    AudienceCreateAPIView,AudienceListAPIView
+from .audience import AudiencePreviewAPIView, AudienceCreateAPIView, AudienceListAPIView, AudienceDetailAPIView
 
 from .template import (
     TemplateCreateAPIView,

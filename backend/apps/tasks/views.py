@@ -20,6 +20,7 @@ from .serializers import (
     UpdateTaskStatusSerializer,
     ApprovalSerializer,
     MyTaskSerializer,
+    TaskUpdateSerializer,
 )
 
 from .permissions import (
@@ -128,6 +129,34 @@ class TeamTasksView(APIView):
         return Response(
             serializer.data
         )
+
+
+class TaskDetailView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminManager]
+
+    def get_object(self, request, task_id):
+        role = MAUser.objects.filter(user=request.user).values_list("role", flat=True).first()
+        queryset = Task.objects.filter(is_active=True, is_deleted=False)
+        if role != "SUPER_ADMIN":
+            queryset = queryset.filter(created_by=request.user)
+        return get_object_or_404(queryset, id=task_id)
+
+    def get(self, request, task_id):
+        return Response(TaskSerializer(self.get_object(request, task_id)).data)
+
+    def patch(self, request, task_id):
+        task = self.get_object(request, task_id)
+        serializer = TaskUpdateSerializer(task, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(TaskSerializer(task).data)
+
+    def delete(self, request, task_id):
+        task = self.get_object(request, task_id)
+        task.is_active = False
+        task.is_deleted = True
+        task.save(update_fields=["is_active", "is_deleted", "updated_at"])
+        return Response(status=status.HTTP_204_NO_CONTENT)
     
 
 class UpdateTaskStatusView(

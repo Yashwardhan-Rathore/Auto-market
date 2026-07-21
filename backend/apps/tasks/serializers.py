@@ -57,10 +57,7 @@ class TaskCommentSerializer(serializers.ModelSerializer):
 
 class TaskAssignmentSerializer(serializers.ModelSerializer):
 
-    user_name = serializers.CharField(
-        source="user.email",
-        read_only=True,
-    )
+    user_name = serializers.SerializerMethodField()
 
     approved_by_name = serializers.CharField(
         source="approved_by.email",
@@ -113,6 +110,10 @@ class TaskAssignmentSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
+    def get_user_name(self, obj):
+        full_name = obj.user.get_full_name().strip()
+        return full_name or obj.user.email
+
 
 class CreateTaskSerializer(serializers.ModelSerializer):
 
@@ -160,6 +161,30 @@ class CreateTaskSerializer(serializers.ModelSerializer):
 
             "users",
         ]
+
+
+class TaskUpdateSerializer(CreateTaskSerializer):
+    users = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        min_length=1,
+        max_length=1,
+        required=False,
+    )
+
+    def update(self, instance, validated_data):
+        users = validated_data.pop("users", None)
+        channels = validated_data.pop("channels", None)
+        for field, value in validated_data.items():
+            setattr(instance, field, value)
+        instance.save()
+        if channels is not None:
+            instance.channels.set(channels)
+        if users is not None:
+            instance.assignments.exclude(user_id__in=users).delete()
+            for user_id in users:
+                TaskAssignment.objects.get_or_create(task=instance, user_id=user_id)
+        return instance
 
 
 class TaskSerializer(serializers.ModelSerializer):

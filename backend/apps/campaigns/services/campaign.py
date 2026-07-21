@@ -74,19 +74,16 @@ class CampaignService:
             user_id=user
         ).first()
 
-        # Only USER can create campaign
-        if not ma_user or ma_user.role != "USER":
+        if not ma_user or ma_user.role not in ["USER", "ADMIN"]:
             raise PermissionDenied(
-                "Only marketing users can create campaigns."
+                "Only marketing users and admins can create campaigns."
             )
 
-        # USER must be assigned to task
-        if not TaskAssignment.objects.filter(
-            task=task,
-            user=user,
-        ).exists():
+        user_can_create = ma_user.role == "USER" and TaskAssignment.objects.filter(task=task, user=user).exists()
+        admin_can_create = ma_user.role == "ADMIN" and task.created_by_id == user.id
+        if not user_can_create and not admin_can_create:
             raise PermissionDenied(
-                "You are not assigned to this task."
+                "You can only create a campaign for an assigned or owned task."
             )
 
         # Create campaign

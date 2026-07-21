@@ -2,6 +2,16 @@ from rest_framework.permissions import BasePermission
 from .models import MAUser
 
 
+def get_request_role(user):
+    """Resolve roles consistently with login/profile responses."""
+    if not user or not user.is_authenticated:
+        return None
+    ma_role = MAUser.objects.filter(user=user).values_list("role", flat=True).first()
+    if ma_role:
+        return ma_role
+    return "SUPER_ADMIN" if user.is_superuser else None
+
+
 class IsAdminOrSuperAdmin(BasePermission):
     """
     Allows access only to Admin and Super Admin users.
@@ -11,12 +21,7 @@ class IsAdminOrSuperAdmin(BasePermission):
         if not request.user.is_authenticated:
             return False
 
-        ma_user = MAUser.objects.filter(user=request.user).first()
-
-        if not ma_user:
-            return False
-
-        return ma_user.role in ["ADMIN", "SUPER_ADMIN"]
+        return get_request_role(request.user) in ["ADMIN", "SUPER_ADMIN"]
 
 class IsSuperAdminOrOwnManagedUser(BasePermission):
     """
@@ -75,12 +80,7 @@ class IsSuperAdmin(BasePermission):
         if not request.user.is_authenticated:
             return False
 
-        ma_user = MAUser.objects.filter(user=request.user).first()
-
-        if not ma_user:
-            return False
-
-        return ma_user.role == "SUPER_ADMIN"
+        return get_request_role(request.user) == "SUPER_ADMIN"
 
 class IsAdmin(BasePermission):
     """
@@ -91,12 +91,7 @@ class IsAdmin(BasePermission):
         if not request.user.is_authenticated:
             return False
 
-        ma_user = MAUser.objects.filter(user=request.user).first()
-
-        if not ma_user:
-            return False
-
-        return ma_user.role == "ADMIN"
+        return get_request_role(request.user) == "ADMIN"
 
 class IsMarketingUser(BasePermission):
     """
@@ -107,12 +102,7 @@ class IsMarketingUser(BasePermission):
         if not request.user.is_authenticated:
             return False
 
-        ma_user = MAUser.objects.filter(user=request.user).first()
-
-        if not ma_user:
-            return False
-
-        return ma_user.role == "USER"
+        return get_request_role(request.user) == "USER"
 
 
 class CanBootstrapSuperAdmin(BasePermission):

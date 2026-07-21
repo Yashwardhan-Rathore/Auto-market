@@ -91,7 +91,11 @@ def get_admin_tasks(admin):
     from apps.campaigns.models import Campaign
     return (
         Task.objects
-        .filter(created_by=admin)
+        .filter(
+            created_by=admin,
+            is_active=True,
+            is_deleted=False,
+        )
         .prefetch_related(
             "assignments",
             "assignments__user",
