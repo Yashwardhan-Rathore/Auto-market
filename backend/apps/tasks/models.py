@@ -52,7 +52,7 @@ class Task(models.Model):
     # Audience assigned by Admin
     audience = models.ForeignKey(
         "campaigns.Audience",
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name="tasks",
         null=False,
         blank=False,

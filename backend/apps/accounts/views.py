@@ -235,6 +235,12 @@ class DeleteUserView(APIView):
         if not ma_user or ma_user.role != "USER":
             from rest_framework.exceptions import ValidationError
             raise ValidationError({"detail": "This endpoint only manages User accounts."})
+
+        from apps.common.ownership import is_managed_user
+        if not is_managed_user(self.request.user, user):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("You do not have permission to access this user.")
+            
         return user
 
     def get(self, request, user_id):
@@ -286,4 +292,4 @@ class ListUsersView(generics.ListAPIView):
     ordering_fields = ["first_name", "email", "date_joined"]
 
     def get_queryset(self):
-        return UserManagementService.get_users_queryset()
+        return UserManagementService.get_users_queryset(self.request.user)

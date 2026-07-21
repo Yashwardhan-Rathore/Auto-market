@@ -8,7 +8,6 @@ from .models import (
     Task,
     TaskAssignment,
 )
-from apps.common.utils import filter_by_tenant
 
 
 @transaction.atomic
@@ -89,9 +88,12 @@ def get_admin_tasks(admin):
     """
 
     from apps.campaigns.models import Campaign
+    from apps.common.ownership import filter_tasks_for_admin
+    
+    queryset = filter_tasks_for_admin(Task.objects.all(), admin)
+    
     return (
-        Task.objects
-        .filter(created_by=admin)
+        queryset
         .prefetch_related(
             "assignments",
             "assignments__user",

@@ -295,9 +295,16 @@ class CreateUserSerializer(serializers.ModelSerializer):
             **validated_data,
         )
 
+        admin_profile = None
+        request = self.context.get('request')
+        if request and hasattr(request, 'user'):
+            from apps.common.ownership import get_admin_profile
+            admin_profile = get_admin_profile(request.user)
+
         MAUser.objects.create(
             user=user,
             role="USER",   
+            managed_by=admin_profile,
         )
 
         return user

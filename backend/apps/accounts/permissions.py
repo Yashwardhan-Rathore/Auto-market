@@ -11,12 +11,12 @@ class IsAdminOrSuperAdmin(BasePermission):
         if not request.user.is_authenticated:
             return False
 
-        ma_user = MAUser.objects.filter(user=request.user).first()
-
-        if not ma_user:
-            return False
-
-        return ma_user.role in ["ADMIN", "SUPER_ADMIN"]
+        from apps.common.ownership import get_admin_profile, is_super_admin
+        if is_super_admin(request.user):
+            return True
+            
+        profile = get_admin_profile(request.user)
+        return profile is not None and profile.role == "ADMIN"
 
 class IsSuperAdminOrOwnManagedUser(BasePermission):
     """
@@ -72,15 +72,8 @@ class IsSuperAdmin(BasePermission):
     """
 
     def has_permission(self, request, view):
-        if not request.user.is_authenticated:
-            return False
-
-        ma_user = MAUser.objects.filter(user=request.user).first()
-
-        if not ma_user:
-            return False
-
-        return ma_user.role == "SUPER_ADMIN"
+        from apps.common.ownership import is_super_admin
+        return is_super_admin(request.user)
 
 class IsAdmin(BasePermission):
     """
@@ -91,12 +84,9 @@ class IsAdmin(BasePermission):
         if not request.user.is_authenticated:
             return False
 
-        ma_user = MAUser.objects.filter(user=request.user).first()
-
-        if not ma_user:
-            return False
-
-        return ma_user.role == "ADMIN"
+        from apps.common.ownership import get_admin_profile
+        profile = get_admin_profile(request.user)
+        return profile is not None and profile.role == "ADMIN"
 
 class IsMarketingUser(BasePermission):
     """
@@ -107,12 +97,9 @@ class IsMarketingUser(BasePermission):
         if not request.user.is_authenticated:
             return False
 
-        ma_user = MAUser.objects.filter(user=request.user).first()
-
-        if not ma_user:
-            return False
-
-        return ma_user.role == "USER"
+        from apps.common.ownership import get_admin_profile
+        profile = get_admin_profile(request.user)
+        return profile is not None and profile.role == "USER"
 
 
 class CanBootstrapSuperAdmin(BasePermission):

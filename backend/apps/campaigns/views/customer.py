@@ -6,7 +6,7 @@ from ..serializers import CustomerUploadSerializer,CustomerUploadListSerializer,
 from ..serializers.customer_record import CustomerRecordSerializer
 from ..services import CustomerImportService , CampaignService
 from ..models import CustomerRecord
-from apps.common.utils import filter_by_tenant
+from apps.common.ownership import filter_customer_records_for_admin, filter_customer_uploads_for_admin
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 
@@ -35,7 +35,7 @@ class CustomerUploadListAPIView(APIView):
 
     def get(self, request):
 
-        uploads = filter_by_tenant(CustomerUpload.objects.all(), request.user, "uploaded_by").order_by("-uploaded_at")
+        uploads = filter_customer_uploads_for_admin(CustomerUpload.objects.all(), request.user).order_by("-uploaded_at")
 
         serializer = CustomerUploadListSerializer(
             uploads,
@@ -49,7 +49,7 @@ class CustomerRecordListAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        customers = filter_by_tenant(CustomerRecord.objects.all(), request.user, "upload__uploaded_by").order_by("-created_at")[:100]
+        customers = filter_customer_records_for_admin(CustomerRecord.objects.all(), request.user).order_by("-created_at")[:100]
         serializer = CustomerRecordSerializer(customers, many=True)
         return Response(serializer.data)
 
@@ -71,7 +71,7 @@ class CustomerRecordDetailAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get_object(self, request, pk):
-        queryset = filter_by_tenant(CustomerRecord.objects.all(), request.user, "upload__uploaded_by")
+        queryset = filter_customer_records_for_admin(CustomerRecord.objects.all(), request.user)
         return get_object_or_404(queryset, pk=pk)
 
     def patch(self, request, pk):

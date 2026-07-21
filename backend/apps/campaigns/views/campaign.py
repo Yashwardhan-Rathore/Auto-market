@@ -153,9 +153,11 @@ class PendingApprovalAPIView(APIView):
     permission_classes = [IsAuthenticated, IsAdminOrSuperAdmin]
 
     def get(self, request):
-        campaigns = Campaign.objects.filter(
+        from apps.common.ownership import filter_campaigns_for_admin
+        
+        campaigns = filter_campaigns_for_admin(Campaign.objects.filter(
             status=Campaign.Status.PENDING_APPROVAL
-        ).select_related(
+        ), request.user).select_related(
             "task",
             "created_by",
             "submitted_by",

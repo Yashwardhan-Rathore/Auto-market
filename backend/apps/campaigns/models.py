@@ -428,7 +428,7 @@ class CampaignTemplate(models.Model):
 
     template = models.ForeignKey(
         Template,
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name="campaign_templates",
     )
 

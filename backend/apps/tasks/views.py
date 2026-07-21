@@ -221,18 +221,8 @@ class ApproveTaskView(
             )
         )
 
-        ma_user = MAUser.objects.filter(
-            user_id=request.user
-        ).first()
-
-        if (
-            assignment.task.created_by != request.user
-            and (
-                not ma_user
-                or ma_user.role != "SUPER_ADMIN"
-            )
-        ):
-
+        from apps.common.ownership import can_manage_task
+        if not can_manage_task(request.user, assignment.task):
             return Response(
                 {
                     "detail":
@@ -289,18 +279,8 @@ class RejectTaskView(
             )
         )
 
-        ma_user = MAUser.objects.filter(
-            user_id=request.user
-        ).first()
-
-        if (
-            assignment.task.created_by != request.user
-            and (
-                not ma_user
-                or ma_user.role != "SUPER_ADMIN"
-            )
-        ):
-
+        from apps.common.ownership import can_manage_task
+        if not can_manage_task(request.user, assignment.task):
             return Response(
                 {
                     "detail":

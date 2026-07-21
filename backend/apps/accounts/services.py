@@ -99,8 +99,8 @@ class UserManagementService:
     @classmethod
     @transaction.atomic
     def delete_admin(cls, request_user, target_id):
-        request_ma_user = MAUser.objects.filter(user=request_user).first()
-        if not request_ma_user or request_ma_user.role != "SUPER_ADMIN":
+        from apps.common.ownership import is_super_admin
+        if not is_super_admin(request_user):
             raise PermissionDenied("You do not have permission to perform this action.")
 
         try:
@@ -119,10 +119,6 @@ class UserManagementService:
     @classmethod
     @transaction.atomic
     def delete_user(cls, request_user, target_id):
-        request_ma_user = MAUser.objects.filter(user=request_user).first()
-        if not request_ma_user or request_ma_user.role not in ["ADMIN", "SUPER_ADMIN"]:
-            raise PermissionDenied("You do not have permission to perform this action.")
-
         try:
             target_user = User.objects.get(id=target_id)
         except User.DoesNotExist:
@@ -132,16 +128,28 @@ class UserManagementService:
         if not target_ma_user or target_ma_user.role != "USER":
             raise ValidationError({"detail": "Only User accounts can be deleted using this endpoint."})
 
+        from apps.common.ownership import is_managed_user
+        if not is_managed_user(request_user, target_user):
+            raise PermissionDenied("You do not have permission to delete this user.")
+
         target_email = target_user.email
         target_user.delete()
-        logger.info(f"User {target_email} deleted by {request_ma_user.role} {request_user.email}.")
+        
+        from apps.common.ownership import get_admin_profile
+        admin_profile = get_admin_profile(request_user)
+        role = admin_profile.role if admin_profile else "SUPER_ADMIN"
+        
+        logger.info(f"User {target_email} deleted by {role} {request_user.email}.")
 
     @classmethod
     def get_admins_queryset(cls):
         """Returns a queryset of User objects with role ADMIN, optimized with prefetch_related."""
-        return User.objects.filter(ma_users__role="ADMIN").prefetch_related("ma_users")
+        return User.objects.filter(ma_users__role="ADMIN", is_active=True).prefetch_related("ma_users")
 
     @classmethod
-    def get_users_queryset(cls):
-        """Returns a queryset of User objects with role USER, optimized with prefetch_related."""
-        return User.objects.filter(ma_users__role="USER").prefetch_related("ma_users")
+    def get_users_queryset(cls, request_user=None):
+        """Returns a queryset of User objects with role USER, isolated by admin."""
+        if not request_user:
+            return User.objects.none()
+        from apps.common.ownership import get_managed_users_queryset
+        return get_managed_users_queryset(request_user)
