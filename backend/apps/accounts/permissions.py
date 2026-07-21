@@ -2,6 +2,16 @@ from rest_framework.permissions import BasePermission
 from .models import MAUser
 
 
+def get_request_role(user):
+    """Resolve roles consistently with login/profile responses."""
+    if not user or not user.is_authenticated:
+        return None
+    ma_role = MAUser.objects.filter(user=user).values_list("role", flat=True).first()
+    if ma_role:
+        return ma_role
+    return "SUPER_ADMIN" if user.is_superuser else None
+
+
 class IsAdminOrSuperAdmin(BasePermission):
     """
     Allows access only to Admin and Super Admin users.

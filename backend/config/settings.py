@@ -11,8 +11,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Load .env file
 load_dotenv(BASE_DIR / ".env")
-# Local development overrides stay untracked and do not replace shared secrets.
-load_dotenv(BASE_DIR / ".env.local", override=True)
 
 # --------------------------------------------------
 # Security

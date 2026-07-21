@@ -99,6 +99,7 @@ def _validated_contact(payload):
     return {
         "name": name,
         "email": email,
+        "phone_no": str(payload.get("phone_no", payload.get("phone", ""))).strip(),
         "tags": payload.get("tags", []),
         "list": str(payload.get("list", "General")).strip() or "General",
         "score": max(0, min(100, int(payload.get("score", 0) or 0))),

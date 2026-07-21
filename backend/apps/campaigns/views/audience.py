@@ -2,6 +2,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
 from apps.campaigns.models import Audience
 from apps.accounts.permissions import IsAdminOrSuperAdmin
 from apps.campaigns.serializers import AudiencePreviewSerializer , AudienceCreateSerializer , AudienceSerializer
@@ -19,6 +20,7 @@ class AudienceCreateAPIView(APIView):
 
         serializer = AudienceCreateSerializer(
             data=request.data,
+            context={"request": request},
         )
 
         serializer.is_valid(
@@ -56,6 +58,42 @@ class AudienceListAPIView(APIView):
             ).data
         )
 
+
+class AudienceDetailAPIView(APIView):
+
+    permission_classes = [
+        IsAuthenticated,
+        IsAdminOrSuperAdmin,
+    ]
+
+    def get_object(self, request, audience_id):
+        queryset = filter_audiences_for_admin(
+            Audience.objects.filter(is_active=True),
+            request.user,
+        )
+        return get_object_or_404(queryset, id=audience_id)
+
+    def get(self, request, audience_id):
+        return Response(AudienceSerializer(self.get_object(request, audience_id)).data)
+
+    def patch(self, request, audience_id):
+        audience = self.get_object(request, audience_id)
+        serializer = AudienceCreateSerializer(
+            audience,
+            data=request.data,
+            partial=True,
+            context={"request": request},
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(AudienceSerializer(audience).data)
+
+    def delete(self, request, audience_id):
+        audience = self.get_object(request, audience_id)
+        audience.is_active = False
+        audience.save(update_fields=["is_active", "updated_at"])
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 class AudiencePreviewAPIView(APIView):
 
     permission_classes = [
@@ -67,6 +105,7 @@ class AudiencePreviewAPIView(APIView):
 
         serializer = AudiencePreviewSerializer(
             data=request.data,
+            context={"request": request},
         )
 
         serializer.is_valid(

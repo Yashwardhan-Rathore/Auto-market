@@ -109,6 +109,16 @@ def _filter_resource_for_admin(queryset, admin_user, user_field="created_by"):
         
     return queryset.none()
 
+
+def filter_by_tenant(queryset, user, user_field="created_by"):
+    """Compatibility entry point for tenant-aware queryset filtering.
+
+    Resource APIs historically imported this helper from ``apps.common.utils``.
+    Keep one implementation here so serializers, views, and services all apply
+    the same Super Admin/Admin/User ownership hierarchy.
+    """
+    return _filter_resource_for_admin(queryset, user, user_field)
+
 def filter_tasks_for_admin(queryset, admin_user):
     return _filter_resource_for_admin(queryset, admin_user, "created_by")
 

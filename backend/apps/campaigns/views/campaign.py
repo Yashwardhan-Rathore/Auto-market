@@ -11,7 +11,9 @@ from apps.accounts.permissions import IsAdminOrSuperAdmin
 from ..serializers import PendingApprovalSerializer
 from rest_framework import generics
 from rest_framework.filters import SearchFilter, OrderingFilter
-from apps.accounts.permissions import IsMarketingUser
+from django.db.models import Count, Q
+from apps.common.utils import filter_by_tenant
+from apps.communications.models import CommunicationEvent
 from apps.accounts.pagination import AccountsPagination
 from ..serializers import MyCampaignListSerializer
 
@@ -172,7 +174,7 @@ class PendingApprovalAPIView(APIView):
 
 
 class MyCampaignsAPIView(generics.ListAPIView):
-    permission_classes = [IsAuthenticated, IsMarketingUser]
+    permission_classes = [IsAuthenticated]
     serializer_class = MyCampaignListSerializer
     pagination_class = AccountsPagination
     filter_backends = [SearchFilter, OrderingFilter]
@@ -182,11 +184,10 @@ class MyCampaignsAPIView(generics.ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        queryset = Campaign.objects.filter(
-            created_by=user,
+        queryset = filter_by_tenant(Campaign.objects.filter(
             is_active=True,
             is_deleted=False
-        ).select_related(
+        ), user, "created_by").select_related(
             "task",
             "task__audience",
             "created_by",
@@ -194,6 +195,12 @@ class MyCampaignsAPIView(generics.ListAPIView):
             "approved_by",
         ).prefetch_related(
             "campaign_channels__channel"
+        ).annotate(
+            contacts=Count("audience__customer", distinct=True),
+            sent=Count("communication_events__recipient", filter=Q(communication_events__status__in=["SENT", "DELIVERED", "OPENED", "CLICKED"]), distinct=True),
+            delivered=Count("communication_events__recipient", filter=Q(communication_events__status__in=["DELIVERED", "OPENED", "CLICKED"]), distinct=True),
+            opened=Count("communication_events__recipient", filter=Q(communication_events__status__in=["OPENED", "CLICKED"]), distinct=True),
+            clicked=Count("communication_events__recipient", filter=Q(communication_events__status="CLICKED"), distinct=True),
         )
 
         status = self.request.query_params.get("status")
@@ -201,3 +208,26 @@ class MyCampaignsAPIView(generics.ListAPIView):
             queryset = queryset.filter(status=status)
             
         return queryset
+
+
+class CampaignWorkspaceSummaryAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        campaigns = filter_by_tenant(
+            Campaign.objects.filter(is_active=True, is_deleted=False),
+            request.user,
+            "created_by",
+        )
+        events = CommunicationEvent.objects.filter(campaign__in=campaigns)
+
+        def recipients(statuses):
+            return events.filter(status__in=statuses).values("recipient").distinct().count()
+
+        return Response({
+            "total_campaigns": campaigns.count(),
+            "total_sent": recipients(["SENT", "DELIVERED", "OPENED", "CLICKED"]),
+            "delivered": recipients(["DELIVERED", "OPENED", "CLICKED"]),
+            "opened": recipients(["OPENED", "CLICKED"]),
+            "clicked": recipients(["CLICKED"]),
+        })

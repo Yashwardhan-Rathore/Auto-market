@@ -35,9 +35,12 @@ class CaptionSerializer(serializers.ModelSerializer):
 
 
 class ImageReferenceSerializer(serializers.ModelSerializer):
+    asset_url = serializers.CharField(source='asset.file_url', read_only=True)
+    asset_name = serializers.CharField(source='asset.name', read_only=True)
+
     class Meta:
         model = ImageReference
-        fields = ['id', 'asset']
+        fields = ['id', 'asset', 'asset_url', 'asset_name']
 
 
 class ContentPlatformSerializer(serializers.ModelSerializer):
@@ -66,6 +69,7 @@ class ContentDraftVersionSerializer(serializers.ModelSerializer):
 
 
 class ContentDraftSerializer(serializers.ModelSerializer):
+    owner_name = serializers.SerializerMethodField()
     platforms = ContentPlatformSerializer(many=True, read_only=True)
     approvals = ApprovalSerializer(many=True, read_only=True)
     versions = ContentDraftVersionSerializer(many=True, read_only=True)
@@ -73,11 +77,14 @@ class ContentDraftSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContentDraft
         fields = [
-            'id', 'owner', 'original_prompt', 'enhanced_prompt',
+            'id', 'owner', 'owner_name', 'original_prompt', 'enhanced_prompt',
             'workflow_state', 'current_version', 'platforms', 'approvals', 'versions',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['owner', 'workflow_state', 'current_version']
+
+    def get_owner_name(self, obj):
+        return obj.owner.get_full_name().strip() or obj.owner.email
 
 class ContentDraftCreateSerializer(serializers.Serializer):
     original_prompt = serializers.CharField(required=True, allow_blank=False)

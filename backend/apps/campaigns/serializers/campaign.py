@@ -163,6 +163,11 @@ class MyCampaignListSerializer(serializers.ModelSerializer):
     approved_by = serializers.CharField(source="approved_by.email", read_only=True)
     channels = serializers.SerializerMethodField()
     available_actions = serializers.SerializerMethodField()
+    contacts = serializers.IntegerField(read_only=True)
+    sent = serializers.IntegerField(read_only=True)
+    delivered = serializers.IntegerField(read_only=True)
+    opened = serializers.IntegerField(read_only=True)
+    clicked = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Campaign
@@ -174,6 +179,12 @@ class MyCampaignListSerializer(serializers.ModelSerializer):
             "audience_name",
             "channels",
             "status",
+            "scheduled_at",
+            "contacts",
+            "sent",
+            "delivered",
+            "opened",
+            "clicked",
             "created_at",
             "updated_at",
             "submitted_at",

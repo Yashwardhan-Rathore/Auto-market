@@ -8,6 +8,7 @@ from apps.campaigns.views.campaign import (
     CampaignRejectAPIView,
     PendingApprovalAPIView,
     MyCampaignsAPIView,
+    CampaignWorkspaceSummaryAPIView,
 )
 
 from apps.campaigns.views import (
@@ -29,6 +30,11 @@ urlpatterns = [
         "my/",
         MyCampaignsAPIView.as_view(),
         name="campaign-my",
+    ),
+    path(
+        "summary/",
+        CampaignWorkspaceSummaryAPIView.as_view(),
+        name="campaign-workspace-summary",
     ),
     path(
         "templates/assign/",

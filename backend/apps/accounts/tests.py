@@ -87,3 +87,28 @@ class AuthenticationAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["first_name"], "Ada")
         self.assertEqual(response.data["role"], "USER")
+
+    def test_django_superuser_without_ma_user_can_create_admin(self):
+        root = User.objects.create_superuser(
+            email="django-root@example.com",
+            password=self.password,
+        )
+        self.client.force_authenticate(root)
+        response = self.client.post(
+            reverse("create-admin"),
+            {
+                "email": "created-admin@example.com",
+                "password": self.password,
+                "first_name": "Created",
+                "last_name": "Admin",
+                "mobile_no": "+91 98765 43210",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(
+            MAUser.objects.filter(
+                user__email="created-admin@example.com",
+                role="ADMIN",
+            ).exists()
+        )

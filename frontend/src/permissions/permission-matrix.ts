@@ -11,7 +11,7 @@ const matrix: Record<UserRole, Partial<Record<ModuleKey, readonly Action[]>>> = 
   },
   [ROLES.ADMIN]: {
     dashboard: ["view"], users: ["view", "create", "delete"], analytics: ["view"], audiences: ["view", "create"],
-    automations: ["view", "create", "update", "delete", "execute"], campaigns: ["view", "approve"], channels: ["view"],
+    automations: ["view", "create", "update", "delete", "execute"], campaigns: ["view", "create", "approve"], channels: ["view"],
     communications: ["view", "create"], content: ["view", "create", "update", "approve", "publish"], customers: ["view", "create"], forms: ["view", "create", "update", "delete", "publish"], tasks: ["view", "create", "approve"], templates: ["view", "create", "update"],
   },
   [ROLES.USER]: {
