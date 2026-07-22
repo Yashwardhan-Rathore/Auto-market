@@ -74,22 +74,28 @@ class AIOrchestrator:
         
         return self.text_provider.generate_text(prompt)
 
-    def build_and_generate_image(self, enhanced_prompt: str, brand_identity: dict, platform: str, size: str) -> str:
+    def build_and_generate_image(self, enhanced_prompt: str, brand_identity: dict, platform: str, size: str, reason: str = "") -> str:
         """
         Generates an image specific to the platform.
         """
         builder = ImagePromptBuilder()
         image_prompt = builder.build(enhanced_prompt, brand_identity, platform, size)
         
+        if reason:
+            image_prompt += f"\n\nUSER FEEDBACK FOR REGENERATION: Please explicitly apply this feedback when generating the image: {reason}"
+            
         logger.info(f"Generated optimized image prompt: {image_prompt}")
         
         return self.image_provider.generate_image(image_prompt, size)
 
-    def build_and_generate_caption(self, enhanced_prompt: str, platform: str, brand_identity: dict) -> str:
+    def build_and_generate_caption(self, enhanced_prompt: str, platform: str, brand_identity: dict, reason: str = "") -> str:
         """
         Generates a caption specific to the platform.
         """
         builder = CaptionPromptBuilder()
         caption_prompt = builder.build(enhanced_prompt, platform, brand_identity)
         
+        if reason:
+            caption_prompt += f"\n\nUSER FEEDBACK FOR REGENERATION: Please explicitly modify the caption based on this feedback: {reason}"
+            
         return self.text_provider.generate_text(caption_prompt)

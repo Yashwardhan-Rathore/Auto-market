@@ -62,6 +62,11 @@ class MAUser(models.Model):
 
     updated_at = models.DateTimeField(auto_now=True)
 
+    requires_approval = models.BooleanField(
+        default=True,
+        help_text="If True, the user's content must be approved before publishing."
+    )
+
     managed_by = models.ForeignKey(
         "self",
         null=True,

@@ -288,16 +288,24 @@ class ContentDraftViewSet(viewsets.ModelViewSet):
         draft = self.get_object()
         reason = request.data.get('reason', '')
         
+        # Granular regeneration flags
+        generate_images = request.data.get('generate_images', True)
+        generate_captions = request.data.get('generate_captions', True)
+        
         try:
             # First create the version snapshot
             version = ContentDraftService.create_content_version(draft, request.user, reason)
             
-            # Now trigger actual generation for each platform
+            # Now trigger actual generation
             from apps.content_studio.ai.services import AILifecycleService
             lifecycle = AILifecycleService()
+            
+            if generate_images and draft.platforms.exists():
+                lifecycle.generate_shared_image_for_draft(draft, request.user, reason)
+                
             for platform in draft.platforms.all():
-                lifecycle.generate_image_for_platform(platform, request.user, reason)
-                lifecycle.generate_caption_for_platform(platform, request.user, reason)
+                if generate_captions:
+                    lifecycle.generate_caption_for_platform(platform, request.user, reason)
                 
             return Response({
                 "message": "Content generated successfully.",

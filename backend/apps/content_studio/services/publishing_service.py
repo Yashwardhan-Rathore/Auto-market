@@ -17,8 +17,16 @@ class PublishingService:
         Saves any associated images to the AssetLibrary.
         """
         if draft.workflow_state not in [ContentDraft.WorkflowState.APPROVED, ContentDraft.WorkflowState.PUBLISHED]:
-            # Allow super admin/admin to bypass if needed, but standard flow requires approval
-            if user.role not in ['ADMIN', 'SUPER_ADMIN']:
+            # Allow super admin/admin or users who don't require approval to bypass
+            requires_approval = getattr(user, 'requires_approval', True)
+            if not hasattr(user, 'requires_approval'):
+                # Fetch it from MAUser if not cached by permission class
+                from apps.accounts.models import MAUser
+                ma_profile = MAUser.objects.filter(user=user).first()
+                if ma_profile:
+                    requires_approval = ma_profile.requires_approval
+
+            if requires_approval and getattr(user, 'role', 'USER') not in ['ADMIN', 'SUPER_ADMIN']:
                 raise ValueError("content must be approved before publishing.")
 
         platforms = draft.platforms.all()

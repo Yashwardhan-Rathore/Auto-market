@@ -110,9 +110,12 @@ Trigger the AI to generate the actual images and captions for each platform usin
 **Request Body (JSON)**:
 ```json
 {
-  "reason": "First Generation Request"
+  "reason": "First Generation Request",
+  "generate_images": true,
+  "generate_captions": true
 }
 ```
+*(Note: You can pass `"reason"` with specific feedback if regenerating to prompt the AI to change the output, and toggle `generate_images` or `generate_captions` to isolate generation).*
 
 **Expected Response (201 Created)**:
 ```json
