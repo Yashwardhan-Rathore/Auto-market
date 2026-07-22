@@ -110,7 +110,11 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 DATABASES = {
     "default": dj_database_url.parse(
         DATABASE_URL,
-        conn_max_age=600,
+        # The DATABASE_URL uses Neon's pooled endpoint. Let the pooler own
+        # connection reuse so Django never holds a socket after Neon closes it.
+        conn_max_age=int(os.getenv("DB_CONN_MAX_AGE", "0")),
+        conn_health_checks=True,
+        disable_server_side_cursors=True,
         ssl_require=(
             DATABASE_URL
             and DATABASE_URL.startswith(
@@ -119,6 +123,17 @@ DATABASES = {
         ),
     )
 }
+
+if DATABASE_URL and DATABASE_URL.startswith(("postgres://", "postgresql://")):
+    DATABASES["default"].setdefault("OPTIONS", {}).update(
+        {
+            "connect_timeout": 10,
+            "keepalives": 1,
+            "keepalives_idle": 30,
+            "keepalives_interval": 10,
+            "keepalives_count": 3,
+        }
+    )
 
 # --------------------------------------------------
 # Password Validation

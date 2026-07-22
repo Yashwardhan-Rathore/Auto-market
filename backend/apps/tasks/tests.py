@@ -6,7 +6,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.accounts.models import MAUser, User
-from apps.campaigns.models import Audience, Channel, CustomerUpload
+from apps.campaigns.models import Audience, Channel, CustomerRecord, CustomerUpload
 from apps.tasks.models import Task, TaskAssignment
 
 
@@ -94,3 +94,31 @@ class AdminTaskManagementAPITests(APITestCase):
         self.assertTrue(task.is_deleted)
         self.assertFalse(task.is_active)
         self.assertEqual(self.client.get(reverse("team-tasks")).data, [])
+
+    def test_assigned_user_can_preview_task_audience(self):
+        CustomerRecord.objects.create(
+            upload=self.audience.customer_upload,
+            data={
+                "name": "Priya Sharma",
+                "email": "priya@example.com",
+                "phone": "555-876-4433",
+                "city": "Chicago",
+            },
+        )
+        other_user = self.create_team_user("outsider@example.com", "Outside", "User")
+        created = self.client.post(reverse("create-task"), self.task_payload(), format="json")
+        task_id = created.data["id"]
+
+        self.client.force_authenticate(self.user)
+        response = self.client.get(
+            reverse("task-audience-preview", kwargs={"task_id": task_id})
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["total_customers"], 1)
+        self.assertEqual(response.data["preview"][0]["data"]["name"], "Priya Sharma")
+
+        self.client.force_authenticate(other_user)
+        forbidden = self.client.get(
+            reverse("task-audience-preview", kwargs={"task_id": task_id})
+        )
+        self.assertEqual(forbidden.status_code, status.HTTP_404_NOT_FOUND)

@@ -38,7 +38,7 @@ export function AdminAudiences() {
 
   const audiences = useQuery({ queryKey: ["admin-audiences"], queryFn: async () => (await apiClient.get<Audience[]>("/api/audiences/")).data });
   const uploads = useQuery({ queryKey: ["audience-uploads"], queryFn: async () => (await apiClient.get<Upload[]>("/api/customers/uploads/list/")).data, enabled: building });
-  const definition = useMemo(() => ({ type: form.type, description: form.description, groups_operator: form.groups_operator, groups: form.type === "DYNAMIC" ? form.groups.map((group) => ({ ...group, conditions: group.conditions.map(({ id: _id, ...condition }) => condition) })) : [] }), [form]);
+  const definition = useMemo(() => ({ type: form.type, description: form.description, groups_operator: form.groups_operator, groups: form.type === "DYNAMIC" ? form.groups.map((group) => ({ ...group, conditions: group.conditions.map((condition) => ({ field: condition.field, operator: condition.operator, value: condition.value })) })) : [] }), [form]);
 
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();

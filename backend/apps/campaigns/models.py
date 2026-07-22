@@ -157,6 +157,7 @@ class Campaign(models.Model):
     )
 
     started_at = models.DateTimeField(
+        db_column="processing_started_at",
         null=True,
         blank=True,
     )

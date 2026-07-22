@@ -81,7 +81,7 @@ export function AdminContacts() {
     queryKey: ["admin-contacts"],
     queryFn: async () => (await apiClient.get<RecordRow[]>("/api/customers/")).data,
   });
-  const rows = query.data ?? [];
+  const rows = useMemo(() => query.data ?? [], [query.data]);
   const normalized = useMemo(() => rows.map((row) => ({ row, contact: normalize(row) })), [rows]);
   const allTags = useMemo(
     () => Array.from(new Set(normalized.flatMap(({ contact }) => contact.tags))).sort(),

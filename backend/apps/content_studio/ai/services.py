@@ -96,7 +96,8 @@ class AILifecycleService:
             enhanced_prompt=draft.enhanced_prompt,
             brand_identity=brand_identity,
             platform=platform_record.platform,
-            size=size
+            size=size,
+            reason=reason if reason != "Image Generation" else ""
         )
         
         # Capture version snapshot since content changed
@@ -121,6 +122,55 @@ class AILifecycleService:
         return image_url, image_ref
 
     @transaction.atomic
+    def generate_shared_image_for_draft(self, draft, user, reason="Image Generation"):
+        """
+        Generates a single image for the draft and links it to all associated platforms.
+        """
+        platforms = draft.platforms.all()
+        if not platforms:
+            return None
+            
+        BillingService.consume_credits(
+            amount=10,
+            description=f"Generated Shared Image for Draft {draft.id}",
+            reference_id=str(draft.id)
+        )
+        
+        brand_identity = self._get_brand_identity()
+        size = "1024x1024" # Default size for shared image
+        
+        # We can just pass "Multi-Platform" or the first platform name to the orchestrator
+        image_url = self.orchestrator.build_and_generate_image(
+            enhanced_prompt=draft.enhanced_prompt,
+            brand_identity=brand_identity,
+            platform="Multi-Platform",
+            size=size,
+            reason=reason if reason != "Image Generation" else ""
+        )
+        
+        ContentDraftService.create_content_version(draft, user, reason=reason)
+        
+        from apps.asset_library.models import Asset
+        asset = Asset.objects.create(
+            uploaded_by=user,
+            name=f"Generated Shared Image for Draft {draft.id}",
+            file_url=image_url,
+            asset_type=Asset.AssetType.IMAGE
+        )
+        
+        image_refs = []
+        for platform_record in platforms:
+            # Delete old ones to avoid duplicates if regenerating
+            platform_record.images.all().delete()
+            
+            image_refs.append(ImageReference.objects.create(
+                platform=platform_record,
+                asset=asset
+            ))
+            
+        return image_url, image_refs
+
+    @transaction.atomic
     def generate_caption_for_platform(self, platform_record, user, reason="Caption Generation"):
         """
         Generates a caption for a specific platform.
@@ -138,7 +188,8 @@ class AILifecycleService:
         caption_text = self.orchestrator.build_and_generate_caption(
             enhanced_prompt=draft.enhanced_prompt,
             platform=platform_record.platform,
-            brand_identity=brand_identity
+            brand_identity=brand_identity,
+            reason=reason if reason != "Caption Generation" else ""
         )
         
         # Create or update caption record

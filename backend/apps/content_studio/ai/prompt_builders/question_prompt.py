@@ -18,7 +18,7 @@ CURRENT content SPEC:
 
 INSTRUCTIONS:
 1. Identify what critical information is missing from the content SPEC that would improve the final content.
-2. Generate 2 to 3 highly relevant questions to ask the client.
+2. Generate up to 10 highly relevant multiple-choice questions (MCQs) to ask the client.
 3. Return the output STRICTLY as a JSON object.
 
 EXPECTED JSON SCHEMA:

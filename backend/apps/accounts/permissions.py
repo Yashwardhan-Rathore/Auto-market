@@ -74,6 +74,7 @@ class IsContentStudioAuthorized(BasePermission):
             return False
             
         request.user.role = ma_user.role  # Cache it on request.user for view logic
+        request.user.requires_approval = ma_user.requires_approval
         return True
 
 class IsSuperAdmin(BasePermission):

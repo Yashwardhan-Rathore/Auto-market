@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { BarChart3, Bot, ChevronLeft, ContactRound, CreditCard, Gauge, ListChecks, LogOut, Megaphone, Menu, Settings, Share2, Tags, Users, X } from "lucide-react";
+import { BarChart3, Bot, ChevronLeft, ContactRound, CreditCard, FolderOpen, Gauge, ListChecks, LogOut, Megaphone, Menu, Settings, Share2, SquarePen, Tags, TrendingUp, Users, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -26,6 +26,15 @@ const adminNavigation = [
   {key:"analytics",label:"Analytics",icon:BarChart3},
   {key:"account",label:"Account",icon:Settings},
 ];
+const userNavigation = [
+  {key:"dashboard",label:"Dashboard",icon:Gauge},
+  {key:"tasks",label:"My Tasks",icon:ListChecks},
+  {key:"campaigns",label:"Campaigns",icon:Megaphone},
+  {key:"content",label:"Content Studio",icon:SquarePen},
+  {key:"assets",label:"Asset library",icon:FolderOpen},
+  {key:"performance",label:"My Performance",icon:TrendingUp},
+  {key:"account",label:"Account",icon:Settings},
+];
 
 function initials(email:string, first?:string, last?:string){ return first||last ? `${first?.[0]??""}${last?.[0]??""}`.toUpperCase() : email.slice(0,2).toUpperCase(); }
 
@@ -38,7 +47,7 @@ export function PortalShell({ rolePath, children }: { rolePath: string; children
   const link=(key:string,label:string,Icon:typeof Gauge)=>{const href=`/${rolePath}/${key}`;const active=pathname===href;return <Link title={collapsed?label:undefined} key={key} onClick={()=>setOpen(false)} className={`sa-nav-link ${active?"sa-nav-active":""}`} href={href}><Icon size={20}/>{!collapsed&&<span>{label}</span>}</Link>};
   const sidebar=<motion.aside animate={{width:collapsed?88:284}} className="admin-sidebar flex h-full flex-col overflow-hidden border-r border-white/10 bg-[#06101f] text-white">
     <div className="flex h-20 shrink-0 items-center gap-3 border-b border-white/10 px-5"><motion.div whileHover={{rotate:-8,scale:1.08}} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-600 shadow-lg shadow-blue-600/30"><BarChart3 size={23}/></motion.div>{!collapsed&&<div><span className="text-[11px] font-bold tracking-[.18em] text-blue-400">{rolePath.replace("-"," ").toUpperCase()}</span><strong className="block whitespace-nowrap text-base">MARKETING AUTO.</strong></div>}<button aria-label="Close navigation" className="ml-auto md:hidden" onClick={()=>setOpen(false)}><X/></button></div>
-    <nav className="flex-1 overflow-y-auto px-3 py-5">{rolePath==="super-admin"?superNavigation.map(group=><div className="mb-6" key={group.group}>{!collapsed&&<p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[.14em] text-slate-500">{group.group}</p>}<div className="space-y-1">{group.items.map(i=>link(i.key,i.label,i.icon))}</div></div>):<div className="space-y-1">{(rolePath==="admin"?adminNavigation:standardNav.map(item=>({key:item,label:labels[item],icon:Gauge}))).map(item=>link(item.key,item.label,item.icon))}</div>}</nav>
+    <nav className="flex-1 overflow-y-auto px-3 py-5">{rolePath==="super-admin"?superNavigation.map(group=><div className="mb-6" key={group.group}>{!collapsed&&<p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[.14em] text-slate-500">{group.group}</p>}<div className="space-y-1">{group.items.map(i=>link(i.key,i.label,i.icon))}</div></div>):<div className="space-y-1">{(rolePath==="admin"?adminNavigation:rolePath==="user"?userNavigation:standardNav.map(item=>({key:item,label:labels[item],icon:Gauge}))).map(item=>link(item.key,item.label,item.icon))}</div>}</nav>
     <div className="border-t border-white/10 p-3"><div className="flex items-center gap-3 rounded-xl bg-white/[.04] p-2.5"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-600 font-bold">{initials(user.email,user.first_name,user.last_name)}</div>{!collapsed&&<div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{[user.first_name,user.last_name].filter(Boolean).join(" ")||user.email}</p><p className="text-xs text-slate-400">{user.role.replaceAll("_"," ")}</p></div>}<button aria-label="Log out" onClick={()=>void logout()} className="rounded-lg p-2 text-slate-400 hover:bg-white/10 hover:text-white"><LogOut size={18}/></button></div><button className="mt-2 hidden w-full items-center justify-center rounded-lg py-2 text-slate-500 hover:bg-white/5 hover:text-white md:flex" onClick={()=>setCollapsed(v=>!v)}><motion.span animate={{rotate:collapsed?180:0}}><ChevronLeft size={18}/></motion.span></button></div>
   </motion.aside>;
   return <div className={`min-h-screen bg-[#f5f7fb] md:grid ${collapsed?"md:grid-cols-[88px_1fr]":"md:grid-cols-[284px_1fr]"} transition-[grid-template-columns] duration-300`}><div className="hidden md:block">{sidebar}</div><AnimatePresence>{open&&<motion.div className="fixed inset-0 z-50 md:hidden" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><button className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={()=>setOpen(false)}/><motion.div className="relative h-full w-[284px]" initial={{x:-284}} animate={{x:0}} exit={{x:-284}}>{sidebar}</motion.div></motion.div>}</AnimatePresence>

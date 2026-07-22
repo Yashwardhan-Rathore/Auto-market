@@ -2,6 +2,8 @@ from django.shortcuts import render
 
 # Create your views here.
 from django.shortcuts import get_object_or_404
+from django.db.models import TextField
+from django.db.models.functions import Cast
 
 from rest_framework import status
 from rest_framework.views import APIView
@@ -105,6 +107,62 @@ class MyTasksView(APIView):
 
         return Response(
             serializer.data
+        )
+
+
+class TaskAudiencePreviewView(APIView):
+    """Preview only the audience attached to a task assigned to the current user."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, task_id):
+        assignment = get_object_or_404(
+            TaskAssignment.objects.select_related("task__audience__customer_upload"),
+            task_id=task_id,
+            user=request.user,
+            task__is_active=True,
+            task__is_deleted=False,
+        )
+        from apps.campaigns.services import AudienceService
+
+        audience = assignment.task.audience
+        try:
+            customers = AudienceService.get_customers(
+                customer_upload=audience.customer_upload,
+                audience_definition=audience.definition or {},
+            )
+        except (KeyError, TypeError, ValueError):
+            # Legacy audiences may contain null/unsupported operators. Their
+            # established behavior is to represent the complete source upload.
+            customers = audience.customer_upload.records.all()
+        search = request.query_params.get("search", "").strip()
+        if search:
+            customers = customers.annotate(
+                searchable_data=Cast("data", output_field=TextField())
+            ).filter(searchable_data__icontains=search)
+
+        try:
+            page = max(1, int(request.query_params.get("page", 1)))
+            page_size = min(10, max(1, int(request.query_params.get("page_size", 5))))
+        except (TypeError, ValueError):
+            page, page_size = 1, 5
+
+        total = customers.count()
+        pages = max(1, (total + page_size - 1) // page_size)
+        page = min(page, pages)
+        start = (page - 1) * page_size
+        records = customers.order_by("id")[start:start + page_size]
+        return Response(
+            {
+                "audience": {"id": audience.id, "name": audience.name},
+                "total_customers": total,
+                "page": page,
+                "pages": pages,
+                "preview": [
+                    {"id": customer.id, "data": customer.data}
+                    for customer in records
+                ],
+            }
         )
     
 
