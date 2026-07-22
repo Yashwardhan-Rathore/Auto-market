@@ -8,6 +8,7 @@ from .views import (
     ApproveTaskView,
     RejectTaskView,
     TaskDetailView,
+    TaskAudiencePreviewView,
 )
 
 urlpatterns = [
@@ -24,6 +25,11 @@ urlpatterns = [
         "my/",
         MyTasksView.as_view(),
         name="my-tasks",
+    ),
+    path(
+        "<int:task_id>/audience-preview/",
+        TaskAudiencePreviewView.as_view(),
+        name="task-audience-preview",
     ),
 
     # Admin team tasks

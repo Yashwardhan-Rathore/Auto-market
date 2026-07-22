@@ -47,4 +47,3 @@ function lastSevenDays(){return Array.from({length:7},(_,index)=>{const date=new
 function sameDay(value:string|null|undefined,date:Date){return !!value&&new Date(value).toDateString()===date.toDateString();}
 function compact(value:number){return Intl.NumberFormat("en",{notation:value>=1000?"compact":"standard",maximumFractionDigits:1}).format(value);}
 function compactTitle(value:string){return value.length>11?`${value.slice(0,10)}…`:value;}
-function short(value:string){return value.length>11?`${value.slice(0,10)}…`:value;}

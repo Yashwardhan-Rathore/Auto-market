@@ -120,7 +120,9 @@ class GeneratedContentListAPIView(generics.ListAPIView):
     serializer_class = GeneratedContentSerializer
 
     def get_queryset(self):
-        return GeneratedContent.objects.all()
+        return GeneratedContent.objects.filter(
+            created_by=self.request.user,
+        ).prefetch_related("versions")
 
 class RegenerateContentAPIView(APIView):
     permission_classes = [IsAuthenticated]
