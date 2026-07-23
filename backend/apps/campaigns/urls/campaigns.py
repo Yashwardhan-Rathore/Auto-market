@@ -2,7 +2,9 @@ from django.urls import path
 
 from apps.campaigns.views.campaign import (
     CampaignCreateAPIView,
+    CampaignDetailAPIView,
     CampaignUpdateAPIView,
+    CampaignDeleteAPIView,
     CampaignSubmitAPIView,
     CampaignApproveAPIView,
     CampaignRejectAPIView,
@@ -74,6 +76,11 @@ urlpatterns = [
         name="campaign-update",
     ),
     path(
+        "<int:campaign_id>/delete/",
+        CampaignDeleteAPIView.as_view(),
+        name="campaign-delete",
+    ),
+    path(
         "<int:campaign_id>/schedule/",
         CampaignScheduleUpdateAPIView.as_view(),
         name="campaign-schedule-update",
@@ -92,5 +99,10 @@ urlpatterns = [
         "<int:campaign_id>/reject/",
         CampaignRejectAPIView.as_view(),
         name="campaign-reject",
+    ),
+    path(
+        "<int:campaign_id>/detail/",
+        CampaignDetailAPIView.as_view(),
+        name="campaign-detail",
     ),
 ]

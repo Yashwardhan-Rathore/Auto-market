@@ -1,5 +1,6 @@
 import json
 import logging
+from django.conf import settings
 from .providers.gemini_provider import GeminiProvider
 from .providers.huggingface_provider import HuggingFaceProvider
 from .prompt_builders import (
@@ -22,7 +23,13 @@ class AIOrchestrator:
     def __init__(self):
         # In the future, provider selection could be dynamic based on user preference or availability.
         self.text_provider = GeminiProvider()
-        self.image_provider = HuggingFaceProvider()
+        # Use Hugging Face when explicitly configured; otherwise reuse the
+        # configured Gemini key so prompt-based image generation still works.
+        self.image_provider = (
+            HuggingFaceProvider()
+            if getattr(settings, "HF_TOKEN", None)
+            else GeminiProvider()
+        )
 
     def _clean_json_response(self, text: str) -> str:
         text = text.strip()

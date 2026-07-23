@@ -49,7 +49,8 @@ class CustomerRecordListAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        customers = filter_customer_records_for_admin(CustomerRecord.objects.all(), request.user).order_by("-created_at")[:100]
+        limit = min(int(request.query_params.get("size", 2000)), 5000)
+        customers = filter_customer_records_for_admin(CustomerRecord.objects.all(), request.user).order_by("-created_at")[:limit]
         serializer = CustomerRecordSerializer(customers, many=True)
         return Response(serializer.data)
 
@@ -60,7 +61,7 @@ class CustomerRecordListAPIView(APIView):
             file_name="Manual contacts",
             defaults={"file_type": "manual", "status": CustomerUpload.Status.COMPLETED},
         )
-        customer = CustomerRecord.objects.create(upload=upload, data=contact)
+        customer = CustomerRecord.objects.create(upload=upload, data={**contact, "__source__": "created"})
         upload.total_records = upload.records.count()
         upload.imported_records = upload.total_records
         upload.save(update_fields=["total_records", "imported_records"])
@@ -106,6 +107,28 @@ def _validated_contact(payload):
         "status": str(payload.get("status", "Active")),
         "activity": str(payload.get("activity", "Just added")),
     }
+
+class CustomerBulkDeleteAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """
+        POST /api/customers/bulk-delete/
+        body: { "ids": [1,2,3] }   — delete specific contacts
+        body: { "all": true }       — delete ALL contacts visible to this user
+        """
+        if request.data.get("all"):
+            qs = filter_customer_records_for_admin(CustomerRecord.objects.all(), request.user)
+            count, _ = qs.delete()
+            return Response({"deleted": count})
+
+        ids = request.data.get("ids", [])
+        if not isinstance(ids, list) or not ids:
+            return Response({"detail": "Provide a list of ids."}, status=status.HTTP_400_BAD_REQUEST)
+        qs = filter_customer_records_for_admin(CustomerRecord.objects.filter(pk__in=ids), request.user)
+        count, _ = qs.delete()
+        return Response({"deleted": count})
+
 
 class CampaignCreateAPIView(APIView):
 

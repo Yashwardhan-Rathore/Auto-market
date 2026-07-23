@@ -15,8 +15,64 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path,include
+from django.urls import path, include
 from apps.accounts.views import ListAdminsView, ListUsersView
+
+# ── Inline asset library view (avoids sub-module reload timing issues) ─────────
+import os, uuid as _uuid
+from django.conf import settings as _settings
+from django.core.files.storage import default_storage as _storage
+from rest_framework.views import APIView as _APIView
+from rest_framework.permissions import IsAuthenticated as _IsAuth
+from rest_framework.response import Response as _Resp
+from rest_framework.pagination import PageNumberPagination as _Pager
+from rest_framework import status as _status
+from apps.asset_library.models import Asset as _Asset
+from apps.asset_library.serializers import AssetSerializer as _AssetSer, AssetCreateSerializer as _AssetCreateSer
+
+def _auto_type(name):
+    ext = os.path.splitext(name)[1].lower().lstrip(".")
+    if ext in {"jpg","jpeg","png","webp","gif","svg","bmp"}: return _Asset.AssetType.IMAGE
+    if ext in {"mp4","mov","avi","mkv","webm","m4v"}:        return _Asset.AssetType.VIDEO
+    if ext in {"pdf","doc","docx","xls","xlsx","ppt","pptx","txt","csv"}: return _Asset.AssetType.DOCUMENT
+    return _Asset.AssetType.OTHER
+
+class _AssetPager(_Pager):
+    page_size = 50
+    page_size_query_param = "size"
+    max_page_size = 200
+
+class _AssetListCreate(_APIView):
+    permission_classes = [_IsAuth]
+    def get(self, request):
+        qs = _Asset.objects.filter(uploaded_by=request.user).select_related("uploaded_by").prefetch_related("tags")
+        t = request.query_params.get("type")
+        if t: qs = qs.filter(asset_type=t.upper())
+        s = request.query_params.get("search","").strip()
+        if s: qs = qs.filter(name__icontains=s)
+        p = _AssetPager(); page = p.paginate_queryset(qs, request)
+        return p.get_paginated_response(_AssetSer(page, many=True).data)
+    def post(self, request):
+        ser = _AssetCreateSer(data=request.data); ser.is_valid(raise_exception=True); d = ser.validated_data
+        file_url = d.get("file_url",""); f = d.get("file")
+        if f:
+            ext = os.path.splitext(f.name)[1]
+            saved = _storage.save(f"assets/{_uuid.uuid4().hex}{ext}", f)
+            file_url = request.build_absolute_uri(_settings.MEDIA_URL + saved)
+        asset = _Asset.objects.create(name=d["name"], file_url=file_url,
+            asset_type=d.get("asset_type") or _auto_type(d["name"]),
+            is_personal=d.get("is_personal", False), uploaded_by=request.user)
+        return _Resp(_AssetSer(asset).data, status=_status.HTTP_201_CREATED)
+
+class _AssetDetail(_APIView):
+    permission_classes = [_IsAuth]
+    def get(self, request, pk):
+        try: return _Resp(_AssetSer(_Asset.objects.get(pk=pk, uploaded_by=request.user)).data)
+        except _Asset.DoesNotExist: return _Resp({"detail":"Not found."}, status=404)
+    def delete(self, request, pk):
+        try: _Asset.objects.get(pk=pk, uploaded_by=request.user).delete(); return _Resp(status=204)
+        except _Asset.DoesNotExist: return _Resp({"detail":"Not found."}, status=404)
+# ──────────────────────────────────────────────────────────────────────────────
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -87,10 +143,17 @@ urlpatterns = [
         "api/content/",
         include("apps.content_studio.urls"),
     ),
+    path("api/assets/",          _AssetListCreate.as_view(), name="asset-list-create"),
+    path("api/assets/<uuid:pk>/", _AssetDetail.as_view(),    name="asset-detail"),
 ]
+
+import sys
 
 from django.conf import settings
 from django.conf.urls.static import static
 
-if settings.DEBUG:
+# Serve generated media from Django during local development. The machine can
+# define DEBUG=False globally, so checking the runserver command keeps local
+# prompt previews working without enabling this behavior in production.
+if settings.DEBUG or "runserver" in sys.argv:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

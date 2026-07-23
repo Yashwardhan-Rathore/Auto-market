@@ -1,4 +1,5 @@
 from django.db.models import Count, Q
+from django.db.models.functions import TruncDate
 
 from apps.campaigns.models import (
     Campaign,
@@ -31,6 +32,7 @@ class AnalyticsService:
             "campaign": cls._get_campaign_info(campaign),
             "summary": cls._get_summary(deliveries),
             "channels": cls._get_channel_summary(deliveries),
+            "daily_series": cls._get_daily_series(deliveries),
             "recent_deliveries": cls._get_recent_deliveries(deliveries),
         }
 
@@ -210,6 +212,49 @@ class AnalyticsService:
                 "status": row["status"],
                 "provider_message_id": row["provider_message_id"],
                 "sent_at": row["sent_at"],
+            }
+            for row in rows
+        ]
+
+    # ==========================================================
+    # Daily Time Series
+    # ==========================================================
+
+    @staticmethod
+    def _get_daily_series(deliveries):
+        """
+        Return daily sent / delivered / failed counts for a sparkline chart.
+        """
+        rows = (
+            deliveries.filter(sent_at__isnull=False)
+            .annotate(day=TruncDate("sent_at"))
+            .values("day")
+            .annotate(
+                sent=Count(
+                    "id",
+                    filter=Q(status__in=[
+                        CampaignDelivery.Status.SENT,
+                        CampaignDelivery.Status.DELIVERED,
+                    ]),
+                ),
+                delivered=Count(
+                    "id",
+                    filter=Q(status=CampaignDelivery.Status.DELIVERED),
+                ),
+                failed=Count(
+                    "id",
+                    filter=Q(status=CampaignDelivery.Status.FAILED),
+                ),
+            )
+            .order_by("day")
+        )
+
+        return [
+            {
+                "date": str(row["day"]),
+                "sent": row["sent"],
+                "delivered": row["delivered"],
+                "failed": row["failed"],
             }
             for row in rows
         ]

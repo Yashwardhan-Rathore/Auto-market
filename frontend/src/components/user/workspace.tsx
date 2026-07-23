@@ -2,34 +2,36 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertTriangle, Bold, Braces, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, CircleDot, Clock3, Copy, Download, Eye, Facebook, FileText, Image, Instagram, Italic, Link2, Linkedin, List, ListChecks, ListOrdered, Mail, MapPin, Megaphone, MessageCircle, MoreVertical, Phone, Plus, Search, Send, ShieldCheck, Sparkles, Target, Trash2, Underline, UserRound, Users, WandSparkles, X } from "lucide-react";
+import { AlertTriangle, BarChart3, Bold, Bookmark, Braces, CalendarClock, CalendarDays, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleDot, Clock3, Copy, Download, Eye, Facebook, FileText, Heart, Image as ImageIcon, Instagram, Italic, Link2, Linkedin, List, ListChecks, ListOrdered, LoaderCircle, Mail, Megaphone, MessageCircle, MoreVertical, Pencil, Plus, RefreshCw, Repeat2, Save, Search, Send, Share2, ShieldCheck, Sparkles, Target, ThumbsUp, Trash2, Underline, UserRound, Users, WandSparkles, X } from "lucide-react";
 import Link from "next/link";
 import NextImage from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
-import { apiClient, parseApiError } from "@/services/api-client";
+import { apiClient, parseApiError, resolveApiUrl } from "@/services/api-client";
 
 type TaskInfo={id:number;title:string;description:string;instructions:string;audience:number;audience_name:string;channels:number[];priority:string;status:string;due_date:string;created_at?:string};
 type Assignment={id:number;task:TaskInfo;status:string;remarks:string;created_at:string;updated_at:string;submitted_at:string|null};
-type Campaign={id:number;campaign_name:string;task_id:number;task_name:string;audience_name:string;channels:string[];status:string;scheduled_at:string|null;contacts:number;sent:number;delivered:number;opened:number;clicked:number;created_at:string;available_actions:string[]};
+type Campaign={id:number;campaign_name:string;task_id:number;task_name:string;audience_name:string;channels:string[];status:string;scheduled_at:string|null;contacts:number;sent:number;delivered:number;opened:number;clicked:number;created_at:string;available_actions:string[];rejection_reason:string|null;review_comments:string|null};
 type CampaignPage={count:number;next:string|null;previous:string|null;results:Campaign[]};
 type Channel={id:number;name:string};
 type Template={id:number;name:string;channel:number;channel_name:string;subject:string;body:string;status:string;created_at:string};
+type ChannelTemplate={template_id:string;template_name:string;subject:string;body:string};
 type DashboardSummary={campaigns:{total:number;draft:number;scheduled:number;sending:number;completed:number};deliveries?:{total:number;sent:number;failed:number;pending:number;delivered:number;success_rate:number};recent_campaigns?:{id:number;name:string;status:string;created_at:string;scheduled_at:string|null;completed_at:string|null}[]};
 type AudiencePreviewPage={audience:{id:number;name:string};total_customers:number;page:number;pages:number;preview:{id:number;data:Record<string,unknown>}[]};
-type CampaignDraft={task:string;name:string;description:string;template_id:string;template_name:string;channel:string;subject:string;body:string;scheduled_at:string};
+type CampaignDraft={task:string;name:string;description:string;template_id:string;template_name:string;channel:string;subject:string;body:string;scheduled_at:string;channelTemplates:Record<string,ChannelTemplate>};
 type GeneratedContent={id:string;content_type:string;platform:string;status:string;created_at:string;versions:{id:string;version_number:number;prompt:string;text_content:string;image_url:string|null;created_at:string}[]};
-type GeneratedResult={id:string;content_type:string;platform:string;text_content:string;image_url:string|null;version_id:string};
+type ContentPlatformData={id:string;platform:string;status:string;approval_status:string;scheduled_datetime:string|null;published_datetime:string|null;caption:{caption_text:string;hashtags:string;cta:string}|null;images:{asset_url?:string;asset_name?:string}[]};
+type ContentDraftData={id:string;original_prompt:string;enhanced_prompt:string;workflow_state:string;platforms:ContentPlatformData[];created_at:string;updated_at:string};
 
 const campaignTone:Record<string,string>={DRAFT:"bg-slate-100 text-slate-700",PENDING_APPROVAL:"bg-amber-50 text-amber-700 ring-1 ring-amber-200",APPROVED:"bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",SCHEDULED:"bg-blue-50 text-blue-700 ring-1 ring-blue-200",SENDING:"bg-violet-50 text-violet-700 ring-1 ring-violet-200",COMPLETED:"bg-green-50 text-green-700 ring-1 ring-green-200",FAILED:"bg-red-50 text-red-600 ring-1 ring-red-200",REJECTED:"bg-slate-100 text-slate-500"};
 const taskTone:Record<string,string>={ASSIGNED:"bg-violet-50 text-violet-700",PENDING:"bg-amber-50 text-amber-700",IN_PROGRESS:"bg-blue-50 text-blue-700",SUBMITTED:"bg-cyan-50 text-cyan-700",APPROVED:"bg-emerald-50 text-emerald-700",COMPLETED:"bg-emerald-50 text-emerald-700",REJECTED:"bg-red-50 text-red-600"};
 const priorityTone:Record<string,string>={HIGH:"bg-red-50 text-red-600 ring-1 ring-red-200",MEDIUM:"bg-amber-50 text-amber-600 ring-1 ring-amber-200",LOW:"bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200"};
 const pieColors=["#3b82f6","#f59e0b","#10b981","#6366f1","#a855f7","#22c55e","#f43f5e","#94a3b8"];
-const editorTools=[{label:"Bold",icon:Bold,before:"**",after:"**"},{label:"Italic",icon:Italic,before:"_",after:"_"},{label:"Underline",icon:Underline,before:"<u>",after:"</u>"},{label:"Bulleted list",icon:List,before:"\n- ",after:""},{label:"Numbered list",icon:ListOrdered,before:"\n1. ",after:""},{label:"Link",icon:Link2,before:"[",after:"](https://)"},{label:"Image",icon:Image,before:"![image](",after:")"},{label:"Variable",icon:Braces,before:"{{",after:"}}"}] as const;
+const editorTools=[{label:"Bold",icon:Bold,cmd:"bold"},{label:"Italic",icon:Italic,cmd:"italic"},{label:"Underline",icon:Underline,cmd:"underline"},{label:"Bulleted list",icon:List,cmd:"insertUnorderedList"},{label:"Numbered list",icon:ListOrdered,cmd:"insertOrderedList"},{label:"Link",icon:Link2,cmd:"createLink"},{label:"Image",icon:ImageIcon,cmd:"insertImage"},{label:"Variable",icon:Braces,cmd:"insertVariable"}] as const;
 const campaignDraftKey="auto_market_campaign_draft";
-const emptyCampaignDraft:CampaignDraft={task:"",name:"",description:"",template_id:"",template_name:"",channel:"",subject:"",body:"",scheduled_at:""};
+const emptyCampaignDraft:CampaignDraft={task:"",name:"",description:"",template_id:"",template_name:"",channel:"",subject:"",body:"",scheduled_at:"",channelTemplates:{}};
 const contentPlatforms=[{value:"INSTAGRAM",label:"Instagram",icon:Instagram,tone:"text-pink-600"},{value:"FACEBOOK",label:"Facebook",icon:Facebook,tone:"text-blue-600"},{value:"LINKEDIN",label:"LinkedIn",icon:Linkedin,tone:"text-sky-700"},{value:"X",label:"X",icon:null,tone:"text-slate-950"}] as const;
 const readCampaignDraft=()=>{if(typeof window==="undefined")return null;try{return JSON.parse(sessionStorage.getItem(campaignDraftKey)||"null") as CampaignDraft|null}catch{return null}};
 const storeCampaignDraft=(draft:CampaignDraft|null)=>{if(typeof window==="undefined")return;if(draft)sessionStorage.setItem(campaignDraftKey,JSON.stringify(draft));else sessionStorage.removeItem(campaignDraftKey)};
@@ -96,18 +98,44 @@ export function UserPerformance(){
 function PerformanceChart({title,children}:{title:string;children:React.ReactElement}){return <section className="sa-card p-5"><h2 className="font-black">{title}</h2><div className="mt-4 h-56"><ResponsiveContainer width="100%" height="100%">{children}</ResponsiveContainer></div></section>}
 
 export function UserContentStudio(){
-  const client=useQueryClient();const [prompt,setPrompt]=useState("");const [selected,setSelected]=useState<string[]>(contentPlatforms.map(item=>item.value));
+  const client=useQueryClient();const [prompt,setPrompt]=useState("");const [selected,setSelected]=useState<string[]>(contentPlatforms.map(item=>item.value));const [current,setCurrent]=useState<ContentDraftData|null>(null);
   const history=useQuery({queryKey:["user-content-history"],queryFn:async()=>(await apiClient.get<GeneratedContent[]>("/api/content/history/")).data});
   const enhance=useMutation({mutationFn:async()=>{const response=(await apiClient.post<{content_spec?:Record<string,unknown>}>("/api/content/content-drafts/analyze_prompt/",{prompt:prompt.trim()})).data;return response.content_spec??{}},onSuccess:spec=>{const details=Object.entries(spec).filter(([,value])=>value!==null&&value!==""&&value!==undefined).map(([key,value])=>`${pretty(key)}: ${Array.isArray(value)?value.join(", "):String(value)}`).join("\n");if(details)setPrompt(value=>`${value.trim()}\n\nContent brief:\n${details}`.slice(0,2000));toast.success(details?"Prompt enhanced":"Prompt is ready")},onError:error=>toast.error(parseApiError(error))});
-  const generate=useMutation({mutationFn:()=>Promise.all(selected.map(platform=>apiClient.post<GeneratedResult>("/api/content/generate/",{prompt:prompt.trim(),content_type:"SOCIAL",platform}))),onSuccess:responses=>{const first=responses[0]?.data;if(first)setPrompt(first.text_content||prompt);toast.success(`Generated content for ${responses.length} channel${responses.length===1?"":"s"}`);void client.invalidateQueries({queryKey:["user-content-history"]})},onError:error=>toast.error(parseApiError(error))});
+  const generate=useMutation({mutationFn:async()=>{const created=(await apiClient.post<ContentDraftData>("/api/content/content-drafts/",{original_prompt:prompt.trim(),platforms:selected},{timeout:60000})).data;setCurrent(created);try{await apiClient.patch(`/api/content/content-drafts/${created.id}/`,{enhanced_prompt:prompt.trim()},{timeout:60000});await apiClient.post(`/api/content/content-drafts/${created.id}/regenerate/`,{reason:"Initial content generation",generate_images:true,generate_captions:true},{timeout:240000});return(await apiClient.get<ContentDraftData>(`/api/content/content-drafts/${created.id}/`,{timeout:60000})).data}catch(error){try{setCurrent((await apiClient.get<ContentDraftData>(`/api/content/content-drafts/${created.id}/`,{timeout:60000})).data)}catch{}throw error}},onSuccess:draft=>{setCurrent(draft);toast.success("Prompt-based content and image generated");void client.invalidateQueries({queryKey:["user-content-history"]})},onError:error=>toast.error(parseApiError(error))});
   const save=useMutation({mutationFn:(id:string)=>apiClient.post(`/api/content/${id}/action/`,{action:"save_to_library"}),onSuccess:()=>toast.success("Saved to Asset Library"),onError:error=>toast.error(parseApiError(error))});
   const toggle=(platform:string)=>setSelected(value=>value.includes(platform)?value.filter(item=>item!==platform):[...value,platform]);
   const copy=async(text:string)=>{await navigator.clipboard.writeText(text);toast.success("Content copied")};
   const download=(item:GeneratedContent)=>{const text=item.versions[0]?.text_content||"";const url=URL.createObjectURL(new Blob([text],{type:"text/plain"}));const anchor=document.createElement("a");anchor.href=url;anchor.download=`${item.platform.toLowerCase()}-content.txt`;anchor.click();URL.revokeObjectURL(url)};
+  if(current)return <ContentPreviewCustomize draft={current} generating={generate.isPending} onChange={setCurrent} onBack={()=>setCurrent(null)} onGenerateNew={()=>{setCurrent(null);setPrompt("")}}/>;
   return <div><PageHeading title="Content Studio" subtitle="Create AI-powered content for all your marketing channels."/><section className="sa-card mt-6 p-6"><div className="flex items-center gap-2"><h2 className="font-black">Your Prompt</h2><CircleDot size={15} className="text-slate-400"/></div><div className="relative mt-4"><textarea maxLength={2000} rows={6} className="w-full resize-y rounded-xl border border-slate-200 bg-white p-4 pb-9 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100" placeholder="Example: Write a LinkedIn post about the benefits of email marketing for small businesses..." value={prompt} onChange={event=>setPrompt(event.target.value)}/><span className="absolute bottom-3 right-4 text-xs text-slate-400">{prompt.length} / 2000</span></div><div className="mt-4 flex flex-wrap items-center justify-between gap-3"><button type="button" className="secondary-button flex items-center gap-2 px-5 text-blue-600" disabled={!prompt.trim()||enhance.isPending} onClick={()=>enhance.mutate()}><WandSparkles size={17}/>{enhance.isPending?"Enhancing...":"Enhance Prompt"}</button><div className="flex gap-3"><button type="button" className="secondary-button flex items-center gap-2 px-5" disabled={!prompt} onClick={()=>setPrompt("")}><Trash2 size={17}/>Clear</button><button type="button" className="primary-button px-6" disabled={!prompt.trim()||!selected.length||generate.isPending} onClick={()=>generate.mutate()}><Sparkles size={17}/>{generate.isPending?"Generating...":"Generate Content"}</button></div></div></section>
     <section className="sa-card mt-5 p-6"><h2 className="font-black">Channels</h2><div className="mt-5 flex flex-wrap gap-x-8 gap-y-4">{contentPlatforms.map(platform=>{const Icon=platform.icon;const checked=selected.includes(platform.value);return <button type="button" role="checkbox" aria-checked={checked} className="flex items-center gap-2 text-sm font-semibold text-slate-700" key={platform.value} onClick={()=>toggle(platform.value)}><span className={`grid h-5 w-5 place-items-center rounded border text-xs ${checked?"border-blue-600 bg-blue-600 text-white":"border-slate-300 bg-white"}`}>{checked?"✓":""}</span>{Icon?<Icon className={platform.tone} size={20}/>:<b className="text-xl text-slate-950">𝕏</b>}{platform.label}</button>})}</div></section>
     <section className="mt-12"><div className="mb-4 flex items-center justify-between"><h2 className="font-black">Recent Posts</h2><span className="text-xs font-semibold text-blue-600">{history.data?.length??0} total</span></div>{history.isError?<ErrorState error={history.error}/>:history.isLoading?<Skeleton/>:<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">{(history.data??[]).slice(0,10).map((item,index)=><ContentPostCard item={item} index={index} key={item.id} onCopy={()=>void copy(item.versions[0]?.text_content||"")} onDownload={()=>download(item)} onSave={()=>save.mutate(item.id)}/>)}</div>}{!history.isLoading&&!history.data?.length&&<Empty message="Generate your first post to see it here."/>}</section>
     <section className="sa-card mt-8 grid divide-y divide-slate-100 bg-indigo-50/40 p-5 md:grid-cols-3 md:divide-x md:divide-y-0">{[[ShieldCheck,"Brand Safe Content","AI generation follows your configured brand voice."],[Sparkles,"Save Time","Create channel-ready content in seconds."],[Target,"Multi-Channel Ready","Generate tailored content for every selected channel."]].map(([Icon,title,description])=><div className="flex items-center gap-4 px-5 py-3 first:pl-0" key={String(title)}><span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-indigo-50 text-indigo-700"><Icon size={23}/></span><div><h3 className="font-bold">{String(title)}</h3><p className="mt-1 text-xs text-slate-500">{String(description)}</p></div></div>)}</section></div>;
+}
+
+function ContentPreviewCustomize({draft,generating,onChange,onBack,onGenerateNew}:{draft:ContentDraftData;generating:boolean;onChange:(draft:ContentDraftData)=>void;onBack:()=>void;onGenerateNew:()=>void}){
+  const [activeId,setActiveId]=useState(draft.platforms[0]?.id??"");const [edits,setEdits]=useState<Record<string,string>>({});const [scheduleAt,setScheduleAt]=useState("");const [firstComment,setFirstComment]=useState("");const [location,setLocation]=useState("Mumbai, India");const [publishAs,setPublishAs]=useState("Feed Post");const [busy,setBusy]=useState("");
+  const active=draft.platforms.find(item=>item.id===activeId)??draft.platforms[0];const caption=active?(edits[active.id]??[active.caption?.caption_text,active.caption?.hashtags,active.caption?.cta].filter(Boolean).join("\n\n")):"";const image=resolveApiUrl(active?.images[0]?.asset_url);const meta=contentPlatforms.find(item=>item.value===active?.platform);const ActiveIcon=meta?.icon;const isFacebook=active?.platform==="FACEBOOK";const isInstagram=active?.platform==="INSTAGRAM";const isLinkedIn=active?.platform==="LINKEDIN";const isX=active?.platform==="X";const contentLimit=isX?280:isLinkedIn?3000:2200;const firstCommentLimit=isFacebook?800:300;
+  const refresh=async()=>{const updated=(await apiClient.get<ContentDraftData>(`/api/content/content-drafts/${draft.id}/`,{timeout:60000})).data;onChange(updated);return updated};
+  const run=async(label:string,operation:()=>Promise<void>)=>{setBusy(label);try{await operation()}catch(error){toast.error(parseApiError(error))}finally{setBusy("")}};
+  const persist=async(showToast=true)=>{if(!active)return;await apiClient.patch(`/api/content/content-drafts/${draft.id}/platforms/${active.id}/`,{caption_text:caption,hashtags:"",cta:""},{timeout:60000});await refresh();if(showToast)toast.success("Draft saved")};
+  const regenerate=async(images:boolean,captions:boolean)=>run(images?"image":"caption",async()=>{await apiClient.post(`/api/content/content-drafts/${draft.id}/regenerate/`,{reason:images?"Replace post image":"Improve caption",generate_images:images,generate_captions:captions},{timeout:180000});await refresh();toast.success(images?"Post image regenerated":"Caption regenerated")});
+  const schedule=()=>run("schedule",async()=>{if(!scheduleAt)throw new Error("Select a future date and time.");await persist(false);await apiClient.post(`/api/content/content-drafts/${draft.id}/schedule/`,{schedules:Object.fromEntries(draft.platforms.map(item=>[item.platform,new Date(scheduleAt).toISOString()]))},{timeout:60000});await refresh();toast.success("Content scheduled")});
+  const approval=()=>run("approval",async()=>{await persist(false);await apiClient.post(`/api/content/content-drafts/${draft.id}/request_approval/`,{},{timeout:60000});await refresh();toast.success("Sent to Admin for approval")});
+  return <motion.div initial={{opacity:0}} animate={{opacity:1}}><button className="mb-5 flex items-center gap-2 text-sm font-semibold text-slate-700" onClick={onBack}><ChevronLeft size={17}/>Back to Content Studio</button><div className="flex flex-wrap items-start justify-between gap-4"><PageHeading title="Preview & Customize" subtitle="Review and refine your content before publishing."/><div className="flex gap-3"><button className="secondary-button px-5" disabled={generating||!!busy} onClick={()=>void run("save",()=>persist())}><Save size={17}/>{busy==="save"?"Saving...":"Save to Drafts"}</button><button className="primary-button px-5" disabled={generating||!!busy} onClick={schedule}><CalendarClock size={17}/>{busy==="schedule"?"Scheduling...":"Schedule"}</button></div></div>{generating&&<div className="mt-5 flex items-center gap-3 rounded-2xl border border-blue-200 bg-blue-50 px-5 py-4 text-sm font-semibold text-blue-800 shadow-sm"><LoaderCircle className="animate-spin" size={20}/><div><p>Generating your prompt-based image and captions…</p><p className="mt-1 text-xs font-normal text-blue-600">The preview is open. It will update automatically when AI generation finishes.</p></div></div>}
+    <div className="mt-6 grid overflow-hidden rounded-xl border border-slate-200 bg-white sm:grid-cols-4">{draft.platforms.map(platform=>{const item=contentPlatforms.find(entry=>entry.value===platform.platform);const Icon=item?.icon;return <button className={`flex items-center justify-center gap-2 border-b-2 px-4 py-4 text-sm font-bold transition ${active?.id===platform.id?"border-blue-600 bg-blue-50/40 text-blue-700":"border-transparent hover:bg-slate-50"}`} key={platform.id} onClick={()=>setActiveId(platform.id)}>{Icon?<Icon className={item?.tone} size={19}/>:<b>𝕏</b>}{item?.label}</button>})}</div>
+    <div className="mt-6 grid gap-6 xl:grid-cols-[1.02fr_.98fr]"><section><h2 className="mb-1 flex items-center gap-2 text-lg font-black">{ActiveIcon?<ActiveIcon className={meta?.tone} size={20}/>:<b>𝕏</b>}{isFacebook?"Facebook Post Preview":isInstagram?"Instagram Feed Preview":isLinkedIn?"LinkedIn Post Preview":isX?"X (Twitter) Post Preview":`${meta?.label} Post Preview`}</h2>{(isFacebook||isLinkedIn||isX)&&<p className="mb-4 text-sm text-slate-500">{isFacebook?"This is how your post will appear in the Facebook feed.":isLinkedIn?"This is how your post will appear on LinkedIn.":"This is how your post will appear on X."}</p>}<SocialContentPreview platform={active?.platform??"INSTAGRAM"} caption={caption} image={image} location={location}/></section><div className="space-y-4"><section className="sa-card p-5"><h2 className="font-black">{isFacebook||isLinkedIn||isX?"Post Content":"Caption"}</h2><label className="field mt-4">{isX&&<span>Content</span>}{isLinkedIn&&<span>Caption</span>}<textarea maxLength={contentLimit} rows={9} value={caption} onChange={event=>active&&setEdits(value=>({...value,[active.id]:event.target.value}))}/><small className="text-right">{caption.length} / {contentLimit}</small></label><div className="mt-4 flex flex-wrap justify-between gap-3"><button className="secondary-button px-4" disabled={!!busy} onClick={()=>void regenerate(false,true)}><RefreshCw size={16}/>{busy==="caption"?"Regenerating...":"Regenerate"}</button><button className="primary-button px-4" disabled={!!busy} onClick={()=>void run("improve",()=>persist())}><Sparkles size={16}/>{isX?"Improve Content":"Improve Caption"}</button></div></section>
+      <section className="sa-card p-5"><h2 className="font-black">{isX?`Media (${image?1:0})`:isFacebook?"Post Image / Video":"Post Image"}</h2><div className="mt-4 flex items-center gap-3">{image?<NextImage unoptimized alt="Post image" className="h-20 w-28 rounded-lg object-cover" height={80} src={image} width={112}/>:<div className="grid h-20 w-28 place-items-center rounded-lg bg-gradient-to-br from-amber-50 to-indigo-100 text-slate-400"><ImageIcon size={28}/></div>}<div className="min-w-0 flex-1">{(isFacebook||isLinkedIn||isX)&&<p className="mb-2 text-xs text-slate-500">{isX?"1920 × 1080 px (Recommended)":isLinkedIn?"1200 × 627 px (Recommended)":"1200 × 630 px (Recommended)"}</p>}<button className="secondary-button w-full" disabled={!!busy} onClick={()=>void regenerate(true,false)}><ImageIcon size={16}/>{busy==="image"?"Generating...":isX?"Change Media":"Change Image"}</button></div><button aria-label="Remove image" className="icon-button !border !border-slate-200" disabled={!image||!!busy} onClick={()=>void run("remove",async()=>{if(!active)return;await apiClient.patch(`/api/content/content-drafts/${draft.id}/platforms/${active.id}/`,{remove_images:true});await refresh();toast.success("Image removed")})}><Trash2 size={16}/></button></div></section>
+      <section className="sa-card p-5"><h2 className="font-black">Post Settings</h2>{isX?<><label className="field mt-4"><span>Who can reply?</span><select defaultValue="Everyone"><option>Everyone</option><option>Accounts you follow</option><option>Verified accounts</option><option>Only accounts you mention</option></select></label><div className="mt-4 space-y-3 text-sm"><p className="font-semibold">Add to your post</p><label className="flex items-center gap-2"><input defaultChecked type="checkbox"/>Allow replies</label><label className="flex items-center gap-2"><input defaultChecked type="checkbox"/>Allow reposts</label><label className="flex items-center gap-2"><input defaultChecked type="checkbox"/>Show engagement metrics</label></div></>:isLinkedIn?<><label className="field mt-4"><span>Who can see this post?</span><select defaultValue="Anyone"><option>Anyone</option><option>Connections only</option><option>Group members</option></select></label><div className="mt-4 space-y-3 text-sm"><p className="font-semibold">Add to</p><label className="flex items-center gap-2"><input defaultChecked type="checkbox"/>Notify connections</label><label className="flex items-center gap-2"><input defaultChecked type="checkbox"/>Allow comments</label><label className="flex items-center gap-2"><input defaultChecked type="checkbox"/>Allow reposts</label></div></>:<><div className="mt-4 flex flex-wrap gap-5 text-sm">{isFacebook?<><label className="flex items-center gap-2"><input checked={publishAs!=="Your Page and Groups"} name="publishAs" type="radio" onChange={()=>setPublishAs("Your Page")}/>Your Page</label><label className="flex items-center gap-2"><input checked={publishAs==="Your Page and Groups"} name="publishAs" type="radio" onChange={()=>setPublishAs("Your Page and Groups")}/>Your Page and Groups</label></>:<><label className="flex items-center gap-2"><input checked={publishAs!=="Reel"} name="publishAs" type="radio" onChange={()=>setPublishAs("Feed Post")}/>Feed Post</label><label className="flex items-center gap-2"><input checked={publishAs==="Reel"} name="publishAs" type="radio" onChange={()=>setPublishAs("Reel")}/>Reel</label></>}</div><label className="field mt-4"><span>First Comment (Optional)</span><textarea maxLength={firstCommentLimit} rows={3} value={firstComment} onChange={event=>setFirstComment(event.target.value)}/><small className="text-right">{firstComment.length} / {firstCommentLimit}</small></label>{isFacebook?<label className="field mt-4"><span>Audience</span><select defaultValue="Public"><option>Public</option><option>Friends</option><option>Only me</option></select></label>:<label className="field mt-4"><span>Location (Optional)</span><input value={location} onChange={event=>setLocation(event.target.value)}/></label>}</>}{!isLinkedIn&&<label className="field mt-4"><span>{isX?"Schedule (Optional)":"Schedule"}</span><input min={new Date().toISOString().slice(0,16)} type="datetime-local" value={scheduleAt} onChange={event=>setScheduleAt(event.target.value)}/></label>}</section></div></div>
+    <div className="sa-card sticky bottom-3 mt-6 flex flex-wrap justify-between gap-3 p-4"><div className="flex gap-3"><button className="secondary-button px-5" onClick={()=>document.querySelector<HTMLTextAreaElement>("textarea[maxlength]")?.focus()}><FileText size={16}/>Edit Content</button><button className="secondary-button px-5" onClick={onGenerateNew}><Sparkles size={16}/>Generate New</button></div><button className="primary-button px-7" disabled={!!busy||draft.workflow_state==="IN_REVIEW"} onClick={approval}><Users size={17}/>{draft.workflow_state==="IN_REVIEW"?"Approval Requested":busy==="approval"?"Submitting...":"Ask for Approval"}</button></div></motion.div>;
+}
+
+function SocialContentPreview({platform,caption,image,location}:{platform:string;caption:string;image?:string;location:string}){
+  const isFacebook=platform==="FACEBOOK";const isLinkedIn=platform==="LINKEDIN";const isX=platform==="X";
+  const media=image?<NextImage unoptimized alt="Generated post" className="max-h-[520px] w-full object-cover" height={520} src={image} width={720}/>:<div className="grid h-80 place-items-center bg-gradient-to-br from-amber-50 via-orange-50 to-indigo-100 text-center text-slate-400"><div><ImageIcon className="mx-auto" size={52}/><p className="mt-3 text-sm">Generate or add a post image</p></div></div>;
+  if(isX)return <article className="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><header className="flex items-start gap-3"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-gradient-to-br from-blue-600 to-violet-700 font-black text-white">M</span><div className="min-w-0"><div className="flex flex-wrap items-center gap-1"><b className="text-lg">Your Brand</b><span className="grid h-4 w-4 place-items-center rounded-full bg-blue-500 text-[9px] font-black text-white">✓</span></div><p className="text-sm text-slate-500">@yourbrand · Now</p></div><MoreVertical className="ml-auto"/></header><p className="whitespace-pre-wrap px-1 py-5 text-xl leading-7 text-slate-950">{caption}</p><div className="overflow-hidden rounded-2xl border border-slate-200">{media}</div><div className="mt-5 grid grid-cols-6 text-slate-600"><span className="flex items-center gap-1"><MessageCircle size={19}/>2</span><span className="flex items-center gap-1"><Repeat2 size={19}/>13</span><span className="flex items-center gap-1"><Heart size={19}/>60</span><span className="flex items-center gap-1"><BarChart3 size={19}/>8.3K</span><span className="flex justify-center"><Bookmark size={19}/></span><span className="flex justify-end"><Share2 size={19}/></span></div></article>;
+  if(isLinkedIn)return <article className="mx-auto max-w-xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><header className="flex items-start gap-3 p-5"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-violet-700 to-pink-600 font-black text-white">M</span><div><b className="text-lg">Your Brand</b><p className="text-sm text-slate-500">1,234 followers</p><p className="text-xs text-slate-500">now · 🌐</p></div><MoreVertical className="ml-auto"/></header><p className="whitespace-pre-wrap px-5 pb-5 text-sm leading-6 text-slate-950">{caption}</p>{media}<div className="grid grid-cols-4 px-5 py-4 text-slate-700"><span className="flex items-center gap-2"><span className="grid h-6 w-6 place-items-center rounded-full bg-blue-600 text-white"><ThumbsUp size={14}/></span>186</span><span className="flex items-center justify-center gap-2"><MessageCircle size={21}/>24</span><span className="flex items-center justify-center gap-2"><Repeat2 size={21}/>7</span><span className="flex items-center justify-end gap-2"><Send size={21}/>12</span></div></article>;
+  return <article className="mx-auto max-w-xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><header className="flex items-center gap-3 p-4"><span className="grid h-11 w-11 place-items-center rounded-full bg-gradient-to-br from-pink-500 to-violet-600 font-black text-white">M</span><div><b>{platform==="INSTAGRAM"?"yourbrand_official":"Your Brand"}</b><p className="text-xs text-slate-500">{isFacebook?"Just now · Public":location||"Just now"}</p></div><MoreVertical className="ml-auto"/></header>{platform!=="INSTAGRAM"&&<p className="whitespace-pre-wrap px-4 pb-4 text-sm leading-6">{caption}</p>}{media}<div className="flex items-center justify-between px-4 py-3 text-sm text-slate-600"><span className="flex gap-1"><Heart className="text-rose-500" size={19}/>{isFacebook?"1.2K":"1,245 likes"}</span><span>32 Comments · 89 Shares</span></div><div className="grid grid-cols-3 border-t border-slate-100 py-3 text-sm"><span className="flex justify-center gap-2"><ThumbsUp size={18}/>Like</span><span className="flex justify-center gap-2"><MessageCircle size={18}/>Comment</span><span className="flex justify-center gap-2"><Share2 size={18}/>Share</span></div>{platform==="INSTAGRAM"&&<p className="whitespace-pre-wrap px-4 pb-5 text-sm leading-6"><b>yourbrand_official </b>{caption}</p>}</article>
 }
 
 function ContentPostCard({item,index,onCopy,onDownload,onSave}:{item:GeneratedContent;index:number;onCopy:()=>void;onDownload:()=>void;onSave:()=>void}){const version=item.versions[0];const platform=contentPlatforms.find(entry=>entry.value===item.platform);const Icon=platform?.icon;return <motion.article initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} transition={{delay:index*.04}} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"><div className="relative grid h-36 place-items-center overflow-hidden bg-gradient-to-br from-blue-100 via-indigo-50 to-violet-200">{version?.image_url?<NextImage unoptimized alt="Generated content" className="h-full w-full object-cover" height={300} src={version.image_url} width={500}/>:<span className="grid h-16 w-16 place-items-center rounded-2xl bg-white/80 text-blue-600 shadow-lg">{Icon?<Icon size={32}/>:<b className="text-3xl">𝕏</b>}</span>}<span className="absolute right-3 top-3 flex items-center gap-1 rounded-lg bg-white/90 px-2 py-1 text-[10px] font-semibold shadow">{Icon?<Icon className={platform?.tone} size={13}/>:"𝕏"}{platform?.label||pretty(item.platform)}</span></div><div className="p-4"><h3 className="line-clamp-2 min-h-10 font-black text-slate-950">{version?.text_content?.split(/[.!?]/)[0]||`${pretty(item.platform)} Content`}</h3><p className="mt-2 line-clamp-2 min-h-10 text-xs leading-5 text-slate-600">{version?.text_content||version?.prompt||"Generated marketing content"}</p><p className="mt-3 text-xs text-slate-500">{formatDate(item.created_at)}</p><div className="mt-4 flex gap-2"><button aria-label="Copy content" className="icon-button !border !border-slate-200" onClick={onCopy}><Copy size={15}/></button><button aria-label="Download content" className="icon-button !border !border-slate-200" onClick={onDownload}><Download size={15}/></button><button aria-label="Save to asset library" className="icon-button !border !border-slate-200" disabled={false} onClick={onSave}><MoreVertical size={15}/></button></div></div></motion.article>}
@@ -125,15 +153,18 @@ export function UserTasks(){
 }
 
 export function UserCampaigns(){
-  const client=useQueryClient();const [page,setPage]=useState(1);const [search,setSearch]=useState("");const [status,setStatus]=useState("");const [createOpen,setCreateOpen]=useState(false);const [resumeDraft,setResumeDraft]=useState(false);const [viewing,setViewing]=useState<Campaign|null>(null);const [form,setForm]=useState({task:"",name:"",description:""});
+  const client=useQueryClient();const [page,setPage]=useState(1);const [search,setSearch]=useState("");const [status,setStatus]=useState("");const [createOpen,setCreateOpen]=useState(false);const [resumeDraft,setResumeDraft]=useState(false);const [viewing,setViewing]=useState<Campaign|null>(null);const [deleteTarget,setDeleteTarget]=useState<Campaign|null>(null);const [form,setForm]=useState({task:"",name:"",description:""});const [scheduleOpen,setScheduleOpen]=useState(false);const [scheduleDate,setScheduleDate]=useState("");
   useEffect(()=>{const timer=window.setTimeout(()=>{if(new URLSearchParams(window.location.search).has("resume")&&readCampaignDraft()){setResumeDraft(true);setCreateOpen(true);window.history.replaceState(null,"","/user/campaigns")}},0);return()=>window.clearTimeout(timer)},[]);
   const campaigns=useQuery({queryKey:["user-campaigns",page,search,status],queryFn:async()=>(await apiClient.get<CampaignPage>("/api/campaigns/my/",{params:{page,search,status:status||undefined}})).data});const tasks=useQuery({queryKey:["user-tasks"],queryFn:async()=>(await apiClient.get<Assignment[]>("/api/tasks/my/")).data});
   const create=useMutation({mutationFn:()=>apiClient.post("/api/campaigns/create/",{task:Number(form.task),name:form.name,description:form.description}),onSuccess:()=>{toast.success("Campaign created");setCreateOpen(false);setForm({task:"",name:"",description:""});void client.invalidateQueries({queryKey:["user-campaigns"]})},onError:error=>toast.error(parseApiError(error))});
   const submit=useMutation({mutationFn:(id:number)=>apiClient.post(`/api/campaigns/${id}/submit/`,{}),onSuccess:()=>{toast.success("Campaign submitted for approval");setViewing(null);void client.invalidateQueries({queryKey:["user-campaigns"]})},onError:error=>toast.error(parseApiError(error))});
+  const send=useMutation({mutationFn:(id:number)=>apiClient.post("/api/campaigns/send/",{campaign:id}),onSuccess:()=>{toast.success("Campaign sent successfully!");setViewing(null);void client.invalidateQueries({queryKey:["user-campaigns"]});void client.invalidateQueries({queryKey:["user-campaigns-dashboard"]})},onError:error=>toast.error(parseApiError(error))});
+  const schedule=useMutation({mutationFn:({id,at}:{id:number;at:string})=>apiClient.post("/api/campaigns/schedule/",{campaign:id,scheduled_at:new Date(at).toISOString()}),onSuccess:()=>{toast.success("Campaign scheduled!");setViewing(null);setScheduleOpen(false);setScheduleDate("");void client.invalidateQueries({queryKey:["user-campaigns"]});void client.invalidateQueries({queryKey:["user-campaigns-dashboard"]})},onError:error=>toast.error(parseApiError(error))});
+  const remove=useMutation({mutationFn:(id:number)=>apiClient.delete(`/api/campaigns/${id}/delete/`),onSuccess:()=>{toast.success("Campaign deleted");setDeleteTarget(null);void client.invalidateQueries({queryKey:["user-campaigns"]});void client.invalidateQueries({queryKey:["user-campaigns-dashboard"]})},onError:error=>toast.error(parseApiError(error))});
   if(campaigns.isError)return <ErrorState error={campaigns.error}/>;const rows=campaigns.data?.results??[];
   if(createOpen)return <CampaignWizard assignments={tasks.data??[]} initialDraft={resumeDraft?readCampaignDraft():null} onCancel={()=>{storeCampaignDraft(null);setResumeDraft(false);setCreateOpen(false)}} onCreated={()=>{storeCampaignDraft(null);setResumeDraft(false);setCreateOpen(false);void client.invalidateQueries({queryKey:["user-campaigns"]});void client.invalidateQueries({queryKey:["user-campaigns-dashboard"]})}}/>;
-  return <div><div className="mb-7 flex items-end justify-between gap-4"><PageHeading title="Campaigns" subtitle="Create and manage your marketing campaigns"/><button className="primary-button px-6" onClick={()=>{storeCampaignDraft(null);setResumeDraft(false);setCreateOpen(true)}}><Plus size={18}/>Create Campaign</button></div><section className="sa-card overflow-hidden"><div className="grid gap-3 border-b border-slate-100 p-5 md:grid-cols-[1fr_220px]"><SearchInput value={search} onChange={value=>{setSearch(value);setPage(1)}} placeholder="Search campaigns..."/><Select value={status} onChange={value=>{setStatus(value);setPage(1)}} label="All Status" options={["DRAFT","PENDING_APPROVAL","APPROVED","SCHEDULED","SENDING","COMPLETED","FAILED","REJECTED"]}/></div>{campaigns.isLoading?<Skeleton/>:<div className="overflow-x-auto"><table className="w-full min-w-[980px] text-left text-sm"><thead className="bg-slate-50"><tr><th className="px-6 py-5">Campaign Name</th><th>Audience Name</th><th>Channel</th><th>Created At</th><th>Status</th><th>Actions</th></tr></thead><tbody>{rows.map((row,index)=><motion.tr initial={{opacity:0,y:5}} animate={{opacity:1,y:0}} transition={{delay:index*.03}} className="border-t border-slate-100 hover:bg-blue-50/30" key={row.id}><td className="px-6 py-5 font-semibold">{row.campaign_name}</td><td>{row.audience_name||"—"}</td><td><div className="flex flex-wrap gap-2">{row.channels.length?row.channels.map(name=><span className="flex items-center gap-2" key={name}><ChannelIcon name={name}/>{name}</span>):"—"}</div></td><td>{formatDate(row.created_at)}</td><td><Badge className={campaignTone[row.status]}>{pretty(row.status)}</Badge></td><td><button aria-label={`View ${row.campaign_name}`} className="icon-button !border !border-slate-200 text-blue-600" onClick={()=>setViewing(row)}><Eye size={17}/></button></td></motion.tr>)}</tbody></table>{!rows.length&&<Empty message="No campaigns found."/>}</div>}<Pagination page={page} count={campaigns.data?.count??0} pageSize={10} setPage={setPage}/></section>
-    <AnimatePresence>{createOpen&&<div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4 backdrop-blur-sm"><motion.form initial={{opacity:0,scale:.96,y:12}} animate={{opacity:1,scale:1,y:0}} exit={{opacity:0,scale:.97}} className="w-full max-w-lg rounded-3xl bg-white shadow-2xl" onSubmit={event=>{event.preventDefault();create.mutate()}}><ModalHeader title="Create Campaign" onClose={()=>setCreateOpen(false)}/><div className="space-y-5 p-6"><label className="field"><span>Assigned task *</span><select required value={form.task} onChange={event=>setForm({...form,task:event.target.value})}><option value="">Select task</option>{(tasks.data??[]).map(row=><option value={row.task.id} key={row.id}>{row.task.title}</option>)}</select></label><label className="field"><span>Campaign name *</span><input required minLength={3} placeholder="Enter campaign name" value={form.name} onChange={event=>setForm({...form,name:event.target.value})}/></label><label className="field"><span>Description</span><textarea rows={4} placeholder="Describe this campaign" value={form.description} onChange={event=>setForm({...form,description:event.target.value})}/></label></div><div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 p-5"><button type="button" className="secondary-button" onClick={()=>setCreateOpen(false)}>Cancel</button><button className="primary-button px-6" disabled={create.isPending}>{create.isPending?"Creating...":"Create Campaign"}</button></div></motion.form></div>}{viewing&&<DetailsModal title={viewing.campaign_name} onClose={()=>setViewing(null)}><dl className="grid grid-cols-2 gap-4"><Info label="Audience" value={viewing.audience_name||"—"}/><Info label="Status" value={pretty(viewing.status)}/><Info label="Task" value={viewing.task_name||"—"}/><Info label="Created" value={formatDate(viewing.created_at)}/></dl><div className="mt-6 flex justify-end">{viewing.available_actions.includes("submit")&&<button className="primary-button px-5" disabled={submit.isPending} onClick={()=>submit.mutate(viewing.id)}>Submit for approval</button>}</div></DetailsModal>}</AnimatePresence></div>;
+  return <div><div className="mb-7 flex items-end justify-between gap-4"><PageHeading title="Campaigns" subtitle="Create and manage your marketing campaigns"/><button className="primary-button px-6" onClick={()=>{storeCampaignDraft(null);setResumeDraft(false);setCreateOpen(true)}}><Plus size={18}/>Create Campaign</button></div><section className="sa-card overflow-hidden"><div className="grid gap-3 border-b border-slate-100 p-5 md:grid-cols-[1fr_220px]"><SearchInput value={search} onChange={value=>{setSearch(value);setPage(1)}} placeholder="Search campaigns..."/><Select value={status} onChange={value=>{setStatus(value);setPage(1)}} label="All Status" options={["DRAFT","PENDING_APPROVAL","APPROVED","SCHEDULED","SENDING","COMPLETED","FAILED","REJECTED"]}/></div>{campaigns.isLoading?<Skeleton/>:<div className="overflow-x-auto"><table className="w-full min-w-[980px] text-left text-sm"><thead className="bg-slate-50"><tr><th className="px-6 py-5">Campaign Name</th><th>Audience Name</th><th>Channel</th><th>Created At</th><th>Status</th><th>Actions</th></tr></thead><tbody>{rows.map((row,index)=><motion.tr initial={{opacity:0,y:5}} animate={{opacity:1,y:0}} transition={{delay:index*.03}} className="border-t border-slate-100 hover:bg-blue-50/30" key={row.id}><td className="px-6 py-5 font-semibold">{row.campaign_name}</td><td>{row.audience_name||"—"}</td><td><div className="flex flex-wrap gap-2">{row.channels.length?row.channels.map(name=><span className="flex items-center gap-2" key={name}><ChannelIcon name={name}/>{name}</span>):"—"}</div></td><td>{formatDate(row.created_at)}</td><td><Badge className={campaignTone[row.status]}>{pretty(row.status)}</Badge></td><td><div className="flex justify-center gap-2"><button aria-label="Edit" title="Edit campaign" className="icon-button !border !border-slate-200 !text-orange-500" onClick={()=>{storeCampaignDraft(null);setCreateOpen(true)}}><Pencil size={16}/></button><button aria-label="View" title="View campaign" className="icon-button !border !border-slate-200 !text-blue-600" onClick={()=>setViewing(row)}><Eye size={17}/></button><button aria-label="Delete" title="Delete campaign" className="icon-button !border !border-slate-200 !text-red-500" onClick={()=>setDeleteTarget(row)}><Trash2 size={16}/></button></div></td></motion.tr>)}</tbody></table>{!rows.length&&<Empty message="No campaigns found."/>}</div>}<Pagination page={page} count={campaigns.data?.count??0} pageSize={10} setPage={setPage}/></section>
+    <AnimatePresence>{createOpen&&<div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4 backdrop-blur-sm"><motion.form initial={{opacity:0,scale:.96,y:12}} animate={{opacity:1,scale:1,y:0}} exit={{opacity:0,scale:.97}} className="w-full max-w-lg rounded-3xl bg-white shadow-2xl" onSubmit={event=>{event.preventDefault();create.mutate()}}><ModalHeader title="Create Campaign" onClose={()=>setCreateOpen(false)}/><div className="space-y-5 p-6"><label className="field"><span>Assigned task *</span><select required value={form.task} onChange={event=>setForm({...form,task:event.target.value})}><option value="">Select task</option>{(tasks.data??[]).map(row=><option value={row.task.id} key={row.id}>{row.task.title}</option>)}</select></label><label className="field"><span>Campaign name *</span><input required minLength={3} placeholder="Enter campaign name" value={form.name} onChange={event=>setForm({...form,name:event.target.value})}/></label><label className="field"><span>Description</span><textarea rows={4} placeholder="Describe this campaign" value={form.description} onChange={event=>setForm({...form,description:event.target.value})}/></label></div><div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 p-5"><button type="button" className="secondary-button" onClick={()=>setCreateOpen(false)}>Cancel</button><button className="primary-button px-6" disabled={create.isPending}>{create.isPending?"Creating...":"Create Campaign"}</button></div></motion.form></div>}{viewing&&<div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4 backdrop-blur-sm"><motion.div initial={{opacity:0,scale:.96,y:10}} animate={{opacity:1,scale:1,y:0}} exit={{opacity:0,scale:.97}} className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl"><button aria-label="Close" className="absolute right-4 top-4 icon-button z-10" type="button" onClick={()=>{setViewing(null);setScheduleOpen(false);setScheduleDate("")}}><X size={20}/></button><div className="flex flex-col items-center gap-2 border-b border-slate-100 px-6 pb-5 pt-7 text-center"><span className={`grid h-14 w-14 place-items-center rounded-full ${viewing.status==="REJECTED"?"bg-red-50 text-red-500":viewing.status==="APPROVED"?"bg-emerald-50 text-emerald-600":"bg-blue-50 text-blue-500"}`}><Megaphone size={24}/></span><h2 className="text-xl font-black text-slate-900">Campaign Details</h2></div><div className="p-6 space-y-4"><div className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-blue-100 text-blue-600"><Megaphone size={17}/></span><div><p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Campaign Name</p><p className="text-sm font-semibold text-slate-800">{viewing.campaign_name}</p></div></div><div className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3"><span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${viewing.status==="APPROVED"?"bg-emerald-100 text-emerald-600":viewing.status==="REJECTED"?"bg-red-100 text-red-500":"bg-slate-200 text-slate-500"}`}><CheckCircle2 size={17}/></span><div><p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Status</p><Badge className={campaignTone[viewing.status]}>{pretty(viewing.status)}</Badge></div></div>{viewing.status==="REJECTED"&&<div className="rounded-2xl border border-red-100 bg-red-50 p-4"><div className="flex items-center gap-2 mb-2"><span className="grid h-6 w-6 place-items-center rounded-full bg-red-100 text-red-500"><X size={13}/></span><p className="text-sm font-black text-red-700">Rejected by Admin</p></div>{viewing.rejection_reason&&<div className="mb-3"><p className="text-xs font-bold uppercase tracking-wide text-red-400">Rejected Reason</p><p className="mt-1 text-sm text-red-800">{viewing.rejection_reason}</p></div>}{viewing.review_comments&&<div><p className="text-xs font-bold uppercase tracking-wide text-red-400">Description</p><p className="mt-1 text-sm text-red-800">{viewing.review_comments}</p></div>}</div>}{viewing.status==="APPROVED"&&!scheduleOpen&&<div className="grid grid-cols-2 gap-3 pt-1"><button disabled={send.isPending} onClick={()=>send.mutate(viewing.id)} className="flex flex-col items-center gap-2 rounded-2xl border-2 border-blue-100 bg-blue-50 px-4 py-5 text-center transition hover:border-blue-400 hover:bg-blue-100 disabled:opacity-60"><span className="grid h-11 w-11 place-items-center rounded-full bg-white text-blue-600 shadow-sm"><Send size={20}/></span><span className="text-sm font-black text-blue-700">{send.isPending?"Sending…":"Send Now"}</span><span className="text-[11px] text-slate-500">Send campaign immediately</span></button><button onClick={()=>setScheduleOpen(true)} className="flex flex-col items-center gap-2 rounded-2xl border-2 border-indigo-100 bg-indigo-50 px-4 py-5 text-center transition hover:border-indigo-400 hover:bg-indigo-100"><span className="grid h-11 w-11 place-items-center rounded-full bg-white text-indigo-600 shadow-sm"><CalendarClock size={20}/></span><span className="text-sm font-black text-indigo-700">Schedule</span><span className="text-[11px] text-slate-500">Schedule for later</span></button></div>}{viewing.status==="APPROVED"&&scheduleOpen&&<div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-4 space-y-3"><p className="text-sm font-black text-indigo-700 flex items-center gap-2"><CalendarClock size={16}/>Pick a date &amp; time</p><input type="datetime-local" min={new Date(Date.now()+60000).toISOString().slice(0,16)} value={scheduleDate} onChange={e=>setScheduleDate(e.target.value)} className="h-11 w-full rounded-xl border border-indigo-200 bg-white px-4 text-sm outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"/><div className="flex gap-2"><button className="secondary-button flex-1" onClick={()=>{setScheduleOpen(false);setScheduleDate("")}}>Cancel</button><button disabled={!scheduleDate||schedule.isPending} onClick={()=>{if(viewing&&scheduleDate)schedule.mutate({id:viewing.id,at:scheduleDate})}} className="primary-button flex-1 justify-center disabled:opacity-60">{schedule.isPending?"Scheduling…":"Confirm"}</button></div></div>}<div className="grid grid-cols-2 gap-3"><Info label="Task" value={viewing.task_name||"—"}/><Info label="Audience" value={viewing.audience_name||"—"}/></div></div><div className="flex justify-end gap-3 border-t border-slate-100 px-6 py-4">{viewing.status==="REJECTED"&&<button className="secondary-button flex items-center gap-2 px-5 text-blue-600 border-blue-300" onClick={()=>{storeCampaignDraft(null);setViewing(null);setCreateOpen(true)}}><Pencil size={15}/>Edit Campaign</button>}<button className="secondary-button px-5" onClick={()=>{setViewing(null);setScheduleOpen(false);setScheduleDate("")}}>Close</button>{viewing.available_actions.includes("submit")&&<button className="primary-button px-5" disabled={submit.isPending} onClick={()=>submit.mutate(viewing.id)}>Submit for approval</button>}</div></motion.div></div>}{deleteTarget&&<motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4 backdrop-blur-sm"><motion.div initial={{opacity:0,scale:.95,y:10}} animate={{opacity:1,scale:1,y:0}} exit={{opacity:0,scale:.97}} className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl"><div className="flex flex-col items-center gap-3 p-8 text-center"><span className="grid h-16 w-16 place-items-center rounded-full bg-red-50"><Trash2 size={28} className="text-red-500"/></span><h2 className="text-xl font-black text-slate-900">Delete Campaign?</h2><p className="text-sm text-slate-500">Are you sure you want to delete <strong>&quot;{deleteTarget.campaign_name}&quot;</strong>? This action cannot be undone.</p></div><div className="flex justify-end gap-3 border-t border-slate-100 px-6 py-4"><button className="secondary-button px-6" onClick={()=>setDeleteTarget(null)} disabled={remove.isPending}>Cancel</button><button className="flex min-h-10 items-center gap-2 rounded-xl bg-red-500 px-6 text-sm font-semibold text-white transition hover:bg-red-600 disabled:opacity-50" onClick={()=>remove.mutate(deleteTarget.id)} disabled={remove.isPending}>{remove.isPending?"Deleting...":"Delete"}</button></div></motion.div></motion.div>}</AnimatePresence></div>;
 }
 
 export function UserTemplates(){
@@ -149,54 +180,480 @@ export function UserTemplates(){
 function CampaignWizard({assignments,initialDraft,onCancel,onCreated}:{assignments:Assignment[];initialDraft:CampaignDraft|null;onCancel:()=>void;onCreated:()=>void}){
   const router=useRouter();
   const [step,setStep]=useState(initialDraft?.task?2:1);
+  const [channelIndex,setChannelIndex]=useState(0);
   const [form,setForm]=useState<CampaignDraft>(()=>initialDraft?{...emptyCampaignDraft,...initialDraft}:{...emptyCampaignDraft});
   const [previewPage,setPreviewPage]=useState(1);
   const [previewSearch,setPreviewSearch]=useState("");
-  const bodyRef=useRef<HTMLTextAreaElement>(null);
+  const [previewChannelIdx,setPreviewChannelIdx]=useState(0);
+  const [previewCustomerIdx,setPreviewCustomerIdx]=useState(0);
+  const [saving,setSaving]=useState(false);
   const channels=useQuery({queryKey:["channels"],queryFn:async()=>(await apiClient.get<Channel[]>("/api/channels/")).data});
   const selectedAssignment=assignments.find(row=>String(row.task.id)===form.task);
   const audiencePreview=useQuery({queryKey:["task-audience-preview",selectedAssignment?.task.id,previewPage,previewSearch],queryFn:async()=>(await apiClient.get<AudiencePreviewPage>(`/api/tasks/${selectedAssignment?.task.id}/audience-preview/`,{params:{page:previewPage,page_size:5,search:previewSearch||undefined}})).data,enabled:step===3&&Boolean(selectedAssignment?.task.id),placeholderData:previous=>previous});
-  const taskChannels=(selectedAssignment?.task.channels??[]).map(id=>(channels.data??[]).find(channel=>channel.id===id)??{id,name:`Channel ${id}`});
-  const selectedChannel=taskChannels.find(channel=>String(channel.id)===form.channel);
-  const applyFormat=(before:string,after=before)=>{const field=bodyRef.current;if(!field)return;const start=field.selectionStart;const end=field.selectionEnd;const selected=form.body.slice(start,end);const body=`${form.body.slice(0,start)}${before}${selected}${after}${form.body.slice(end)}`;setForm({...form,template_id:"",body});requestAnimationFrame(()=>{field.focus();field.setSelectionRange(start+before.length,end+before.length);});};
-  const save=useMutation({
-    mutationFn:async(submitForApproval:boolean)=>{
+
+  // All channels assigned to the selected task
+  const taskChannels=(selectedAssignment?.task.channels??[]).map(id=>(channels.data??[]).find(ch=>ch.id===id)??{id,name:`Channel ${id}`});
+  // Current channel being templated
+  const currentChannel=taskChannels[channelIndex];
+  // Current channel template draft
+  const currentCT:ChannelTemplate=form.channelTemplates[String(currentChannel?.id??"")] ?? {template_id:"",template_name:"",subject:"",body:""};
+  const setCurrentCT=(patch:Partial<ChannelTemplate>)=>setForm(f=>({...f,channelTemplates:{...f.channelTemplates,[String(currentChannel?.id??"")]:{...currentCT,...patch}}}));
+  const isEmail=(name:string)=>name.toUpperCase().includes("EMAIL");
+
+  // Save all templates + create campaign
+  const doSave=async(submitForApproval:boolean)=>{
+    setSaving(true);
+    try{
       const created=(await apiClient.post<{campaign:{id:number}}>("/api/campaigns/create/",{task:Number(form.task),name:form.name.trim(),description:form.description.trim()})).data.campaign;
-      await apiClient.post(`/api/channels/${created.id}/`,{channels:[Number(form.channel)]});
-      const templateId=form.template_id?Number(form.template_id):(await apiClient.post<Template>("/api/templates/create/",{name:form.template_name.trim(),channel:Number(form.channel),subject:form.subject.trim(),body:form.body,status:"ACTIVE"})).data.id;
-      await apiClient.post("/api/campaigns/templates/assign/",{campaign:created.id,channel:Number(form.channel),template:templateId});
+      // Assign all task channels to campaign
+      await apiClient.post(`/api/channels/${created.id}/`,{channels:taskChannels.map(c=>c.id)});
+      // Create/assign template for each channel
+      for(const ch of taskChannels){
+        const ct=form.channelTemplates[String(ch.id)];
+        if(!ct?.body?.trim()) continue;
+        const templateId=ct.template_id?Number(ct.template_id):(await apiClient.post<Template>("/api/templates/create/",{name:ct.template_name.trim()||`${form.name} - ${ch.name}`,channel:ch.id,subject:ct.subject?.trim()||"",body:ct.body,status:"ACTIVE"})).data.id;
+        await apiClient.post("/api/campaigns/templates/assign/",{campaign:created.id,channel:ch.id,template:templateId});
+      }
       if(form.scheduled_at)await apiClient.patch(`/api/campaigns/${created.id}/schedule/`,{scheduled_at:new Date(form.scheduled_at).toISOString()});
       if(submitForApproval)await apiClient.post(`/api/campaigns/${created.id}/submit/`,{});
-      return submitForApproval;
-    },
-    onSuccess:submitted=>{toast.success(submitted?"Campaign and template created, then submitted for approval":"Campaign and template saved as draft");onCreated();},
-    onError:error=>toast.error(parseApiError(error)),
-  });
-  const goNext=()=>{
+      toast.success(submitForApproval?"Campaign submitted for approval":"Campaign saved as draft");
+      onCreated();
+    }catch(err){toast.error(parseApiError(err));}
+    finally{setSaving(false);}
+  };
+
+  const goNext=async()=>{
     if(step===1){
       if(!form.task){toast.error("Please select an assigned task.");return;}
-      if(form.name.trim().length<3){toast.error("Campaign name must contain at least 3 characters.");return;}
+      if(form.name.trim().length<3){toast.error("Campaign name must be at least 3 characters.");return;}
+      if(channels.isLoading){toast.info("Channels are still loading. Please wait.");return;}
+      setStep(2);setChannelIndex(0);
+      return;
     }
     if(step===2){
-      if(form.template_name.trim().length<3){toast.error("Template name must contain at least 3 characters.");return;}
-      if(channels.isLoading){toast.info("Channels are still loading. Please try again in a moment.");return;}
-      if(channels.isError){toast.error("Channels could not be loaded. Please refresh and try again.");return;}
-      if(!form.channel){toast.error("Please select a channel.");return;}
-      if(!form.body.trim()){toast.error("Please enter the template body.");return;}
+      if(!currentChannel){toast.error("No channel available.");return;}
+      if(!currentCT.template_name.trim()){toast.error("Enter a template name.");return;}
+      if(!currentCT.body.trim()){toast.error("Enter the template body.");return;}
+      // Auto-save template if new
+      if(!currentCT.template_id){
+        try{
+          const saved=await apiClient.post<Template>("/api/templates/create/",{name:currentCT.template_name.trim(),channel:currentChannel.id,subject:currentCT.subject?.trim()||"",body:currentCT.body,status:"ACTIVE"});
+          setCurrentCT({template_id:String(saved.data.id)});
+          toast.success(`"${currentChannel.name}" template saved to My Templates`);
+        }catch(err){toast.error("Could not save template: "+parseApiError(err));return;}
+      }
+      // More channels left? Advance to next channel
+      if(channelIndex<taskChannels.length-1){setChannelIndex(i=>i+1);return;}
+      // All channels done → preview
+      setStep(3);
+      return;
     }
-    setStep(value=>value+1);
   };
-  return <motion.div initial={{opacity:0,y:8}} animate={{opacity:1,y:0}}><div className="flex items-center justify-between gap-4"><h1 className="sa-title normal-case">Create Campaign</h1><span className="rounded-xl bg-slate-100 px-4 py-2 text-xs font-bold">Step {step} of 3</span></div><button className="mt-6 flex items-center gap-2 text-sm font-semibold text-slate-600 transition hover:text-blue-600" onClick={onCancel}><ChevronLeft size={17}/>Back to Campaigns</button>
-    <section className="sa-card mt-5 overflow-hidden p-6 sm:p-8"><WizardProgress step={step}/><div className="mt-10 min-h-[440px]">{step===1&&<motion.div initial={{opacity:0,x:12}} animate={{opacity:1,x:0}} className="space-y-6"><h2 className="text-2xl font-black">Campaign Details</h2><label className="field"><span>Select Task <b className="text-red-500">*</b></span><select required value={form.task} onChange={event=>setForm({...form,task:event.target.value,channel:""})}><option value="">Select a task</option>{assignments.map(row=><option value={row.task.id} key={row.id}>{row.task.title} — {row.task.audience_name}</option>)}</select></label><label className="field"><span>Campaign Name <b className="text-red-500">*</b></span><input minLength={3} placeholder="Enter campaign name" value={form.name} onChange={event=>setForm({...form,name:event.target.value})}/></label><label className="field"><span>Campaign Description</span><textarea rows={5} placeholder="Enter campaign description (optional)" value={form.description} onChange={event=>setForm({...form,description:event.target.value})}/></label></motion.div>}
-        {step===2&&<motion.div initial={{opacity:0,x:12}} animate={{opacity:1,x:0}}><div className="flex flex-wrap items-start justify-between gap-4"><div><h2 className="text-2xl font-black">Create Template</h2><p className="mt-1 text-sm text-slate-500">Create a template for your campaign</p></div><button type="button" className="secondary-button flex items-center gap-2 border-blue-300 px-5 text-blue-600" onClick={()=>{storeCampaignDraft(form);router.push("/user/templates")}}><FileText size={17}/>My Templates</button></div><div className="mt-7 space-y-5">{form.template_id&&<div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">Using saved template #{form.template_id}. Editing a field will create a new template copy.</div>}<label className="field"><span>Template Name <b className="text-red-500">*</b></span><input minLength={3} placeholder="Enter template name" value={form.template_name} onChange={event=>setForm({...form,template_id:"",template_name:event.target.value})}/></label><label className="field"><span>Channel <b className="text-red-500">*</b></span><select value={form.channel} onChange={event=>setForm({...form,template_id:"",channel:event.target.value})}><option value="">Select a channel</option>{taskChannels.map(channel=><option value={channel.id} key={channel.id}>{channel.name}</option>)}</select><small className="!text-slate-400">Channels are limited to those assigned to the selected task.</small></label>{selectedChannel?.name.toUpperCase().includes("EMAIL")&&<label className="field"><span>Subject</span><input placeholder="Enter email subject" value={form.subject} onChange={event=>setForm({...form,template_id:"",subject:event.target.value})}/></label>}<label className="field"><span>Body <b className="text-red-500">*</b></span><div className="overflow-hidden rounded-xl border border-slate-200 bg-white focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-100"><div className="flex flex-wrap items-center border-b border-slate-200 bg-slate-50/70"><span className="border-r border-slate-200 px-4 py-3 text-sm">Paragraph</span>{editorTools.map(({label,icon:Icon,before,after})=><button aria-label={label} title={label} type="button" className="grid h-11 w-11 place-items-center border-r border-slate-200 text-slate-700 transition hover:bg-blue-50 hover:text-blue-600" key={label} onClick={()=>applyFormat(before,after)}><Icon size={18}/></button>)}</div><textarea ref={bodyRef} className="min-h-40 w-full resize-y border-0 p-4 font-normal outline-none" placeholder="Enter template body..." value={form.body} onChange={event=>setForm({...form,template_id:"",body:event.target.value})}/></div></label></div></motion.div>}
-        {step===3&&<motion.div initial={{opacity:0,x:12}} animate={{opacity:1,x:0}}><div><h2 className="text-2xl font-black">Campaign Preview</h2><p className="mt-1 text-sm text-slate-500">Review how your campaign will look for your audience</p></div><div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><PreviewStat icon={Users} label="Campaign" value={form.name}/><PreviewStat icon={UserRound} label="Total Customers" value={String(audiencePreview.data?.total_customers??0)} tone="orange"/><PreviewStat icon={Mail} label="Channels" value={selectedChannel?.name||"—"}/><PreviewStat icon={Eye} label="Previewing" value={`${audiencePreview.data?.preview.length??0} of ${audiencePreview.data?.total_customers??0} customers`}/></div><div className="mt-5 flex flex-wrap items-center justify-between gap-4"><SearchInput value={previewSearch} onChange={value=>{setPreviewSearch(value);setPreviewPage(1)}} placeholder="Search customers..."/><div className="flex gap-2"><button type="button" aria-label="Previous preview page" className="icon-button !h-10 !w-10 !border !border-slate-200" disabled={(audiencePreview.data?.page??1)<=1} onClick={()=>setPreviewPage(value=>Math.max(1,value-1))}><ChevronLeft size={18}/></button><span className="grid h-10 min-w-10 place-items-center rounded-lg border-2 border-blue-500 px-3 text-sm font-bold text-blue-600">{audiencePreview.data?.page??1}</span><button type="button" aria-label="Next preview page" className="icon-button !h-10 !w-10 !border !border-slate-200" disabled={(audiencePreview.data?.page??1)>=(audiencePreview.data?.pages??1)} onClick={()=>setPreviewPage(value=>value+1)}><ChevronRight size={18}/></button></div></div><div className="mt-5 space-y-4">{audiencePreview.isLoading&&<Skeleton/>}{audiencePreview.isError&&<ErrorState error={audiencePreview.error}/>} {(audiencePreview.data?.preview??[]).map(customer=><CustomerPreviewCard key={customer.id} data={customer.data} channel={selectedChannel?.name||"Channel"} subject={renderCustomerText(form.subject,customer.data)} body={renderCustomerText(form.body,customer.data)}/>)}{!audiencePreview.isLoading&&!audiencePreview.isError&&!audiencePreview.data?.preview.length&&<Empty message="No customers match this audience search."/>}</div></motion.div>}</div><div className="mt-8 flex flex-wrap justify-between gap-3 border-t border-slate-100 pt-6"><div>{step>1&&<button type="button" className="secondary-button flex items-center gap-2 px-5" onClick={()=>setStep(value=>value-1)}><ChevronLeft size={17}/>Back</button>}</div>{step<3?<button type="button" className="primary-button px-7" onClick={goNext}>Next<ChevronRight size={17}/></button>:<button type="button" className="primary-button px-6" disabled={save.isPending||audiencePreview.isLoading||audiencePreview.isError} onClick={()=>save.mutate(true)}>{save.isPending?"Submitting...":"Submit for Approval"}<ChevronRight size={17}/></button>}</div></section></motion.div>;
+
+  const goBack=()=>{
+    if(step===3){setStep(2);setChannelIndex(taskChannels.length-1);return;}
+    if(step===2&&channelIndex>0){setChannelIndex(i=>i-1);return;}
+    if(step===2){setStep(1);return;}
+  };
+
+  // Step indicator: step 1 = Campaign Details, step 2.N = Template (channel N of M), step 3 = Preview
+  const totalSteps=1+taskChannels.length+1;
+  const currentStepNum=step===1?1:step===2?1+channelIndex+1:totalSteps;
+
+  return <motion.div initial={{opacity:0,y:8}} animate={{opacity:1,y:0}}>
+    <div className="flex items-center justify-between gap-4">
+      <h1 className="sa-title normal-case">Create Campaign</h1>
+      <span className="rounded-xl bg-slate-100 px-4 py-2 text-xs font-bold">Step {currentStepNum} of {totalSteps}</span>
+    </div>
+    <button className="mt-6 flex items-center gap-2 text-sm font-semibold text-slate-600 transition hover:text-blue-600" onClick={onCancel}><ChevronLeft size={17}/>Back to Campaigns</button>
+
+    <section className="sa-card mt-5 overflow-hidden p-6 sm:p-8">
+      {/* Progress bar */}
+      <div className="mt-2 flex items-center gap-2">
+        {Array.from({length:totalSteps},(_,i)=><div key={i} className={`h-1.5 flex-1 rounded-full transition-all ${i<currentStepNum?"bg-blue-600":i===currentStepNum-1?"bg-blue-400":"bg-slate-200"}`}/>)}
+      </div>
+      <div className="mt-3 flex justify-between text-xs text-slate-500 font-semibold">
+        <span className={step===1?"text-blue-600":""}>Campaign Details</span>
+        {taskChannels.map((ch,i)=><span key={ch.id} className={step===2&&channelIndex===i?"text-blue-600":""}>{ch.name} Template</span>)}
+        <span className={step===3?"text-blue-600":""}>Preview</span>
+      </div>
+
+      <div className="mt-10 min-h-[440px]">
+        {/* ── Step 1: Campaign Details ── */}
+        {step===1&&<motion.div initial={{opacity:0,x:12}} animate={{opacity:1,x:0}} className="space-y-6">
+          <h2 className="text-2xl font-black">Campaign Details</h2>
+          <label className="field"><span>Select Task <b className="text-red-500">*</b></span><select required value={form.task} onChange={event=>setForm({...form,task:event.target.value,channelTemplates:{}})}><option value="">Select a task</option>{assignments.map(row=><option value={row.task.id} key={row.id}>{row.task.title} — {row.task.audience_name}</option>)}</select></label>
+          <label className="field"><span>Campaign Name <b className="text-red-500">*</b></span><input minLength={3} placeholder="Enter campaign name" value={form.name} onChange={event=>setForm({...form,name:event.target.value})}/></label>
+          <label className="field"><span>Campaign Description</span><textarea rows={4} placeholder="Optional" value={form.description} onChange={event=>setForm({...form,description:event.target.value})}/></label>
+          {selectedAssignment&&taskChannels.length>0&&<div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+            <strong>{taskChannels.length} channel{taskChannels.length>1?"s":""}</strong> assigned to this task: {taskChannels.map(c=>c.name).join(", ")}. You'll create a template for each one.
+          </div>}
+        </motion.div>}
+
+        {/* ── Step 2: Template per channel ── */}
+        {step===2&&currentChannel&&<motion.div key={`ch-${channelIndex}`} initial={{opacity:0,x:12}} animate={{opacity:1,x:0}}>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className={`grid h-8 w-8 place-items-center rounded-full text-sm font-bold ${isEmail(currentChannel.name)?"bg-blue-100 text-blue-700":"bg-emerald-100 text-emerald-700"}`}>{channelIndex+1}</span>
+                <h2 className="text-2xl font-black">{currentChannel.name} Template</h2>
+              </div>
+              <p className="text-sm text-slate-500 ml-10">Template {channelIndex+1} of {taskChannels.length} — auto-saved to My Templates on Next</p>
+            </div>
+            <button type="button" className="secondary-button flex items-center gap-2 border-blue-300 px-5 text-blue-600" onClick={()=>{storeCampaignDraft(form);router.push("/user/templates")}}><FileText size={17}/>My Templates</button>
+          </div>
+          <div className="mt-7 space-y-5">
+            {currentCT.template_id&&<div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">✓ Saved to My Templates (#{currentCT.template_id})</div>}
+            <label className="field"><span>Template Name <b className="text-red-500">*</b></span><input placeholder={`${form.name} - ${currentChannel.name}`} value={currentCT.template_name} onChange={e=>setCurrentCT({template_name:e.target.value,template_id:""})}/></label>
+            {isEmail(currentChannel.name)&&<label className="field"><span>Subject</span><input placeholder="Email subject line" value={currentCT.subject??""} onChange={e=>setCurrentCT({subject:e.target.value,template_id:""})}/></label>}
+            <label className="field"><span>Body <b className="text-red-500">*</b></span>
+              <RichBodyEditor
+                value={currentCT.body}
+                onChange={(body: string) => setCurrentCT({body, template_id:""})}
+                placeholder={`Enter ${currentChannel.name} message body...`}
+              />
+            </label>
+          </div>
+        </motion.div>}
+
+        {/* ── Step 3: Preview ── */}
+        {step===3&&<motion.div initial={{opacity:0,x:12}} animate={{opacity:1,x:0}} className="space-y-6">
+
+          {/* Campaign Summary */}
+          <div>
+            <h2 className="text-2xl font-black">Campaign Summary</h2>
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+              {/* Campaign Name */}
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-blue-50 text-blue-600"><Target size={16}/></span>
+                <div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Campaign Name</p><p className="mt-0.5 truncate text-sm font-bold text-slate-800" title={form.name}>{form.name||"—"}</p></div>
+              </div>
+              {/* Audience */}
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-violet-50 text-violet-600"><Users size={16}/></span>
+                <div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Audience</p><p className="mt-0.5 truncate text-sm font-bold text-slate-800" title={selectedAssignment?.task.audience_name}>{selectedAssignment?.task.audience_name||"—"}</p></div>
+              </div>
+              {/* Total Recipients */}
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-orange-50 text-orange-500"><UserRound size={16}/></span>
+                <div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Total Recipients</p><p className="mt-0.5 text-sm font-bold text-slate-800">{audiencePreview.isLoading?"…":compactNumber(audiencePreview.data?.total_customers??0)}</p></div>
+              </div>
+              {/* Channels */}
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-blue-50 text-blue-600"><Mail size={16}/></span>
+                <div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Channels</p><p className="mt-0.5 truncate text-sm font-bold text-slate-800">{taskChannels.map(c=>c.name).join(", ")||"—"}</p></div>
+              </div>
+              {/* Status */}
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-amber-50 text-amber-500"><ShieldCheck size={16}/></span>
+                <div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Status</p><span className="mt-0.5 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700">Pending Approval</span></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Template Preview */}
+          <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+            {/* Header row: title + channel tabs */}
+            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
+              <div>
+                <h3 className="font-black text-slate-900">Template Preview</h3>
+                <p className="mt-0.5 text-xs text-slate-500">This is how your message will appear to recipients.</p>
+              </div>
+              {/* Channel tabs */}
+              <div className="flex gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1">
+                {taskChannels.map((ch,i)=>{
+                  const active=previewChannelIdx===i;
+                  const normalized=ch.name.toUpperCase();
+                  const Icon=normalized.includes("WHATS")?MessageCircle:normalized.includes("SMS")?MessageCircle:Mail;
+                  return(
+                    <button key={ch.id} type="button"
+                      onClick={()=>setPreviewChannelIdx(i)}
+                      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${active?"bg-white text-blue-600 shadow-sm":"text-slate-500 hover:text-slate-700"}`}>
+                      <Icon size={13}/>{ch.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Preview body: left panel + right panel */}
+            {(audiencePreview.data?.preview??[]).length>0?(
+              <div className="grid sm:grid-cols-[260px_1fr]">
+                {/* ── Left panel ── */}
+                {(()=>{
+                  const previewCustomers=audiencePreview.data?.preview??[];
+                  const customer=previewCustomers[previewCustomerIdx]??previewCustomers[0];
+                  if(!customer)return null;
+                  const cdata=customer.data;
+                  const cname=customerName(cdata);
+                  const cinitials=cname.split(/\s+/).slice(0,2).map((p:string)=>p[0]).join("").toUpperCase();
+                  const activeChId=taskChannels[previewChannelIdx]?.id;
+                  const activeCT=form.channelTemplates[String(activeChId??"")] ?? {template_id:"",template_name:"",subject:"",body:""};
+                  const usedVars=Array.from(new Set([...(activeCT.subject+activeCT.body).matchAll(/\{\{(.*?)\}\}/g)].map((m:RegExpMatchArray)=>m[1].trim())));
+                  return(
+                    <div className="flex flex-col gap-4 border-b border-slate-200 p-5 sm:border-b-0 sm:border-r">
+                      <div>
+                        <p className="mb-2 text-xs font-semibold text-slate-500">Preview With Sample Data</p>
+                        {/* Customer selector */}
+                        <div className="relative">
+                          <select
+                            value={previewCustomerIdx}
+                            onChange={e=>setPreviewCustomerIdx(Number(e.target.value))}
+                            className="w-full appearance-none rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-8 text-sm font-semibold text-slate-800 outline-none focus:border-blue-400">
+                            {previewCustomers.map((c,i)=>(
+                              <option key={c.id} value={i}>{customerName(c.data)}</option>
+                            ))}
+                          </select>
+                          <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 grid h-5 w-5 place-items-center rounded-full bg-indigo-100 text-[9px] font-bold text-indigo-600">{cinitials}</span>
+                          <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"/>
+                        </div>
+                      </div>
+
+                      {usedVars.length>0&&(
+                        <div>
+                          <p className="mb-2 text-xs font-semibold text-slate-500">Personalization Variables</p>
+                          <div className="space-y-1.5">
+                            {usedVars.map((v:string)=>(
+                              <div key={v} className="flex items-center justify-between gap-2 text-xs">
+                                <span className="font-mono text-slate-500">{`{{${v}}}`}</span>
+                                <span className="font-semibold text-slate-700 truncate text-right max-w-[120px]">{customerValue(cdata,v)||<span className="italic text-slate-400">—</span>}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <p className="mt-auto text-[11px] leading-relaxed text-slate-400">Note: The actual campaign will use data from your audience.</p>
+                    </div>
+                  );
+                })()}
+
+                {/* ── Right panel: rendered message ── */}
+                {(()=>{
+                  const previewCustomers=audiencePreview.data?.preview??[];
+                  const customer=previewCustomers[previewCustomerIdx]??previewCustomers[0];
+                  if(!customer)return null;
+                  const cdata=customer.data;
+                  const activeChId=taskChannels[previewChannelIdx]?.id;
+                  const activeCT=form.channelTemplates[String(activeChId??"")] ?? {template_id:"",template_name:"",subject:"",body:""};
+                  const resolvedSubject=renderCustomerText(activeCT.subject??""  ,cdata);
+                  const resolvedBody=renderCustomerText(activeCT.body,cdata);
+                  const cname=customerName(cdata);
+                  return(
+                    <div className="p-5">
+                      {activeCT.subject&&(
+                        <div className="mb-4">
+                          <p className="text-xs font-bold text-blue-600 uppercase tracking-wide">Subject:</p>
+                          <p className="mt-1 text-sm font-semibold text-slate-800">{resolvedSubject}</p>
+                        </div>
+                      )}
+                      <div
+                        className="text-sm leading-7 text-slate-800 [&_b]:font-bold [&_strong]:font-bold [&_em]:italic [&_i]:italic [&_u]:underline [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_a]:text-blue-600 [&_a]:underline"
+                        dangerouslySetInnerHTML={{__html:resolvedBody.replace(/\{\{name\}\}/gi,`<span style="color:#2563eb;font-weight:600">${cname}</span>`)||"<span style='color:#94a3b8'>No message body.</span>"}}
+                      />
+                    </div>
+                  );
+                })()}
+              </div>
+            ):(
+              audiencePreview.isLoading?<div className="p-8"><Skeleton/></div>:
+              audiencePreview.isError?<div className="p-4"><ErrorState error={audiencePreview.error}/></div>:
+              <Empty message="No customers match this audience."/>
+            )}
+          </div>
+
+        </motion.div>}
+      </div>
+
+      {/* Navigation */}
+      <div className="mt-8 flex flex-wrap justify-between gap-3 border-t border-slate-100 pt-6">
+        <div>{(step>1||(step===2&&channelIndex>0))&&<button type="button" className="secondary-button flex items-center gap-2 px-5" onClick={goBack}><ChevronLeft size={17}/>Back</button>}</div>
+        <div className="flex gap-3">
+          {step<3&&<button type="button" className="primary-button px-7" onClick={()=>void goNext()}>
+            {step===2&&channelIndex<taskChannels.length-1?`Next: ${taskChannels[channelIndex+1]?.name} Template`:"Next"}<ChevronRight size={17}/>
+          </button>}
+          {step===3&&<>
+            <button type="button" className="secondary-button px-5" disabled={saving||audiencePreview.isLoading} onClick={()=>void doSave(false)}>{saving?"Saving...":"Save as Draft"}</button>
+            <button type="button" className="primary-button px-6" disabled={saving||audiencePreview.isLoading||audiencePreview.isError} onClick={()=>void doSave(true)}>{saving?"Submitting...":"Submit for Approval"}<ChevronRight size={17}/></button>
+          </>}
+        </div>
+      </div>
+    </section>
+  </motion.div>;
+}
+function RichBodyEditor({value,onChange,placeholder}:{value:string;onChange:(v:string)=>void;placeholder?:string}){
+  const editorRef=useRef<HTMLDivElement>(null);
+  const [activeFormats,setActiveFormats]=useState<Set<string>>(new Set());
+  const [showSource,setShowSource]=useState(false);
+  const [showLink,setShowLink]=useState(false);const [linkUrl,setLinkUrl]=useState("");
+  const [showImg,setShowImg]=useState(false);const [imgUrl,setImgUrl]=useState("");
+  const [showVar,setShowVar]=useState(false);const [varInput,setVarInput]=useState("");
+
+  // Init editor HTML from value prop (only on first mount)
+  const initialized=useRef(false);
+  useEffect(()=>{
+    if(!initialized.current&&editorRef.current){
+      initialized.current=true;
+      if(value) editorRef.current.innerHTML=value;
+    }
+  },[value]);
+
+  const emit=()=>{
+    if(editorRef.current) onChange(editorRef.current.innerHTML);
+  };
+
+  const checkFormats=()=>{
+    const active=new Set<string>();
+    try{
+      if(document.queryCommandState("bold"))    active.add("bold");
+      if(document.queryCommandState("italic"))  active.add("italic");
+      if(document.queryCommandState("underline"))active.add("underline");
+      if(document.queryCommandState("insertOrderedList"))active.add("ol");
+      if(document.queryCommandState("insertUnorderedList"))active.add("ul");
+    }catch{}
+    setActiveFormats(active);
+  };
+
+  const exec=(cmd:string,val?:string)=>{
+    editorRef.current?.focus();
+    document.execCommand(cmd,false,val??"");
+    emit();checkFormats();
+  };
+
+  const insertAtCursor=(html:string)=>{
+    editorRef.current?.focus();
+    document.execCommand("insertHTML",false,html);
+    emit();
+  };
+
+  const applyLink=()=>{
+    if(!linkUrl.trim())return;
+    editorRef.current?.focus();
+    document.execCommand("createLink",false,linkUrl.trim());
+    // Make link open in new tab
+    editorRef.current?.querySelectorAll("a:not([target])").forEach(a=>a.setAttribute("target","_blank"));
+    emit();setShowLink(false);setLinkUrl("");
+  };
+
+  const applyImg=()=>{
+    if(!imgUrl.trim())return;
+    insertAtCursor(`<img src="${imgUrl.trim()}" alt="image" style="max-width:100%;border-radius:6px;margin:4px 0;display:block"/>`);
+    setShowImg(false);setImgUrl("");
+  };
+
+  const applyVar=(v:string)=>{
+    insertAtCursor(`<span style="background:#ede9fe;color:#6d28d9;border-radius:4px;padding:1px 7px;font-family:monospace;font-size:12px;font-weight:600">{{${v}}}</span>&nbsp;`);
+    setShowVar(false);setVarInput("");
+  };
+
+  const handleKeyDown=(e:React.KeyboardEvent)=>{
+    if(e.ctrlKey&&e.key==="b"){e.preventDefault();exec("bold");}
+    if(e.ctrlKey&&e.key==="i"){e.preventDefault();exec("italic");}
+    if(e.ctrlKey&&e.key==="u"){e.preventDefault();exec("underline");}
+    if(e.key==="Tab"){e.preventDefault();exec("insertHTML","&nbsp;&nbsp;");}
+  };
+
+  const tools=[
+    {id:"bold",       label:"Bold (Ctrl+B)",       icon:Bold,       act:()=>exec("bold")},
+    {id:"italic",     label:"Italic (Ctrl+I)",      icon:Italic,     act:()=>exec("italic")},
+    {id:"underline",  label:"Underline (Ctrl+U)",   icon:Underline,  act:()=>exec("underline")},
+    {id:"ul",         label:"Bullet list",           icon:List,       act:()=>exec("insertUnorderedList")},
+    {id:"ol",         label:"Numbered list",         icon:ListOrdered,act:()=>exec("insertOrderedList")},
+    {id:"link",       label:"Insert link",           icon:Link2,      act:()=>{editorRef.current?.focus();setShowLink(v=>!v);setShowImg(false);setShowVar(false);}},
+    {id:"image",      label:"Insert image",          icon:ImageIcon,  act:()=>{editorRef.current?.focus();setShowImg(v=>!v);setShowLink(false);setShowVar(false);}},
+    {id:"variable",   label:"Insert variable",       icon:Braces,     act:()=>{editorRef.current?.focus();setShowVar(v=>!v);setShowLink(false);setShowImg(false);}},
+  ] as const;
+
+  return(
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white transition-shadow focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-100">
+
+      {/* ── Toolbar ── */}
+      <div className="flex flex-wrap items-center gap-0.5 border-b border-slate-200 bg-slate-50/80 px-2 py-1.5">
+        <span className="mr-2 border-r border-slate-200 pr-3 text-sm font-bold text-slate-700">Paragraph</span>
+        {tools.map(({id,label,icon:Icon,act})=>(
+          <button key={id} type="button" title={label}
+            onMouseDown={e=>{
+              // preventDefault keeps focus in editor, then we manually run the command
+              e.preventDefault();
+              act();
+            }}
+            className={`grid h-9 w-9 place-items-center rounded-lg transition hover:bg-blue-50 hover:text-blue-600 ${activeFormats.has(id)?"bg-blue-100 text-blue-700":"text-slate-500"}`}>
+            <Icon size={17}/>
+          </button>
+        ))}
+        {/* Source toggle */}
+        <button type="button" title={showSource?"Rich text":"View source"}
+          onMouseDown={e=>{e.preventDefault();setShowSource(v=>!v);}}
+          className={`ml-auto grid h-9 w-9 place-items-center rounded-lg transition hover:bg-blue-50 hover:text-blue-600 ${showSource?"bg-blue-100 text-blue-700":"text-slate-400"}`}>
+          <Eye size={17}/>
+        </button>
+      </div>
+
+      {/* ── Link bar ── */}
+      {showLink&&(
+        <div className="flex flex-wrap items-center gap-2 border-b border-blue-100 bg-blue-50 px-3 py-2">
+          <Link2 size={14} className="shrink-0 text-blue-600"/>
+          <input autoFocus className="h-8 flex-1 min-w-40 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-blue-400" placeholder="https://example.com" value={linkUrl} onChange={e=>setLinkUrl(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();applyLink();}if(e.key==="Escape")setShowLink(false);}}/>
+          <button type="button" className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700" onClick={applyLink}>Insert Link</button>
+          <button type="button" className="text-slate-400 hover:text-slate-700" onClick={()=>setShowLink(false)}><X size={15}/></button>
+        </div>
+      )}
+
+      {/* ── Image bar ── */}
+      {showImg&&(
+        <div className="flex flex-wrap items-center gap-2 border-b border-amber-100 bg-amber-50 px-3 py-2">
+          <ImageIcon size={14} className="shrink-0 text-amber-600"/>
+          <input autoFocus className="h-8 flex-1 min-w-40 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-blue-400" placeholder="https://example.com/image.png" value={imgUrl} onChange={e=>setImgUrl(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();applyImg();}if(e.key==="Escape")setShowImg(false);}}/>
+          <button type="button" className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-600" onClick={applyImg}>Insert Image</button>
+          <button type="button" className="text-slate-400 hover:text-slate-700" onClick={()=>setShowImg(false)}><X size={15}/></button>
+        </div>
+      )}
+
+      {/* ── Variable bar ── */}
+      {showVar&&(
+        <div className="flex flex-wrap items-center gap-2 border-b border-violet-100 bg-violet-50 px-3 py-2">
+          <Braces size={14} className="shrink-0 text-violet-600"/>
+          <input autoFocus className="h-8 w-28 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-blue-400" placeholder="field name" value={varInput} onChange={e=>setVarInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();applyVar(varInput||"name");}if(e.key==="Escape")setShowVar(false);}}/>
+          <div className="flex flex-wrap gap-1.5">
+            {["name","email","phone","city","company"].map(v=>(
+              <button key={v} type="button" className="rounded-full bg-violet-200 px-2.5 py-1 text-xs font-bold text-violet-800 hover:bg-violet-300" onClick={()=>applyVar(v)}>{`{{${v}}}`}</button>
+            ))}
+          </div>
+          {varInput.trim()&&<button type="button" className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-bold text-white" onClick={()=>applyVar(varInput)}>Insert</button>}
+          <button type="button" className="text-slate-400 hover:text-slate-700" onClick={()=>setShowVar(false)}><X size={15}/></button>
+        </div>
+      )}
+
+      {/* ── Rich editor (contenteditable) ── */}
+      {!showSource&&(
+        <div
+          ref={editorRef}
+          contentEditable
+          suppressContentEditableWarning
+          onInput={emit}
+          onKeyDown={handleKeyDown}
+          onMouseUp={checkFormats}
+          onKeyUp={checkFormats}
+          data-placeholder={placeholder}
+          className="min-h-[160px] p-4 text-sm font-normal leading-7 text-slate-800 outline-none [&_b]:font-bold [&_strong]:font-bold [&_em]:italic [&_i]:italic [&_u]:underline [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_a]:text-blue-600 [&_a]:underline [&_img]:max-w-full [&_img]:rounded-lg empty:before:text-slate-400 empty:before:content-[attr(data-placeholder)] empty:before:pointer-events-none"
+        />
+      )}
+
+      {/* ── HTML source view ── */}
+      {showSource&&(
+        <textarea
+          className="min-h-[160px] w-full p-4 font-mono text-xs text-slate-700 outline-none"
+          value={value}
+          onChange={e=>{onChange(e.target.value);if(editorRef.current)editorRef.current.innerHTML=e.target.value;}}
+        />
+      )}
+    </div>
+  );
 }
 
 function WizardProgress({step}:{step:number}){const stages=["Campaign Details","Template & Audience","Review & Schedule"];return <div className="mt-9 grid grid-cols-3">{stages.map((label,index)=>{const number=index+1;const active=number<=step;return <div className="relative text-center" key={label}>{index>0&&<span className={`absolute right-1/2 top-3 h-px w-full ${number<=step?"bg-blue-500":"bg-slate-200"}`}/>}<span className={`relative z-10 mx-auto grid h-7 w-7 place-items-center rounded-full border-2 text-xs font-bold transition ${active?"border-blue-600 bg-blue-600 text-white":"border-slate-300 bg-white text-slate-500"}`}>{number<step?"✓":number}</span><p className={`mt-3 text-xs font-semibold sm:text-sm ${number===step?"text-slate-950":"text-slate-500"}`}>{label}</p></div>})}</div>}
 
 function PreviewStat({icon:Icon,label,value,tone="blue"}:{icon:React.ComponentType<{size?:number}>;label:string;value:string;tone?:"blue"|"orange"}){return <div className="flex min-h-20 items-center gap-4 rounded-xl border border-slate-200 bg-white p-4"><span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full ${tone==="orange"?"bg-orange-50 text-orange-500":"bg-blue-50 text-blue-600"}`}><Icon size={21}/></span><div className="min-w-0"><p className="text-xs text-slate-500">{label}</p><strong className="mt-1 block truncate text-sm text-slate-950" title={value}>{value}</strong></div></div>}
-
-function CustomerPreviewCard({data,channel,subject,body}:{data:Record<string,unknown>;channel:string;subject:string;body:string}){const name=customerName(data);const email=customerValue(data,"email","email_address");const phone=customerValue(data,"phone","phone_no","phone_number","mobile","mobile_no");const city=customerValue(data,"city","location","state","country");const initials=name.split(/\s+/).slice(0,2).map(part=>part[0]).join("").toUpperCase();return <motion.article initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} className="grid gap-5 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-[330px_1fr]"><div className="flex gap-4 border-slate-200 sm:border-r sm:pr-5"><span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-indigo-50 font-bold text-indigo-600">{initials}</span><div className="min-w-0"><h3 className="font-black text-slate-950">{name}</h3>{email&&<p className="mt-2 flex items-center gap-2 truncate text-xs text-slate-600"><Mail size={14}/>{email}</p>}{phone&&<p className="mt-2 flex items-center gap-2 text-xs text-slate-600"><Phone size={14}/>{phone}</p>}{city&&<p className="mt-2 flex items-center gap-2 text-xs text-slate-600"><MapPin size={14}/>{city}</p>}</div></div><div className="min-w-0"><p className="flex items-center gap-2 text-sm font-bold"><span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-50 text-emerald-600"><Mail size={16}/></span>{channel}</p><p className="mt-2 text-xs text-slate-600">Subject: <b className="font-semibold text-slate-800">{subject||"—"}</b></p><div className="mt-3 whitespace-pre-wrap rounded-lg border border-slate-200 bg-slate-50/60 px-4 py-3 text-sm leading-6 text-slate-800">{body}</div></div></motion.article>}
 
 function PageHeading({title,subtitle}:{title:string;subtitle:string}){return <div><h1 className="sa-title normal-case">{title}</h1><p className="sa-subtitle">{subtitle}</p></div>}
 function SearchInput({value,onChange,placeholder}:{value:string;onChange:(value:string)=>void;placeholder:string}){return <label className="relative"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={19}/><input className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-12 pr-4 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100" placeholder={placeholder} value={value} onChange={event=>onChange(event.target.value)}/></label>}

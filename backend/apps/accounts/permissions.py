@@ -1,131 +1,164 @@
 from rest_framework.permissions import BasePermission
-from .models import MAUser
+
+from .models import MAUser, User
+
+
+SUPER_ADMIN = "SUPER_ADMIN"
+ADMIN = "ADMIN"
+USER = "USER"
+
+
+def _is_authenticated(user):
+    """Return a real boolean for Django users, anonymous users, and None."""
+    return bool(user and getattr(user, "is_authenticated", False))
 
 
 def get_request_role(user):
-    """Resolve roles consistently with login/profile responses."""
-    if not user or not user.is_authenticated:
+    """Resolve a user's effective role consistently across the API."""
+    if not _is_authenticated(user):
         return None
-    ma_role = MAUser.objects.filter(user=user).values_list("role", flat=True).first()
-    if ma_role:
-        return ma_role
-    return "SUPER_ADMIN" if user.is_superuser else None
+
+    # A Django superuser must never be downgraded by a stale MAUser row.
+    if getattr(user, "is_superuser", False):
+        return SUPER_ADMIN
+
+    return (
+        MAUser.objects.filter(user=user)
+        .values_list("role", flat=True)
+        .first()
+    )
+
+
+def _get_role_profile(user, role=None):
+    """Return the MAUser row matching the user's effective (or requested) role."""
+    if not _is_authenticated(user):
+        return None
+
+    expected_role = role or get_request_role(user)
+    if expected_role is None:
+        return None
+
+    return (
+        MAUser.objects.select_related("user", "managed_by")
+        .filter(user=user, role=expected_role)
+        .first()
+    )
+
+
+def _get_target_profile(obj):
+    """Resolve an MAUser profile from either an MAUser or a User instance."""
+    if isinstance(obj, MAUser):
+        return obj
+    if isinstance(obj, User):
+        return _get_role_profile(obj)
+    return None
 
 
 class IsAdminOrSuperAdmin(BasePermission):
-    """
-    Allows access only to Admin and Super Admin users.
-    """
+    """Allow authenticated Admin and Super Admin users."""
+
+    message = "Admin or Super Admin access is required."
 
     def has_permission(self, request, view):
-        if not request.user.is_authenticated:
-            return False
+        return get_request_role(getattr(request, "user", None)) in {
+            ADMIN,
+            SUPER_ADMIN,
+        }
 
-        from apps.common.ownership import get_admin_profile, is_super_admin
-        if is_super_admin(request.user):
-            return True
-            
-        profile = get_admin_profile(request.user)
-        return profile is not None and profile.role == "ADMIN"
 
 class IsSuperAdminOrOwnManagedUser(BasePermission):
-    """
-    Allows modification only if:
-    - User is SUPER_ADMIN modifying an ADMIN
-    - User is ADMIN modifying a USER they manage
-    """
+    """Allow Super Admins to manage Admins and Admins to manage their Users."""
+
+    message = "You do not have permission to manage this account."
+
+    def has_permission(self, request, view):
+        return get_request_role(getattr(request, "user", None)) in {
+            ADMIN,
+            SUPER_ADMIN,
+        }
 
     def has_object_permission(self, request, view, obj):
-        if not request.user.is_authenticated:
+        request_user = getattr(request, "user", None)
+        request_role = get_request_role(request_user)
+        target_profile = _get_target_profile(obj)
+
+        if target_profile is None:
             return False
 
-        ma = getattr(request.user, 'ma_users', None)
-        ma = ma.first() if ma else None
-        if not ma:
+        if request_role == SUPER_ADMIN:
+            return target_profile.role == ADMIN
+
+        if request_role != ADMIN or target_profile.role != USER:
             return False
 
-        # Assuming obj is a User model instance
-        target_ma = getattr(obj, 'ma_users', None)
-        target_ma = target_ma.first() if target_ma else None
-        if not target_ma:
-            return False
-
-        if ma.role == 'SUPER_ADMIN':
-            return target_ma.role == 'ADMIN'
-        elif ma.role == 'ADMIN':
-            return getattr(target_ma, 'managed_by_id', None) == ma.id
-            
-        return False
+        admin_profile = _get_role_profile(request_user, ADMIN)
+        return bool(
+            admin_profile
+            and target_profile.managed_by_id == admin_profile.id
+        )
 
 
 class IsContentStudioAuthorized(BasePermission):
-    """
-    Role-based access control for Content Studio:
-    Super Admin / Admin: Can approve, reject, schedule, and publish directly.
-    User: Can create, edit, request approval. Cannot publish unless approved or approvals not required.
-    """
+    """Allow authenticated platform roles to use Content Studio."""
+
+    message = "A valid Auto Market account is required."
 
     def has_permission(self, request, view):
-        if not request.user.is_authenticated:
+        request_user = getattr(request, "user", None)
+        role = get_request_role(request_user)
+        if role not in {SUPER_ADMIN, ADMIN, USER}:
             return False
-            
-        ma_user = MAUser.objects.filter(user=request.user).first()
-        if not ma_user:
+
+        profile = _get_role_profile(request_user, role)
+        if profile is None and role != SUPER_ADMIN:
             return False
-            
-        request.user.role = ma_user.role  # Cache it on request.user for view logic
-        request.user.requires_approval = ma_user.requires_approval
+
+        # Content services consume these effective values during the request.
+        request_user.role = role
+        request_user.requires_approval = (
+            profile.requires_approval if profile is not None else False
+        )
         return True
 
+
 class IsSuperAdmin(BasePermission):
-    """
-    Allows access only to Super Admin users.
-    """
+    """Allow only effective Super Admin users."""
+
+    message = "Super Admin access is required."
 
     def has_permission(self, request, view):
-        from apps.common.ownership import is_super_admin
-        return is_super_admin(request.user)
+        return get_request_role(getattr(request, "user", None)) == SUPER_ADMIN
+
 
 class IsAdmin(BasePermission):
-    """
-    Allows access only to Admin users.
-    """
+    """Allow only effective Admin users."""
+
+    message = "Admin access is required."
 
     def has_permission(self, request, view):
-        if not request.user.is_authenticated:
-            return False
+        return get_request_role(getattr(request, "user", None)) == ADMIN
 
-        from apps.common.ownership import get_admin_profile
-        profile = get_admin_profile(request.user)
-        return profile is not None and profile.role == "ADMIN"
 
 class IsMarketingUser(BasePermission):
-    """
-    Allows access only to Marketing users.
-    """
+    """Allow only effective Marketing User accounts."""
+
+    message = "Marketing User access is required."
 
     def has_permission(self, request, view):
-        if not request.user.is_authenticated:
-            return False
-
-        from apps.common.ownership import get_admin_profile
-        profile = get_admin_profile(request.user)
-        return profile is not None and profile.role == "USER"
+        return get_request_role(getattr(request, "user", None)) == USER
 
 
 class CanBootstrapSuperAdmin(BasePermission):
-    """Allow a one-time anonymous bootstrap, then require a Super Admin."""
+    """Allow one anonymous bootstrap, then require an existing Super Admin."""
 
     message = "Super Admin creation is restricted to an existing Super Admin."
 
     def has_permission(self, request, view):
-        if not MAUser.objects.filter(role="SUPER_ADMIN").exists():
+        super_admin_exists = (
+            MAUser.objects.filter(role=SUPER_ADMIN).exists()
+            or User.objects.filter(is_superuser=True).exists()
+        )
+        if not super_admin_exists:
             return True
 
-        if not request.user.is_authenticated:
-            return False
-
-        return MAUser.objects.filter(
-            user=request.user,
-            role="SUPER_ADMIN",
-        ).exists()
+        return get_request_role(getattr(request, "user", None)) == SUPER_ADMIN

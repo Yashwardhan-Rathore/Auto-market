@@ -44,7 +44,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const response = await authService.login({ email, password });
     setAccessToken(response.data.access); storeRefreshToken(response.data.refresh);
-    const profile = await authService.profile();
+    // Login already returns the authenticated profile. Reusing it avoids a
+    // second remote database round-trip before the dashboard can open.
+    const profile = response.data.user;
     if (!profile.is_active) { clear(); throw new Error("This account is disabled."); }
     if (!isUserRole(profile.role)) { clear(); throw new Error("The account has an unsupported role."); }
     setUser(profile); router.replace(getDashboardPath(profile.role));
