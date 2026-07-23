@@ -85,9 +85,13 @@ class ContentVersion(TimeStampedUUIDModel):
 
 class BrandVoice(TimeStampedUUIDModel):
 
-    tone = models.CharField(max_length=100, default="Professional", help_text="e.g., Professional, Casual, Humorous")
-    target_audience = models.TextField(blank=True, help_text="Describe the target audience")
-    guidelines = models.TextField(blank=True, help_text="Specific rules, do's and don'ts")
+    brand_description = models.TextField(blank=True, help_text="What does your brand do?")
+    target_audience = models.TextField(blank=True, help_text="Who is your target audience?")
+    tone = models.CharField(max_length=255, default="Professional", help_text="How do you want your brand to sound on social media?")
+    content_pillars = models.TextField(blank=True, help_text="What topics should your content focus on?")
+    unique_value = models.TextField(blank=True, help_text="What makes your brand different from competitors?")
+    guidelines = models.TextField(blank=True, help_text="Are there any words, phrases, or styles the AI should always use or avoid?")
+    call_to_action = models.TextField(blank=True, help_text="What action should your social media posts encourage?")
 
     class Meta:
         db_table = "brand_voices"

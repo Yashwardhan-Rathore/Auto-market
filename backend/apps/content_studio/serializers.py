@@ -4,7 +4,11 @@ from .models import GeneratedContent, ContentVersion, BrandVoice, ContentTemplat
 class BrandVoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = BrandVoice
-        fields = ['id', 'tone', 'target_audience', 'guidelines', 'created_at', 'updated_at']
+        fields = [
+            'id', 'brand_description', 'target_audience', 'tone',
+            'content_pillars', 'unique_value', 'guidelines', 'call_to_action', 
+            'created_at', 'updated_at'
+        ]
 
 class ContentTemplateSerializer(serializers.ModelSerializer):
     class Meta:

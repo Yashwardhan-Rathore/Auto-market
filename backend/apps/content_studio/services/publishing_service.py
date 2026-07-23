@@ -12,7 +12,7 @@ class PublishingService:
     @transaction.atomic
     def publish_content(draft, user):
         """
-        Publishes the content to all associated platforms.
+        Schedules or publishes the content to all associated platforms.
         Respects approval rules.
         Saves any associated images to the AssetLibrary.
         """
@@ -20,7 +20,6 @@ class PublishingService:
             # Allow super admin/admin or users who don't require approval to bypass
             requires_approval = getattr(user, 'requires_approval', True)
             if not hasattr(user, 'requires_approval'):
-                # Fetch it from MAUser if not cached by permission class
                 from apps.accounts.models import MAUser
                 ma_profile = MAUser.objects.filter(user=user).first()
                 if ma_profile:
@@ -33,59 +32,41 @@ class PublishingService:
         if not platforms:
             raise ValueError("No platforms selected for this content.")
 
-        all_success = True
-        
         # Save images to asset library first (if any exist for the platforms)
         PublishingService._save_images_to_asset_library(draft, user)
-
+        
+        from apps.integrations.tasks import publish_social_post_task
+        
+        now = timezone.now()
+        dispatched = False
+        
         for platform in platforms:
             if platform.status == ContentPlatform.PlatformStatus.POSTED:
                 continue  # Already posted
 
-            try:
-                # We need content and image_url. 
-                # Assuming caption is available via reverse relation.
-                content = platform.caption.caption_text if hasattr(platform, 'caption') else draft.enhanced_prompt
-                
-                # Fetch image URL if an ImageReference exists for this platform
-                image_url = None
-                img_ref = platform.images.first()
-                if img_ref and img_ref.asset:
-                    image_url = img_ref.asset.file_url
-
-                logger.info(f"Attempting to publish to {platform.platform} for ContentDraft {draft.id}")
-                
-                # SocialService publish_post acts as a unified facade for Integrations
-                response = SocialService.publish_post(
-
-                    platform=platform.platform,
-                    content=content,
-                    image_url=image_url
+            logger.info(f"Dispatching publishing task for {platform.platform} for ContentDraft {draft.id}")
+            
+            # Use MAUser ID for connection lookup if needed, but user_id string works
+            user_id_str = str(user.id)
+            
+            if platform.scheduled_datetime and platform.scheduled_datetime > now:
+                # Schedule in the future
+                publish_social_post_task.apply_async(
+                    args=[str(platform.id), user_id_str], 
+                    eta=platform.scheduled_datetime
                 )
+                logger.info(f"Scheduled for {platform.scheduled_datetime}")
+            else:
+                # Publish immediately in background
+                publish_social_post_task.delay(str(platform.id), user_id_str)
+                logger.info("Dispatched immediately to background queue")
                 
-                if response.get("success"):
-                    platform.status = ContentPlatform.PlatformStatus.POSTED
-                    platform.external_post_id = response.get("platform_post_id", "")
-                    platform.published_datetime = timezone.now()
-                    platform.error_message = ""
-                    platform.save(update_fields=['status', 'external_post_id', 'published_datetime', 'error_message'])
-                else:
-                    all_success = False
-                    platform.status = ContentPlatform.PlatformStatus.FAILED
-                    platform.error_message = response.get("error", "Unknown publishing error")
-                    platform.save(update_fields=['status', 'error_message'])
+            dispatched = True
 
-            except Exception as e:
-                logger.error(f"Failed to publish to {platform.platform}: {str(e)}")
-                all_success = False
-                platform.status = ContentPlatform.PlatformStatus.FAILED
-                platform.error_message = str(e)
-                platform.save(update_fields=['status', 'error_message'])
-
-        # Update overall draft state if everything is posted
-        if all_success:
-            draft.workflow_state = ContentDraft.WorkflowState.PUBLISHED
-            draft.save(update_fields=['workflow_state'])
+        # Note: Overall workflow state is now updated by the Celery task when the last platform posts successfully.
+        if dispatched and draft.workflow_state == ContentDraft.WorkflowState.APPROVED:
+            # We can optionally set it to a pending state if desired, but APPROVED is fine until tasks complete.
+            pass
 
         return draft
 

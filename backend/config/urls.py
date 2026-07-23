@@ -87,6 +87,10 @@ urlpatterns = [
         "api/content/",
         include("apps.content_studio.urls"),
     ),
+    path(
+        "api/integrations/",
+        include("apps.integrations.urls"),
+    ),
 ]
 
 from django.conf import settings

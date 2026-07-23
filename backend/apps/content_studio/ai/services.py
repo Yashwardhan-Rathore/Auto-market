@@ -21,9 +21,13 @@ class AILifecycleService:
             bv = BrandVoice.objects.first()
             if bv:
                 return {
-                    "tone": bv.tone,
+                    "brand_description": bv.brand_description,
                     "target_audience": bv.target_audience,
-                    "guidelines": bv.guidelines
+                    "tone": bv.tone,
+                    "content_pillars": bv.content_pillars,
+                    "unique_value": bv.unique_value,
+                    "guidelines": bv.guidelines,
+                    "call_to_action": bv.call_to_action
                 }
             return {}
         except Exception:

@@ -16,7 +16,6 @@ class IsAdminOrSuperAdmin(BasePermission):
     """
     Allows access only to Admin and Super Admin users.
     """
-
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
             return False
