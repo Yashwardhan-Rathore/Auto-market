@@ -44,6 +44,22 @@ class CampaignCreateAPIView(APIView):
             },
         )
 
+class CampaignDeleteAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, campaign_id):
+        campaign = get_object_or_404(
+            Campaign,
+            id=campaign_id,
+            created_by=request.user,
+            is_deleted=False,
+        )
+        campaign.is_deleted = True
+        campaign.is_active = False
+        campaign.save(update_fields=["is_deleted", "is_active"])
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class CampaignUpdateAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -230,4 +246,53 @@ class CampaignWorkspaceSummaryAPIView(APIView):
             "delivered": recipients(["DELIVERED", "OPENED", "CLICKED"]),
             "opened": recipients(["OPENED", "CLICKED"]),
             "clicked": recipients(["CLICKED"]),
+        })
+
+
+class CampaignDetailAPIView(APIView):
+    """Return campaign info + per-channel template bodies for the detail modal."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, campaign_id):
+        campaign = get_object_or_404(
+            Campaign.objects.select_related(
+                "task", "task__audience", "submitted_by", "created_by",
+            ).prefetch_related(
+                "campaign_templates__channel",
+                "campaign_templates__template",
+                "audience",
+            ),
+            id=campaign_id,
+            is_active=True,
+            is_deleted=False,
+        )
+
+        submitted_by = campaign.submitted_by or campaign.created_by
+        if submitted_by:
+            full = f"{submitted_by.first_name} {submitted_by.last_name}".strip()
+            assigned_to = full or submitted_by.email
+        else:
+            assigned_to = ""
+
+        # Count contacts via CampaignAudience rows
+        from apps.campaigns.models import CampaignAudience
+        contacts = CampaignAudience.objects.filter(campaign=campaign).count()
+
+        channels_data = []
+        for ct in campaign.campaign_templates.all():
+            channels_data.append({
+                "channel": ct.channel.name,
+                "subject": ct.template.subject or "",
+                "body": ct.template.body or "",
+            })
+
+        return Response({
+            "id": campaign.id,
+            "campaign_name": campaign.name,
+            "status": campaign.status,
+            "contacts": contacts,
+            "start_date": str(campaign.scheduled_at or campaign.submitted_at or campaign.created_at),
+            "assigned_to": assigned_to,
+            "channels": channels_data,
+            "available_actions": MyCampaignListSerializer().get_available_actions(campaign),
         })

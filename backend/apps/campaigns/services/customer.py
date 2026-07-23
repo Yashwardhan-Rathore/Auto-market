@@ -51,10 +51,12 @@ class CustomerImportService:
 
     @staticmethod
     def save_records(upload, dataframe):
+        # Store column order inside each record so PostgreSQL jsonb key-sorting can be reversed
+        col_order = dataframe.columns.tolist()
         records = [
             CustomerRecord(
                 upload=upload,
-                data=row.to_dict(),
+                data={"__col_order__": col_order, "__source__": "imported", **row.to_dict()},
             )
             for _, row in dataframe.iterrows()
         ]

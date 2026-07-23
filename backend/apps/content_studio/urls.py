@@ -8,6 +8,7 @@ from .views import (
     ContentTemplateDetailAPIView,
     GeneratedContentListAPIView,
     RegenerateContentAPIView,
+    AssetLibraryView,
 )
 
 urlpatterns = [
@@ -16,9 +17,10 @@ urlpatterns = [
     path('<uuid:pk>/update/', UpdateContentVersionAPIView.as_view(), name='content-update'),
     path('<uuid:pk>/action/', ContentActionAPIView.as_view(), name='content-action'),
     path('history/', GeneratedContentListAPIView.as_view(), name='content-history'),
-    
+    path('assets/', AssetLibraryView.as_view(), name='asset-library'),
+
     path('brand-voice/', BrandVoiceAPIView.as_view(), name='brand-voice'),
-    
+
     path('templates/', ContentTemplateListCreateAPIView.as_view(), name='template-list-create'),
     path('templates/<uuid:pk>/', ContentTemplateDetailAPIView.as_view(), name='template-detail'),
 ]

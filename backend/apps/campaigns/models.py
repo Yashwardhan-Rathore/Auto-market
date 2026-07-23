@@ -312,8 +312,10 @@ class Audience(models.Model):
 
     customer_upload = models.ForeignKey(
         CustomerUpload,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         related_name="audiences",
+        null=True,
+        blank=True,
     )
 
     definition = models.JSONField(

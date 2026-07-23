@@ -1,4 +1,5 @@
-from apps.campaigns.models import CustomerRecord , Audience
+from apps.campaigns.models import CustomerRecord, Audience
+from apps.common.ownership import filter_customer_records_for_admin
 from django.db.models import Q
 
 OPERATOR_MAP = {
@@ -16,40 +17,24 @@ OPERATOR_MAP = {
     "<=": "__lte",
 }
 
+
 class AudienceService:
 
     @staticmethod
-    def create_audience(
-        *,
-        validated_data,
-        user,
-    ):
-        return Audience.objects.create(
-            name=validated_data["name"],
-            customer_upload=validated_data[
-                "customer_upload"
-            ],
-            definition=validated_data[
-                "definition"
-            ],
-            created_by=user,
+    def _base_queryset(user):
+        """All CustomerRecords accessible to this user."""
+        return filter_customer_records_for_admin(
+            CustomerRecord.objects.all(), user
         )
 
     @staticmethod
-    def get_customers(
-        *,
-        customer_upload,
-        audience_definition,
-    ):
+    def _apply_definition(queryset, audience_definition):
         """
-        Return customers matching the supplied audience definition.
+        Apply filter conditions from audience_definition to queryset.
+        Returns unfiltered queryset if no conditions defined.
         """
-
-        queryset = CustomerRecord.objects.filter(
-            upload=customer_upload,
-        )
-
         from apps.campaigns.utils import normalize_column_name
+
         def numeric_value(value):
             try:
                 return float(value)
@@ -60,9 +45,15 @@ class AudienceService:
             field = normalize_column_name(condition["field"])
             operator = str(condition.get("operator", "=")).lower()
             value = condition.get("value")
+
+            # Special field: source → maps to __source__ in data
+            if field in ("source", "__source__"):
+                field = "__source__"
+
             if operator == "between":
-                return Q(**{f"data__{field}__gte": numeric_value(value)}) & Q(
-                    **{f"data__{field}__lte": numeric_value(condition.get("value_to"))}
+                return (
+                    Q(**{f"data__{field}__gte": numeric_value(value)})
+                    & Q(**{f"data__{field}__lte": numeric_value(condition.get("value_to"))})
                 )
             lookup = OPERATOR_MAP.get(operator)
             if lookup is None:
@@ -76,38 +67,96 @@ class AudienceService:
             combined = Q()
             for condition in conditions:
                 part = condition_query(condition)
-                combined = combined & part if operator.upper() == "AND" else combined | part
+                combined = (
+                    combined & part if operator.upper() == "AND" else combined | part
+                )
             return combined
 
         groups = audience_definition.get("groups") or []
         if groups:
             query = Q()
-            groups_operator = str(audience_definition.get("groups_operator", "OR")).upper()
+            groups_operator = str(
+                audience_definition.get("groups_operator", "OR")
+            ).upper()
             for group in groups:
                 group_query = combine(
                     group.get("conditions", []),
                     str(group.get("operator", "AND")),
                 )
-                query = query & group_query if groups_operator == "AND" else query | group_query
+                query = (
+                    query & group_query
+                    if groups_operator == "AND"
+                    else query | group_query
+                )
         else:
-            query = combine(
-                audience_definition.get("conditions", []),
-                str(audience_definition.get("operator", "AND")),
-            )
+            flat_conditions = audience_definition.get("conditions", [])
+            if flat_conditions:
+                query = combine(
+                    flat_conditions,
+                    str(audience_definition.get("operator", "AND")),
+                )
+            else:
+                # No conditions → match everything
+                return queryset
 
         return queryset.filter(query)
 
     @staticmethod
-    def preview_audience(
-        *,
-        customer_upload,
-        audience_definition,
-    ):
-        """
-        Return matching customers for the supplied audience definition.
-        """
+    def create_audience(*, validated_data, user):
+        definition = validated_data["definition"]
+        seg_type = str((definition or {}).get("type", "DYNAMIC")).upper()
 
+        # For STATIC segments: snapshot matching record IDs now
+        if seg_type == "STATIC":
+            base_qs = AudienceService._base_queryset(user)
+            matched_ids = list(
+                AudienceService._apply_definition(base_qs, definition)
+                .values_list("id", flat=True)[:10000]
+            )
+            definition = {**definition, "static_ids": matched_ids}
+
+        return Audience.objects.create(
+            name=validated_data["name"],
+            customer_upload=validated_data.get("customer_upload"),
+            definition=definition,
+            created_by=user,
+        )
+
+    @staticmethod
+    def get_customers(*, user=None, audience_definition, customer_upload=None):
+        """
+        Return CustomerRecord queryset matching the audience definition.
+        - DYNAMIC: re-evaluates conditions against all current contacts.
+        - STATIC: returns only the snapshotted IDs stored at creation.
+        - Falls back to upload-scoped query if user not provided (legacy).
+        """
+        seg_type = str((audience_definition or {}).get("type", "DYNAMIC")).upper()
+
+        # STATIC: use snapshotted IDs
+        if seg_type == "STATIC":
+            static_ids = (audience_definition or {}).get("static_ids", [])
+            if user:
+                return AudienceService._base_queryset(user).filter(id__in=static_ids)
+            if customer_upload:
+                return CustomerRecord.objects.filter(
+                    upload=customer_upload, id__in=static_ids
+                )
+            return CustomerRecord.objects.filter(id__in=static_ids)
+
+        # DYNAMIC: apply conditions
+        if user:
+            base_qs = AudienceService._base_queryset(user)
+        elif customer_upload:
+            base_qs = CustomerRecord.objects.filter(upload=customer_upload)
+        else:
+            base_qs = CustomerRecord.objects.all()
+
+        return AudienceService._apply_definition(base_qs, audience_definition)
+
+    @staticmethod
+    def preview_audience(*, user=None, audience_definition, customer_upload=None):
         return AudienceService.get_customers(
+            user=user,
             customer_upload=customer_upload,
             audience_definition=audience_definition,
         )

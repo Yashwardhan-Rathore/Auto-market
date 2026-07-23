@@ -5,6 +5,7 @@ let accessToken: string | null = null;
 let refreshPromise: Promise<string> | null = null;
 
 export const apiClient = axios.create({ baseURL, timeout: 15000, headers: { Accept: "application/json" } });
+export function resolveApiUrl(url?: string | null) { if (!url) return undefined; if (/^(https?:|data:|blob:)/i.test(url)) return url; return `${baseURL}${url.startsWith("/") ? "" : "/"}${url}`; }
 export function setAccessToken(token: string | null) { accessToken = token; }
 export function getStoredRefreshToken() { return typeof window === "undefined" ? null : sessionStorage.getItem("ma_refresh"); }
 export function storeRefreshToken(token: string | null) { if (typeof window === "undefined") return; if (token) sessionStorage.setItem("ma_refresh", token); else sessionStorage.removeItem("ma_refresh"); }
@@ -46,6 +47,8 @@ export function parseApiError(error: unknown): string {
   const data = error.response.data as Record<string, unknown> | undefined;
   const detail = data?.detail;
   if (typeof detail === "string") return detail;
+  const apiError = data?.error ?? data?.message;
+  if (typeof apiError === "string") return apiError;
   const first = data && Object.values(data)[0];
   if (Array.isArray(first)) return String(first[0]);
   return error.response.status === 429 ? "Too many requests. Please wait and try again." : `Request failed (${error.response.status}).`;

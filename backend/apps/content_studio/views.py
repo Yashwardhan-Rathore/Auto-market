@@ -2,9 +2,77 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.pagination import PageNumberPagination
 from django.shortcuts import get_object_or_404
 from .models import GeneratedContent, ContentVersion
 from .services import ContentStudioService
+from apps.asset_library.models import Asset
+from apps.asset_library.serializers import AssetSerializer, AssetCreateSerializer
+import os, uuid
+from django.conf import settings
+from django.core.files.storage import default_storage
+
+
+def _detect_asset_type(filename):
+    ext = os.path.splitext(filename)[1].lower().lstrip(".")
+    if ext in {"jpg","jpeg","png","webp","gif","svg","bmp"}:
+        return Asset.AssetType.IMAGE
+    if ext in {"mp4","mov","avi","mkv","webm","m4v"}:
+        return Asset.AssetType.VIDEO
+    if ext in {"pdf","doc","docx","xls","xlsx","ppt","pptx","txt","csv"}:
+        return Asset.AssetType.DOCUMENT
+    return Asset.AssetType.OTHER
+
+
+class AssetPagination(PageNumberPagination):
+    page_size = 50
+    page_size_query_param = "size"
+    max_page_size = 200
+
+
+class AssetLibraryView(APIView):
+    """GET /api/content/assets/ — list assets for the current user"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        qs = Asset.objects.filter(
+            uploaded_by=request.user
+        ).select_related("uploaded_by").prefetch_related("tags")
+
+        asset_type = request.query_params.get("type")
+        if asset_type:
+            qs = qs.filter(asset_type=asset_type.upper())
+
+        search = request.query_params.get("search", "").strip()
+        if search:
+            qs = qs.filter(name__icontains=search)
+
+        paginator = AssetPagination()
+        page = paginator.paginate_queryset(qs, request)
+        return paginator.get_paginated_response(AssetSerializer(page, many=True).data)
+
+    def post(self, request):
+        ser = AssetCreateSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        data = ser.validated_data
+
+        file_url = data.get("file_url", "")
+        uploaded_file = data.get("file")
+        if uploaded_file:
+            ext = os.path.splitext(uploaded_file.name)[1]
+            save_path = f"assets/{uuid.uuid4().hex}{ext}"
+            saved = default_storage.save(save_path, uploaded_file)
+            file_url = request.build_absolute_uri(settings.MEDIA_URL + saved)
+
+        asset_type = data.get("asset_type") or _detect_asset_type(data["name"])
+        asset = Asset.objects.create(
+            name=data["name"],
+            file_url=file_url,
+            asset_type=asset_type,
+            is_personal=data.get("is_personal", False),
+            uploaded_by=request.user,
+        )
+        return Response(AssetSerializer(asset).data, status=status.HTTP_201_CREATED)
 
 class GenerateContentAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -234,6 +302,24 @@ class ContentDraftViewSet(viewsets.ModelViewSet):
         
         updated_draft = ContentDraftService.update_content_partial(draft, serializer.validated_data)
         return Response(ContentDraftSerializer(updated_draft).data)
+
+    @action(detail=True, methods=['patch'], url_path=r'platforms/(?P<platform_id>[^/.]+)')
+    def update_platform(self, request, pk=None, platform_id=None):
+        """Persist caption edits or remove media for one generated platform."""
+        from .models import Caption
+        from .serializers import ContentPlatformSerializer
+
+        draft = self.get_object()
+        platform = get_object_or_404(draft.platforms.all(), id=platform_id)
+        caption, _ = Caption.objects.get_or_create(platform=platform)
+        for field in ('caption_text', 'hashtags', 'cta'):
+            if field in request.data:
+                setattr(caption, field, request.data[field])
+        caption.is_manually_edited = True
+        caption.save()
+        if request.data.get('remove_images'):
+            platform.images.all().delete()
+        return Response(ContentPlatformSerializer(platform).data)
 
     @action(detail=True, methods=['post'])
     def request_approval(self, request, pk=None):

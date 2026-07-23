@@ -1,11 +1,13 @@
 from .campaign import (
     CampaignCreateAPIView,
+    CampaignDetailAPIView,
 )
 from .customer import (
     CustomerUploadAPIView,
     CustomerUploadListAPIView,
     CustomerRecordListAPIView,
     CustomerRecordDetailAPIView,
+    CustomerBulkDeleteAPIView,
 )
 from .channel import AssignChannelsView, ChannelListAPIView
 

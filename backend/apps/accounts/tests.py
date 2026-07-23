@@ -3,6 +3,17 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.accounts.models import MAUser, User
+from apps.accounts.permissions import (
+    IsAdminOrSuperAdmin,
+    IsContentStudioAuthorized,
+    IsSuperAdminOrOwnManagedUser,
+    get_request_role,
+)
+
+
+class PermissionRequest:
+    def __init__(self, user):
+        self.user = user
 
 
 class AuthenticationAPITests(APITestCase):
@@ -112,3 +123,79 @@ class AuthenticationAPITests(APITestCase):
                 role="ADMIN",
             ).exists()
         )
+
+
+class AccountPermissionTests(APITestCase):
+    password = "StrongPass123!"
+
+    def create_role_user(self, email, role, managed_by=None, **extra):
+        user = User.objects.create_user(
+            email=email,
+            password=self.password,
+            **extra,
+        )
+        profile = MAUser.objects.create(
+            user=user,
+            role=role,
+            managed_by=managed_by,
+        )
+        return user, profile
+
+    def test_django_superuser_role_is_never_downgraded(self):
+        root = User.objects.create_superuser(
+            email="root-role@example.com",
+            password=self.password,
+        )
+        MAUser.objects.create(user=root, role="USER")
+
+        self.assertEqual(get_request_role(root), "SUPER_ADMIN")
+        self.assertTrue(
+            IsAdminOrSuperAdmin().has_permission(PermissionRequest(root), None)
+        )
+
+    def test_content_permission_supports_django_superuser_without_profile(self):
+        root = User.objects.create_superuser(
+            email="content-root@example.com",
+            password=self.password,
+        )
+        request = PermissionRequest(root)
+
+        self.assertTrue(IsContentStudioAuthorized().has_permission(request, None))
+        self.assertEqual(root.role, "SUPER_ADMIN")
+        self.assertFalse(root.requires_approval)
+
+    def test_admin_can_manage_only_directly_managed_marketing_users(self):
+        admin, admin_profile = self.create_role_user(
+            "owner-admin@example.com",
+            "ADMIN",
+        )
+        managed_user, managed_profile = self.create_role_user(
+            "managed@example.com",
+            "USER",
+            managed_by=admin_profile,
+        )
+        other_user, _ = self.create_role_user(
+            "unmanaged@example.com",
+            "USER",
+        )
+        permission = IsSuperAdminOrOwnManagedUser()
+        request = PermissionRequest(admin)
+
+        self.assertTrue(permission.has_permission(request, None))
+        self.assertTrue(permission.has_object_permission(request, None, managed_user))
+        self.assertTrue(permission.has_object_permission(request, None, managed_profile))
+        self.assertFalse(permission.has_object_permission(request, None, other_user))
+
+    def test_anonymous_bootstrap_is_closed_when_django_superuser_exists(self):
+        User.objects.create_superuser(
+            email="existing-django-root@example.com",
+            password=self.password,
+        )
+
+        response = self.client.post(
+            reverse("create-super-admin"),
+            {"email": "anonymous-root@example.com", "password": self.password},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

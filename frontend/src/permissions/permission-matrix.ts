@@ -5,7 +5,7 @@ export type Action = "view" | "create" | "update" | "delete" | "approve" | "publ
 
 const matrix: Record<UserRole, Partial<Record<ModuleKey, readonly Action[]>>> = {
   [ROLES.SUPER_ADMIN]: {
-    dashboard: ["view"], admins: ["view", "create", "delete"], users: ["view", "delete"], analytics: ["view"],
+    dashboard: ["view"], admins: ["view", "create", "delete"], analytics: ["view"],
     audiences: ["view", "create"], automations: ["view", "create", "update", "delete", "execute"], campaigns: ["view", "approve"],
     channels: ["view"], communications: ["view", "create"], content: ["view", "approve", "publish"], customers: ["view"], templates: ["view", "create", "update"],
   },

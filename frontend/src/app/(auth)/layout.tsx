@@ -1,1 +1,11 @@
-export default function AuthLayout({ children }: { children: React.ReactNode }) { return <div className="relative grid min-h-screen place-items-center overflow-hidden bg-black p-5"><div className="absolute inset-0 opacity-30 [background-image:radial-gradient(circle_at_30%_20%,#fff_0,transparent_25%),radial-gradient(circle_at_80%_80%,#777_0,transparent_22%)]"/><div className="relative w-full max-w-md">{children}</div></div>; }
+"use client";
+
+import { usePathname } from "next/navigation";
+
+export default function AuthLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+
+  if (pathname === "/login") return <>{children}</>;
+
+  return <div className="relative grid min-h-screen place-items-center overflow-hidden bg-black p-5"><div className="absolute inset-0 opacity-30 [background-image:radial-gradient(circle_at_30%_20%,#fff_0,transparent_25%),radial-gradient(circle_at_80%_80%,#777_0,transparent_22%)]"/><div className="relative w-full max-w-md">{children}</div></div>;
+}
