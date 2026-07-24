@@ -1,7 +1,7 @@
 import { apiClient } from "@/services/api-client";
 import type { AuthUser, Paginated } from "@/types/auth";
 
-export interface AdminRecord { id: number; full_name: string; email: string; role: string; is_active: boolean; created_at: string | null }
+export interface AdminRecord { id: number; full_name?: string; first_name?: string; last_name?: string; email: string; mobile_no?: string | null; role: string; is_active: boolean; created_at: string | null }
 export interface DashboardData {
   campaigns: { total: number; draft: number; scheduled: number; sending: number; completed: number };
   deliveries: { total: number; sent: number; failed: number; pending: number; delivered: number; success_rate: number };
@@ -25,6 +25,8 @@ export const superAdminService = {
   dashboard: async () => (await apiClient.get<DashboardData>("/api/dashboard/")).data,
   analytics: async () => (await apiClient.get<AnalyticsData>("/api/analytics/summary/")).data,
   admins: async (params: {page:number;search:string}) => (await apiClient.get<Paginated<AdminRecord>>("/api/admins/", {params})).data,
+  getAdmin: async (id: number) => (await apiClient.get<AdminRecord>(`/api/admins/${id}/`)).data,
+  toggleAdminStatus: async (id: number, is_active: boolean) => (await apiClient.patch<AdminRecord>(`/api/admins/${id}/`, { is_active })).data,
   billing: async () => (await apiClient.get<BillingData>("/api/billing/summary/")).data,
   updateProfile: async (data: {first_name:string;last_name:string}) => (await apiClient.patch<AuthUser>("/api/auth/profile/", data)).data,
 };

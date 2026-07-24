@@ -380,8 +380,7 @@ class Template(models.Model):
         related_name="campaign_templates",
     )
 
-    subject = models.CharField(
-        max_length=255,
+    subject = models.TextField(
         blank=True,
         null=True,
     )

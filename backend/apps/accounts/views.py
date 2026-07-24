@@ -1,15 +1,15 @@
-from rest_framework import generics, status
+from rest_framework import generics, status, filters
 from rest_framework.permissions import AllowAny,IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import User , MAUser
-from .serializers import LoginSerializer, ProfileSerializer, ProfileUpdateSerializer, LogoutSerializer,ForgotPasswordSerializer,ResetPasswordSerializer , CreateSuperAdminSerializer , CreateAdminSerializer , CreateUserSerializer
+from .serializers import LoginSerializer, ProfileSerializer, ProfileUpdateSerializer, LogoutSerializer,ForgotPasswordSerializer,ResetPasswordSerializer , CreateSuperAdminSerializer , CreateAdminSerializer , CreateUserSerializer, UserListSerializer
 from django.utils import timezone
 from .permissions import IsAdminOrSuperAdmin,IsSuperAdmin , IsAdmin, CanBootstrapSuperAdmin
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
+from .services import UserManagementService
+from .pagination import AccountsPagination
 
 
 class LoginView(generics.GenericAPIView):
@@ -206,8 +206,6 @@ class CreateUserView(generics.CreateAPIView):
             status=status.HTTP_201_CREATED,
         )
 
-from .services import UserManagementService
-
 class DeleteAdminView(APIView):
     """
     Deletes an Admin user.
@@ -244,11 +242,10 @@ class DeleteUserView(APIView):
         return user
 
     def get(self, request, user_id):
-        from .serializers import UserListSerializer
         return Response(UserListSerializer(self.get_object(user_id)).data)
 
     def patch(self, request, user_id):
-        from .serializers import UserListSerializer, UserUpdateSerializer
+        from .serializers import UserUpdateSerializer
         user = self.get_object(user_id)
         serializer = UserUpdateSerializer(user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -261,10 +258,6 @@ class DeleteUserView(APIView):
             {"message": "User deleted successfully."},
             status=status.HTTP_200_OK,
         )
-
-from rest_framework import filters
-from .serializers import UserListSerializer
-from .pagination import AccountsPagination
 
 class ListAdminsView(generics.ListAPIView):
     """
@@ -279,6 +272,34 @@ class ListAdminsView(generics.ListAPIView):
     
     def get_queryset(self):
         return UserManagementService.get_admins_queryset()
+
+
+class AdminDetailView(APIView):
+    """
+    GET  /api/admins/<user_id>/  – retrieve admin details
+    PATCH /api/admins/<user_id>/ – toggle or update admin status (Super Admin only)
+    """
+    permission_classes = [IsAuthenticated, IsSuperAdmin]
+
+    def _get_admin(self, user_id):
+        user = get_object_or_404(User.objects.prefetch_related("ma_users"), id=user_id)
+        ma_user = user.ma_users.first()
+        if not ma_user or ma_user.role != "ADMIN":
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({"detail": "This endpoint only manages Admin accounts."})
+        return user
+
+    def get(self, request, user_id):
+        user = self._get_admin(user_id)
+        return Response(UserListSerializer(user).data)
+
+    def patch(self, request, user_id):
+        user = self._get_admin(user_id)
+        # Only allow toggling is_active through this endpoint
+        if "is_active" in request.data:
+            user.is_active = bool(request.data["is_active"])
+            user.save(update_fields=["is_active"])
+        return Response(UserListSerializer(user).data)
 
 class ListUsersView(generics.ListAPIView):
     """

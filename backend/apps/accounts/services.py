@@ -143,8 +143,8 @@ class UserManagementService:
 
     @classmethod
     def get_admins_queryset(cls):
-        """Returns a queryset of User objects with role ADMIN, optimized with prefetch_related."""
-        return User.objects.filter(ma_users__role="ADMIN", is_active=True).prefetch_related("ma_users")
+        """Returns a queryset of all Admin User objects (active and inactive), optimized with prefetch_related."""
+        return User.objects.filter(ma_users__role="ADMIN").prefetch_related("ma_users")
 
     @classmethod
     def get_users_queryset(cls, request_user=None):

@@ -183,7 +183,9 @@ export function AdminContacts() {
           <button className="secondary-button flex min-h-12 items-center gap-2 px-5" disabled={!rows.length} onClick={exportCsv}><Download size={18} />Export</button>
           {someSelected && (
             <button
-              className="flex min-h-12 items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-5 text-sm font-semibold text-red-600 hover:bg-red-100 transition"
+              className="flex min-h-12 items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-5 text-sm font-semibold text-red-600
+                transition-all duration-200 hover:bg-red-100 hover:-translate-y-0.5 hover:shadow-[0_8px_22px_rgba(239,68,68,.2)] hover:border-red-300
+                active:translate-y-0 active:shadow-none"
               onClick={() => setConfirmBulk(true)}
             >
               <Trash2 size={17} />Delete Selected ({selected.size})
@@ -198,7 +200,10 @@ export function AdminContacts() {
         <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 bg-white p-5">
           <label className="relative min-w-64 flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={19} />
-            <input className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-12 pr-4 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100" placeholder="Search contacts..." value={search} onChange={e => setSearch(e.target.value)} />
+            <input className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-12 pr-4 text-sm outline-none
+              transition-all duration-200
+              focus:border-blue-400 focus:ring-4 focus:ring-blue-100 focus:shadow-[0_0_0_4px_rgba(96,165,250,.12)]"
+              placeholder="Search contacts..." value={search} onChange={e => setSearch(e.target.value)} />
           </label>
           <div className="relative">
             <Tags className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-700" size={18} />
@@ -218,9 +223,9 @@ export function AdminContacts() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm" style={{ minWidth: Math.max(800, dynamicColumns.length * 160 + 200) }}>
-              <thead className="border-b border-slate-200 bg-slate-50/80 text-[11px] uppercase tracking-[.13em] text-slate-500">
+              <thead className="border-b border-slate-200 bg-slate-50/50 text-[11px] font-semibold uppercase tracking-widest text-slate-400">
                 <tr>
-                  <th className="px-5 py-4 w-10">
+                  <th className="px-5 py-3.5 w-10">
                     <input
                       type="checkbox"
                       aria-label="Select all contacts"
@@ -230,20 +235,20 @@ export function AdminContacts() {
                     />
                   </th>
                   {dynamicColumns.map(col => (
-                    <th key={col} className="px-3 py-4 whitespace-nowrap">
+                    <th key={col} className="px-4 py-3.5 whitespace-nowrap">
                       {col.replace(/_/g, " ")}
                     </th>
                   ))}
-                  <th className="sticky right-0 bg-slate-50/80 px-4 py-4 text-center shadow-[-8px_0_12px_-4px_rgba(15,23,42,.06)]">Actions</th>
+                  <th className="sticky right-0 bg-slate-50/50 px-4 py-3.5 text-center shadow-[-8px_0_12px_-4px_rgba(15,23,42,.06)]">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {contacts.map(({ row, contact }) => (
                   <tr
-                    className={`group border-b border-slate-100 transition-colors last:border-0 hover:bg-blue-50/40 ${selected.has(row.id) ? "bg-blue-50/60" : ""}`}
+                    className={`group border-t border-slate-100 transition-colors last:border-0 hover:bg-blue-50/40 ${selected.has(row.id) ? "bg-blue-50/60" : ""}`}
                     key={row.id}
                   >
-                    <td className="px-5 py-4">
+                    <td className="px-5 py-3.5">
                       <input
                         type="checkbox"
                         aria-label={`Select ${contact.name}`}
@@ -259,7 +264,7 @@ export function AdminContacts() {
                         ? (Array.isArray(raw) ? raw.map(String) : String(raw ?? "").split(",").map(t => t.trim()).filter(Boolean))
                         : [];
                       return (
-                        <td key={col} className="px-3 py-4 max-w-[220px]">
+                        <td key={col} className="px-4 py-3.5 max-w-[220px]">
                           {isTags ? (
                             <div className="flex flex-wrap gap-1.5">
                               {tags.length
@@ -276,9 +281,13 @@ export function AdminContacts() {
                     })}
                     <td className="sticky right-0 bg-white px-3 py-4 shadow-[-8px_0_12px_-4px_rgba(15,23,42,.06)] group-hover:bg-blue-50/40">
                       <div className="flex justify-center gap-2">
-                        <button className="icon-button !text-blue-600" title="View contact" onClick={() => setViewing({ row, contact })}><Eye size={18} /></button>
-                        <button className="icon-button !text-slate-800" title="Edit contact" onClick={() => beginEdit(row)}><Pencil size={17} /></button>
-                        <button className="icon-button !text-red-500" title="Delete contact" onClick={() => setConfirmDelete(row.id)}><Trash2 size={17} /></button>
+                        <button className="tbl-action tbl-action-view" title="View contact" onClick={() => setViewing({ row, contact })}><Eye size={17} /></button>
+                        <button className="tbl-action" title="Edit contact" onClick={() => beginEdit(row)}
+                          style={{ transition: "transform .22s cubic-bezier(.34,1.56,.64,1), background .22s, box-shadow .22s, color .22s" }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.cssText += ";transform:scale(1.18) translateY(-1px);background:rgba(15,23,42,.07);color:#1e293b;box-shadow:0 4px 12px rgba(15,23,42,.12)"; }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.cssText = ""; }}>
+                          <Pencil size={16} /></button>
+                        <button className="tbl-action tbl-action-reject" title="Delete contact" onClick={() => setConfirmDelete(row.id)}><Trash2 size={16} /></button>
                       </div>
                     </td>
                   </tr>
@@ -353,7 +362,7 @@ function ConfirmModal({ icon, title, description, confirmLabel, danger, pending,
         <div className="flex justify-end gap-3 border-t border-slate-100 px-6 py-4">
           <button className="secondary-button px-6" onClick={onCancel} disabled={pending}>Cancel</button>
           <button
-            className={`flex min-h-10 items-center gap-2 rounded-xl px-6 text-sm font-semibold text-white transition ${danger ? "bg-red-500 hover:bg-red-600" : "bg-blue-600 hover:bg-blue-700"} disabled:opacity-50`}
+            className={`dn-btn flex min-h-10 items-center gap-2 rounded-xl px-6 text-sm font-semibold text-white ${danger ? "bg-red-500" : "bg-blue-600"} disabled:opacity-50`}
             onClick={onConfirm}
             disabled={pending}
           >
@@ -485,7 +494,7 @@ function TagDropdown({ selected, options, onToggle, onAddOption, onDeleteOption 
                   type="button"
                   onClick={addCustom}
                   disabled={!custom.trim()}
-                  className="h-9 rounded-lg bg-blue-600 px-3 text-xs font-bold text-white transition hover:bg-blue-700 disabled:opacity-40"
+                  className="dn-btn h-9 rounded-lg bg-blue-600 px-3 text-xs font-bold text-white disabled:opacity-40"
                 >
                   Add
                 </button>

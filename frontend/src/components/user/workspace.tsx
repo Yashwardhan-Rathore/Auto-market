@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertTriangle, BarChart3, Bold, Bookmark, Braces, CalendarClock, CalendarDays, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleDot, Clock3, Copy, Download, Eye, Facebook, FileText, Heart, Image as ImageIcon, Instagram, Italic, Link2, Linkedin, List, ListChecks, ListOrdered, LoaderCircle, Mail, Megaphone, MessageCircle, MoreVertical, Pencil, Plus, RefreshCw, Repeat2, Save, Search, Send, Share2, ShieldCheck, Sparkles, Target, ThumbsUp, Trash2, Underline, UserRound, Users, WandSparkles, X } from "lucide-react";
+import { AlertTriangle, BarChart3, Bold, Bookmark, Braces, CalendarClock, CalendarDays, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleDot, Clock3, Copy, Download, Eye, Facebook, FileText, Heart, Image as ImageIcon, Instagram, Italic, Link2, Linkedin, List, ListChecks, ListOrdered, LoaderCircle, Mail, Megaphone, MessageCircle, MessageSquare, MoreVertical, Pencil, Plus, RefreshCw, Repeat2, Save, Search, Send, Share2, ShieldCheck, Sparkles, Target, ThumbsUp, Trash2, Underline, UserRound, Users, WandSparkles, X } from "lucide-react";
 import Link from "next/link";
 import NextImage from "next/image";
 import { useRouter } from "next/navigation";
@@ -153,7 +153,7 @@ export function UserTasks(){
 }
 
 export function UserCampaigns(){
-  const client=useQueryClient();const [page,setPage]=useState(1);const [search,setSearch]=useState("");const [status,setStatus]=useState("");const [createOpen,setCreateOpen]=useState(false);const [resumeDraft,setResumeDraft]=useState(false);const [viewing,setViewing]=useState<Campaign|null>(null);const [deleteTarget,setDeleteTarget]=useState<Campaign|null>(null);const [form,setForm]=useState({task:"",name:"",description:""});const [scheduleOpen,setScheduleOpen]=useState(false);const [scheduleDate,setScheduleDate]=useState("");
+  const client=useQueryClient();const [page,setPage]=useState(1);const [search,setSearch]=useState("");const [status,setStatus]=useState("");const [createOpen,setCreateOpen]=useState(false);const [resumeDraft,setResumeDraft]=useState(false);const [viewing,setViewing]=useState<Campaign|null>(null);const [deleteTarget,setDeleteTarget]=useState<Campaign|null>(null);const [editingCampaign,setEditingCampaign]=useState<Campaign|null>(null);const [form,setForm]=useState({task:"",name:"",description:""});const [scheduleOpen,setScheduleOpen]=useState(false);const [scheduleDate,setScheduleDate]=useState("");
   useEffect(()=>{const timer=window.setTimeout(()=>{if(new URLSearchParams(window.location.search).has("resume")&&readCampaignDraft()){setResumeDraft(true);setCreateOpen(true);window.history.replaceState(null,"","/user/campaigns")}},0);return()=>window.clearTimeout(timer)},[]);
   const campaigns=useQuery({queryKey:["user-campaigns",page,search,status],queryFn:async()=>(await apiClient.get<CampaignPage>("/api/campaigns/my/",{params:{page,search,status:status||undefined}})).data});const tasks=useQuery({queryKey:["user-tasks"],queryFn:async()=>(await apiClient.get<Assignment[]>("/api/tasks/my/")).data});
   const create=useMutation({mutationFn:()=>apiClient.post("/api/campaigns/create/",{task:Number(form.task),name:form.name,description:form.description}),onSuccess:()=>{toast.success("Campaign created");setCreateOpen(false);setForm({task:"",name:"",description:""});void client.invalidateQueries({queryKey:["user-campaigns"]})},onError:error=>toast.error(parseApiError(error))});
@@ -161,9 +161,52 @@ export function UserCampaigns(){
   const send=useMutation({mutationFn:(id:number)=>apiClient.post("/api/campaigns/send/",{campaign:id}),onSuccess:()=>{toast.success("Campaign sent successfully!");setViewing(null);void client.invalidateQueries({queryKey:["user-campaigns"]});void client.invalidateQueries({queryKey:["user-campaigns-dashboard"]})},onError:error=>toast.error(parseApiError(error))});
   const schedule=useMutation({mutationFn:({id,at}:{id:number;at:string})=>apiClient.post("/api/campaigns/schedule/",{campaign:id,scheduled_at:new Date(at).toISOString()}),onSuccess:()=>{toast.success("Campaign scheduled!");setViewing(null);setScheduleOpen(false);setScheduleDate("");void client.invalidateQueries({queryKey:["user-campaigns"]});void client.invalidateQueries({queryKey:["user-campaigns-dashboard"]})},onError:error=>toast.error(parseApiError(error))});
   const remove=useMutation({mutationFn:(id:number)=>apiClient.delete(`/api/campaigns/${id}/delete/`),onSuccess:()=>{toast.success("Campaign deleted");setDeleteTarget(null);void client.invalidateQueries({queryKey:["user-campaigns"]});void client.invalidateQueries({queryKey:["user-campaigns-dashboard"]})},onError:error=>toast.error(parseApiError(error))});
+  
+  // Fetch full campaign details for editing
+  const loadCampaignForEdit = async (campaign: Campaign) => {
+    try {
+      // Fetch full campaign details from API
+      const response = await apiClient.get(`/api/campaigns/${campaign.id}/detail/`);
+      const fullData = response.data;
+      
+      // Build the draft object with all campaign data
+      const editDraft: CampaignDraft = {
+        task: String(campaign.task_id),
+        name: campaign.campaign_name,
+        description: fullData.description || "",
+        template_id: fullData.template_id || "",
+        template_name: fullData.template_name || "",
+        channel: fullData.channels?.[0]?.channel || "",
+        subject: fullData.channels?.[0]?.subject || "",
+        body: fullData.channels?.[0]?.body || "",
+        scheduled_at: campaign.scheduled_at || "",
+        channelTemplates: {}
+      };
+      
+      // Populate channel templates if available
+      if (fullData.channels && Array.isArray(fullData.channels)) {
+        fullData.channels.forEach((ch: any) => {
+          editDraft.channelTemplates[ch.channel] = {
+            template_id: ch.template_id || "",
+            template_name: ch.template_name || "",
+            subject: ch.subject || "",
+            body: ch.body || ""
+          };
+        });
+      }
+      
+      storeCampaignDraft(editDraft);
+      setEditingCampaign(campaign);
+      setResumeDraft(true);
+      setCreateOpen(true);
+    } catch (error) {
+      toast.error("Failed to load campaign details");
+      console.error(error);
+    }
+  };
   if(campaigns.isError)return <ErrorState error={campaigns.error}/>;const rows=campaigns.data?.results??[];
   if(createOpen)return <CampaignWizard assignments={tasks.data??[]} initialDraft={resumeDraft?readCampaignDraft():null} onCancel={()=>{storeCampaignDraft(null);setResumeDraft(false);setCreateOpen(false)}} onCreated={()=>{storeCampaignDraft(null);setResumeDraft(false);setCreateOpen(false);void client.invalidateQueries({queryKey:["user-campaigns"]});void client.invalidateQueries({queryKey:["user-campaigns-dashboard"]})}}/>;
-  return <div><div className="mb-7 flex items-end justify-between gap-4"><PageHeading title="Campaigns" subtitle="Create and manage your marketing campaigns"/><button className="primary-button px-6" onClick={()=>{storeCampaignDraft(null);setResumeDraft(false);setCreateOpen(true)}}><Plus size={18}/>Create Campaign</button></div><section className="sa-card overflow-hidden"><div className="grid gap-3 border-b border-slate-100 p-5 md:grid-cols-[1fr_220px]"><SearchInput value={search} onChange={value=>{setSearch(value);setPage(1)}} placeholder="Search campaigns..."/><Select value={status} onChange={value=>{setStatus(value);setPage(1)}} label="All Status" options={["DRAFT","PENDING_APPROVAL","APPROVED","SCHEDULED","SENDING","COMPLETED","FAILED","REJECTED"]}/></div>{campaigns.isLoading?<Skeleton/>:<div className="overflow-x-auto"><table className="w-full min-w-[980px] text-left text-sm"><thead className="bg-slate-50"><tr><th className="px-6 py-5">Campaign Name</th><th>Audience Name</th><th>Channel</th><th>Created At</th><th>Status</th><th>Actions</th></tr></thead><tbody>{rows.map((row,index)=><motion.tr initial={{opacity:0,y:5}} animate={{opacity:1,y:0}} transition={{delay:index*.03}} className="border-t border-slate-100 hover:bg-blue-50/30" key={row.id}><td className="px-6 py-5 font-semibold">{row.campaign_name}</td><td>{row.audience_name||"—"}</td><td><div className="flex flex-wrap gap-2">{row.channels.length?row.channels.map(name=><span className="flex items-center gap-2" key={name}><ChannelIcon name={name}/>{name}</span>):"—"}</div></td><td>{formatDate(row.created_at)}</td><td><Badge className={campaignTone[row.status]}>{pretty(row.status)}</Badge></td><td><div className="flex justify-center gap-2"><button aria-label="Edit" title="Edit campaign" className="icon-button !border !border-slate-200 !text-orange-500" onClick={()=>{storeCampaignDraft(null);setCreateOpen(true)}}><Pencil size={16}/></button><button aria-label="View" title="View campaign" className="icon-button !border !border-slate-200 !text-blue-600" onClick={()=>setViewing(row)}><Eye size={17}/></button><button aria-label="Delete" title="Delete campaign" className="icon-button !border !border-slate-200 !text-red-500" onClick={()=>setDeleteTarget(row)}><Trash2 size={16}/></button></div></td></motion.tr>)}</tbody></table>{!rows.length&&<Empty message="No campaigns found."/>}</div>}<Pagination page={page} count={campaigns.data?.count??0} pageSize={10} setPage={setPage}/></section>
+  return <div><div className="mb-7 flex items-end justify-between gap-4"><PageHeading title="Campaigns" subtitle="Create and manage your marketing campaigns"/><button className="primary-button px-6" onClick={()=>{storeCampaignDraft(null);setResumeDraft(false);setCreateOpen(true)}}><Plus size={18}/>Create Campaign</button></div><section className="sa-card overflow-hidden"><div className="grid gap-3 border-b border-slate-100 p-5 md:grid-cols-[1fr_220px]"><SearchInput value={search} onChange={value=>{setSearch(value);setPage(1)}} placeholder="Search campaigns..."/><Select value={status} onChange={value=>{setStatus(value);setPage(1)}} label="All Status" options={["DRAFT","PENDING_APPROVAL","APPROVED","SCHEDULED","SENDING","COMPLETED","FAILED","REJECTED"]}/></div>{campaigns.isLoading?<Skeleton/>:<div className="overflow-x-auto"><table className="w-full min-w-[980px] text-left text-sm"><thead className="bg-slate-50"><tr><th className="px-6 py-5">Campaign Name</th><th>Audience Name</th><th>Channel</th><th>Created At</th><th>Status</th><th className="text-center">Actions</th></tr></thead><tbody>{rows.map((row,index)=><motion.tr initial={{opacity:0,y:5}} animate={{opacity:1,y:0}} transition={{delay:index*.03}} className="border-t border-slate-100 hover:bg-blue-50/30" key={row.id}><td className="px-6 py-5 font-semibold">{row.campaign_name}</td><td>{row.audience_name||"—"}</td><td><div className="flex flex-wrap gap-2">{row.channels.length?row.channels.map(name=><ChannelIcon name={name} key={name}/>):"—"}</div></td><td>{formatDate(row.created_at)}</td><td><Badge className={campaignTone[row.status]}>{pretty(row.status)}</Badge></td><td className="text-center"><div className="inline-flex items-center gap-2"><button aria-label="Edit" title="Edit campaign" className="icon-button !border !border-slate-200 !text-orange-500" onClick={()=>loadCampaignForEdit(row)}><Pencil size={16}/></button><button aria-label="View" title="View campaign" className="icon-button !border !border-slate-200 !text-blue-600" onClick={()=>setViewing(row)}><Eye size={17}/></button><button aria-label="Delete" title="Delete campaign" className="icon-button !border !border-slate-200 !text-red-500" onClick={()=>setDeleteTarget(row)}><Trash2 size={16}/></button></div></td></motion.tr>)}</tbody></table>{!rows.length&&<Empty message="No campaigns found."/>}</div>}<Pagination page={page} count={campaigns.data?.count??0} pageSize={10} setPage={setPage}/></section>
     <AnimatePresence>{createOpen&&<div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4 backdrop-blur-sm"><motion.form initial={{opacity:0,scale:.96,y:12}} animate={{opacity:1,scale:1,y:0}} exit={{opacity:0,scale:.97}} className="w-full max-w-lg rounded-3xl bg-white shadow-2xl" onSubmit={event=>{event.preventDefault();create.mutate()}}><ModalHeader title="Create Campaign" onClose={()=>setCreateOpen(false)}/><div className="space-y-5 p-6"><label className="field"><span>Assigned task *</span><select required value={form.task} onChange={event=>setForm({...form,task:event.target.value})}><option value="">Select task</option>{(tasks.data??[]).map(row=><option value={row.task.id} key={row.id}>{row.task.title}</option>)}</select></label><label className="field"><span>Campaign name *</span><input required minLength={3} placeholder="Enter campaign name" value={form.name} onChange={event=>setForm({...form,name:event.target.value})}/></label><label className="field"><span>Description</span><textarea rows={4} placeholder="Describe this campaign" value={form.description} onChange={event=>setForm({...form,description:event.target.value})}/></label></div><div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 p-5"><button type="button" className="secondary-button" onClick={()=>setCreateOpen(false)}>Cancel</button><button className="primary-button px-6" disabled={create.isPending}>{create.isPending?"Creating...":"Create Campaign"}</button></div></motion.form></div>}{viewing&&<div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4 backdrop-blur-sm"><motion.div initial={{opacity:0,scale:.96,y:10}} animate={{opacity:1,scale:1,y:0}} exit={{opacity:0,scale:.97}} className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl"><button aria-label="Close" className="absolute right-4 top-4 icon-button z-10" type="button" onClick={()=>{setViewing(null);setScheduleOpen(false);setScheduleDate("")}}><X size={20}/></button><div className="flex flex-col items-center gap-2 border-b border-slate-100 px-6 pb-5 pt-7 text-center"><span className={`grid h-14 w-14 place-items-center rounded-full ${viewing.status==="REJECTED"?"bg-red-50 text-red-500":viewing.status==="APPROVED"?"bg-emerald-50 text-emerald-600":"bg-blue-50 text-blue-500"}`}><Megaphone size={24}/></span><h2 className="text-xl font-black text-slate-900">Campaign Details</h2></div><div className="p-6 space-y-4"><div className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-blue-100 text-blue-600"><Megaphone size={17}/></span><div><p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Campaign Name</p><p className="text-sm font-semibold text-slate-800">{viewing.campaign_name}</p></div></div><div className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3"><span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${viewing.status==="APPROVED"?"bg-emerald-100 text-emerald-600":viewing.status==="REJECTED"?"bg-red-100 text-red-500":"bg-slate-200 text-slate-500"}`}><CheckCircle2 size={17}/></span><div><p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Status</p><Badge className={campaignTone[viewing.status]}>{pretty(viewing.status)}</Badge></div></div>{viewing.status==="REJECTED"&&<div className="rounded-2xl border border-red-100 bg-red-50 p-4"><div className="flex items-center gap-2 mb-2"><span className="grid h-6 w-6 place-items-center rounded-full bg-red-100 text-red-500"><X size={13}/></span><p className="text-sm font-black text-red-700">Rejected by Admin</p></div>{viewing.rejection_reason&&<div className="mb-3"><p className="text-xs font-bold uppercase tracking-wide text-red-400">Rejected Reason</p><p className="mt-1 text-sm text-red-800">{viewing.rejection_reason}</p></div>}{viewing.review_comments&&<div><p className="text-xs font-bold uppercase tracking-wide text-red-400">Description</p><p className="mt-1 text-sm text-red-800">{viewing.review_comments}</p></div>}</div>}{viewing.status==="APPROVED"&&!scheduleOpen&&<div className="grid grid-cols-2 gap-3 pt-1"><button disabled={send.isPending} onClick={()=>send.mutate(viewing.id)} className="flex flex-col items-center gap-2 rounded-2xl border-2 border-blue-100 bg-blue-50 px-4 py-5 text-center transition hover:border-blue-400 hover:bg-blue-100 disabled:opacity-60"><span className="grid h-11 w-11 place-items-center rounded-full bg-white text-blue-600 shadow-sm"><Send size={20}/></span><span className="text-sm font-black text-blue-700">{send.isPending?"Sending…":"Send Now"}</span><span className="text-[11px] text-slate-500">Send campaign immediately</span></button><button onClick={()=>setScheduleOpen(true)} className="flex flex-col items-center gap-2 rounded-2xl border-2 border-indigo-100 bg-indigo-50 px-4 py-5 text-center transition hover:border-indigo-400 hover:bg-indigo-100"><span className="grid h-11 w-11 place-items-center rounded-full bg-white text-indigo-600 shadow-sm"><CalendarClock size={20}/></span><span className="text-sm font-black text-indigo-700">Schedule</span><span className="text-[11px] text-slate-500">Schedule for later</span></button></div>}{viewing.status==="APPROVED"&&scheduleOpen&&<div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-4 space-y-3"><p className="text-sm font-black text-indigo-700 flex items-center gap-2"><CalendarClock size={16}/>Pick a date &amp; time</p><input type="datetime-local" min={new Date(Date.now()+60000).toISOString().slice(0,16)} value={scheduleDate} onChange={e=>setScheduleDate(e.target.value)} className="h-11 w-full rounded-xl border border-indigo-200 bg-white px-4 text-sm outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"/><div className="flex gap-2"><button className="secondary-button flex-1" onClick={()=>{setScheduleOpen(false);setScheduleDate("")}}>Cancel</button><button disabled={!scheduleDate||schedule.isPending} onClick={()=>{if(viewing&&scheduleDate)schedule.mutate({id:viewing.id,at:scheduleDate})}} className="primary-button flex-1 justify-center disabled:opacity-60">{schedule.isPending?"Scheduling…":"Confirm"}</button></div></div>}<div className="grid grid-cols-2 gap-3"><Info label="Task" value={viewing.task_name||"—"}/><Info label="Audience" value={viewing.audience_name||"—"}/></div></div><div className="flex justify-end gap-3 border-t border-slate-100 px-6 py-4">{viewing.status==="REJECTED"&&<button className="secondary-button flex items-center gap-2 px-5 text-blue-600 border-blue-300" onClick={()=>{storeCampaignDraft(null);setViewing(null);setCreateOpen(true)}}><Pencil size={15}/>Edit Campaign</button>}<button className="secondary-button px-5" onClick={()=>{setViewing(null);setScheduleOpen(false);setScheduleDate("")}}>Close</button>{viewing.available_actions.includes("submit")&&<button className="primary-button px-5" disabled={submit.isPending} onClick={()=>submit.mutate(viewing.id)}>Submit for approval</button>}</div></motion.div></div>}{deleteTarget&&<motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4 backdrop-blur-sm"><motion.div initial={{opacity:0,scale:.95,y:10}} animate={{opacity:1,scale:1,y:0}} exit={{opacity:0,scale:.97}} className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl"><div className="flex flex-col items-center gap-3 p-8 text-center"><span className="grid h-16 w-16 place-items-center rounded-full bg-red-50"><Trash2 size={28} className="text-red-500"/></span><h2 className="text-xl font-black text-slate-900">Delete Campaign?</h2><p className="text-sm text-slate-500">Are you sure you want to delete <strong>&quot;{deleteTarget.campaign_name}&quot;</strong>? This action cannot be undone.</p></div><div className="flex justify-end gap-3 border-t border-slate-100 px-6 py-4"><button className="secondary-button px-6" onClick={()=>setDeleteTarget(null)} disabled={remove.isPending}>Cancel</button><button className="flex min-h-10 items-center gap-2 rounded-xl bg-red-500 px-6 text-sm font-semibold text-white transition hover:bg-red-600 disabled:opacity-50" onClick={()=>remove.mutate(deleteTarget.id)} disabled={remove.isPending}>{remove.isPending?"Deleting...":"Delete"}</button></div></motion.div></motion.div>}</AnimatePresence></div>;
 }
 
@@ -233,6 +276,7 @@ function CampaignWizard({assignments,initialDraft,onCancel,onCreated}:{assignmen
     if(step===2){
       if(!currentChannel){toast.error("No channel available.");return;}
       if(!currentCT.template_name.trim()){toast.error("Enter a template name.");return;}
+      if(isEmail(currentChannel.name)&&(currentCT.subject?.length??0)>255){toast.error("Email subject must be 255 characters or less.");return;}
       if(!currentCT.body.trim()){toast.error("Enter the template body.");return;}
       // Auto-save template if new
       if(!currentCT.template_id){
@@ -305,7 +349,7 @@ function CampaignWizard({assignments,initialDraft,onCancel,onCreated}:{assignmen
           <div className="mt-7 space-y-5">
             {currentCT.template_id&&<div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">✓ Saved to My Templates (#{currentCT.template_id})</div>}
             <label className="field"><span>Template Name <b className="text-red-500">*</b></span><input placeholder={`${form.name} - ${currentChannel.name}`} value={currentCT.template_name} onChange={e=>setCurrentCT({template_name:e.target.value,template_id:""})}/></label>
-            {isEmail(currentChannel.name)&&<label className="field"><span>Subject</span><input placeholder="Email subject line" value={currentCT.subject??""} onChange={e=>setCurrentCT({subject:e.target.value,template_id:""})}/></label>}
+            {isEmail(currentChannel.name)&&<label className="field"><span>Subject <span className="ml-1 text-[10px] font-normal text-slate-400">(max 255 characters)</span></span><input placeholder="Email subject line" maxLength={255} value={currentCT.subject??""} onChange={e=>setCurrentCT({subject:e.target.value,template_id:""})}/><span className={`mt-1 block text-right text-[11px] font-semibold ${(currentCT.subject?.length??0)>220?"text-red-500":(currentCT.subject?.length??0)>180?"text-amber-500":"text-slate-400"}`}>{currentCT.subject?.length??0}/255</span></label>}
             <label className="field"><span>Body <b className="text-red-500">*</b></span>
               <RichBodyEditor
                 value={currentCT.body}
@@ -484,7 +528,6 @@ function CampaignWizard({assignments,initialDraft,onCancel,onCreated}:{assignmen
 function RichBodyEditor({value,onChange,placeholder}:{value:string;onChange:(v:string)=>void;placeholder?:string}){
   const editorRef=useRef<HTMLDivElement>(null);
   const [activeFormats,setActiveFormats]=useState<Set<string>>(new Set());
-  const [showSource,setShowSource]=useState(false);
   const [showLink,setShowLink]=useState(false);const [linkUrl,setLinkUrl]=useState("");
   const [showImg,setShowImg]=useState(false);const [imgUrl,setImgUrl]=useState("");
   const [showVar,setShowVar]=useState(false);const [varInput,setVarInput]=useState("");
@@ -569,7 +612,6 @@ function RichBodyEditor({value,onChange,placeholder}:{value:string;onChange:(v:s
 
       {/* ── Toolbar ── */}
       <div className="flex flex-wrap items-center gap-0.5 border-b border-slate-200 bg-slate-50/80 px-2 py-1.5">
-        <span className="mr-2 border-r border-slate-200 pr-3 text-sm font-bold text-slate-700">Paragraph</span>
         {tools.map(({id,label,icon:Icon,act})=>(
           <button key={id} type="button" title={label}
             onMouseDown={e=>{
@@ -581,12 +623,6 @@ function RichBodyEditor({value,onChange,placeholder}:{value:string;onChange:(v:s
             <Icon size={17}/>
           </button>
         ))}
-        {/* Source toggle */}
-        <button type="button" title={showSource?"Rich text":"View source"}
-          onMouseDown={e=>{e.preventDefault();setShowSource(v=>!v);}}
-          className={`ml-auto grid h-9 w-9 place-items-center rounded-lg transition hover:bg-blue-50 hover:text-blue-600 ${showSource?"bg-blue-100 text-blue-700":"text-slate-400"}`}>
-          <Eye size={17}/>
-        </button>
       </div>
 
       {/* ── Link bar ── */}
@@ -625,28 +661,17 @@ function RichBodyEditor({value,onChange,placeholder}:{value:string;onChange:(v:s
       )}
 
       {/* ── Rich editor (contenteditable) ── */}
-      {!showSource&&(
-        <div
-          ref={editorRef}
-          contentEditable
-          suppressContentEditableWarning
-          onInput={emit}
-          onKeyDown={handleKeyDown}
-          onMouseUp={checkFormats}
-          onKeyUp={checkFormats}
-          data-placeholder={placeholder}
-          className="min-h-[160px] p-4 text-sm font-normal leading-7 text-slate-800 outline-none [&_b]:font-bold [&_strong]:font-bold [&_em]:italic [&_i]:italic [&_u]:underline [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_a]:text-blue-600 [&_a]:underline [&_img]:max-w-full [&_img]:rounded-lg empty:before:text-slate-400 empty:before:content-[attr(data-placeholder)] empty:before:pointer-events-none"
-        />
-      )}
-
-      {/* ── HTML source view ── */}
-      {showSource&&(
-        <textarea
-          className="min-h-[160px] w-full p-4 font-mono text-xs text-slate-700 outline-none"
-          value={value}
-          onChange={e=>{onChange(e.target.value);if(editorRef.current)editorRef.current.innerHTML=e.target.value;}}
-        />
-      )}
+      <div
+        ref={editorRef}
+        contentEditable
+        suppressContentEditableWarning
+        onInput={emit}
+        onKeyDown={handleKeyDown}
+        onMouseUp={checkFormats}
+        onKeyUp={checkFormats}
+        data-placeholder={placeholder}
+        className="min-h-[160px] p-4 text-sm font-normal leading-7 text-slate-800 outline-none [&_b]:font-bold [&_strong]:font-bold [&_em]:italic [&_i]:italic [&_u]:underline [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_a]:text-blue-600 [&_a]:underline [&_img]:max-w-full [&_img]:rounded-lg empty:before:text-slate-400 empty:before:content-[attr(data-placeholder)] empty:before:pointer-events-none"
+      />
     </div>
   );
 }
@@ -660,7 +685,27 @@ function SearchInput({value,onChange,placeholder}:{value:string;onChange:(value:
 function Select({value,onChange,label,options}:{value:string;onChange:(value:string)=>void;label:string;options:string[]}){return <select className="h-12 rounded-xl border border-slate-200 bg-white px-4 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100" value={value} onChange={event=>onChange(event.target.value)}><option value="">{label}</option>{options.map(option=><option value={option} key={option}>{pretty(option)}</option>)}</select>}
 function Badge({className="",children}:{className?:string;children:React.ReactNode}){return <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-semibold ${className}`}>{children}</span>}
 function ChannelGlyph({name}:{name:string}){const normalized=name.toUpperCase();const Icon=normalized.includes("WHATS")||normalized.includes("SMS")?MessageCircle:Mail;return <Icon size={19}/>}
-function ChannelIcon({name}:{name:string}){const normalized=name.toUpperCase();const Icon=normalized.includes("WHATS")?MessageCircle:normalized.includes("SMS")?MessageCircle:Mail;return <span title={name} className={`grid h-8 w-8 place-items-center rounded-full ${normalized.includes("WHATS")?"bg-emerald-50 text-emerald-600":"bg-blue-50 text-blue-600"}`}><Icon size={16}/></span>}
+function ChannelIcon({name}:{name:string}){
+  const n=name.toUpperCase();
+  if(n.includes("WHATS"))return(
+    <span title={name} className="grid h-8 w-8 place-items-center text-emerald-500">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+        <path d="M12 0C5.373 0 0 5.373 0 12c0 2.125.558 4.121 1.534 5.857L0 24l6.335-1.521A11.93 11.93 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.783 9.783 0 01-5.013-1.38l-.36-.214-3.733.897.933-3.621-.235-.372A9.784 9.784 0 012.182 12C2.182 6.573 6.573 2.182 12 2.182S21.818 6.573 21.818 12 17.427 21.818 12 21.818z"/>
+      </svg>
+    </span>
+  );
+  if(n.includes("SMS"))return(
+    <span title={name} className="grid h-8 w-8 place-items-center text-orange-400">
+      <MessageSquare size={18} strokeWidth={2}/>
+    </span>
+  );
+  return(
+    <span title={name} className="grid h-8 w-8 place-items-center text-blue-600">
+      <Mail size={18} strokeWidth={2}/>
+    </span>
+  );
+}
 function Pagination({page,count,pageSize,setPage}:{page:number;count:number;pageSize:number;setPage:(page:number)=>void}){const pages=Math.max(1,Math.ceil(count/pageSize));return <div className="flex items-center justify-between border-t border-slate-100 p-4"><span className="text-sm text-slate-500">Showing {count?((page-1)*pageSize)+1:0} to {Math.min(page*pageSize,count)} of {count}</span><div className="flex gap-2"><button aria-label="Previous page" className="icon-button !border !border-slate-200" disabled={page<=1} onClick={()=>setPage(page-1)}><ChevronLeft size={17}/></button><span className="grid h-8 min-w-8 place-items-center rounded-lg border border-blue-500 px-2 text-sm font-bold text-blue-600">{page}</span><button aria-label="Next page" className="icon-button !border !border-slate-200" disabled={page>=pages} onClick={()=>setPage(page+1)}><ChevronRight size={17}/></button></div></div>}
 function DashboardTable({title,href,headers,rows}:{title:string;href:string;headers:string[];rows:React.ReactNode[][]}){return <section className="sa-card overflow-hidden"><div className="flex items-center justify-between border-b border-slate-100 p-5"><h2 className="font-black">{title}</h2><Link className="text-xs font-semibold text-blue-600 hover:underline" href={href}>View All</Link></div><div className="overflow-x-auto"><table className="w-full min-w-[560px] text-left text-xs"><thead className="bg-slate-50"><tr>{headers.map(header=><th className="px-5 py-3" key={header}>{header}</th>)}</tr></thead><tbody>{rows.map((row,index)=><tr className="border-t border-slate-100" key={index}>{row.map((cell,cellIndex)=><td className="px-5 py-3" key={cellIndex}>{cell}</td>)}</tr>)}</tbody></table>{!rows.length&&<Empty message={`No ${title.toLowerCase()} yet.`}/>}</div></section>}
 function DetailsModal({title,onClose,children}:{title:string;onClose:()=>void;children:React.ReactNode}){return <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4 backdrop-blur-sm"><motion.div initial={{opacity:0,scale:.96,y:10}} animate={{opacity:1,scale:1,y:0}} exit={{opacity:0,scale:.97}} className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl"><ModalHeader title={title} onClose={onClose}/><div className="p-6">{children}</div></motion.div></div>}

@@ -1,7 +1,8 @@
 from django.urls import path
 from .views import (
     LoginView, ProfileView, LogoutView, ForgotPasswordView, ResetPasswordView,
-    CreateSuperAdminView, CreateAdminView, CreateUserView, DeleteAdminView, DeleteUserView
+    CreateSuperAdminView, CreateAdminView, CreateUserView, DeleteAdminView, DeleteUserView,
+    AdminDetailView,
 )
 from rest_framework_simplejwt.views import TokenRefreshView
 
