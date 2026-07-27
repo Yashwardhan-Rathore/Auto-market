@@ -9,6 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from apps.integrations.models import SocialConnection
 from apps.integrations.serializers import SocialConnectionSerializer, OAuthCallbackSerializer
 from apps.integrations.services.oauth_service import OAuthService
+from apps.accounts.permissions import IsAdminOrSuperAdmin
 
 logger = logging.getLogger(__name__)
 
@@ -20,14 +21,12 @@ class SocialConnectionViewSet(viewsets.ModelViewSet):
     serializer_class = SocialConnectionSerializer
     
     def get_queryset(self):
-        # We need to query via MAUser mapping
-        from apps.accounts.models import MAUser
-        ma_user = getattr(self.request.user, 'ma_user', None)
-        if not ma_user:
-            ma_user = MAUser.objects.filter(user=self.request.user).first()
+        from apps.common.ownership import get_tenant_owner_profile
+        tenant_owner = get_tenant_owner_profile(self.request.user)
             
-        if ma_user:
-            return SocialConnection.objects.filter(user=ma_user)
+        if tenant_owner:
+            return SocialConnection.objects.filter(user=tenant_owner)
+            
         return SocialConnection.objects.none()
 
     @action(detail=False, methods=['get'], url_path='connect/(?P<platform>[^/.]+)')
@@ -37,7 +36,12 @@ class SocialConnectionViewSet(viewsets.ModelViewSet):
         or returns JSON for API clients.
         """
         try:
-            url = OAuthService.generate_auth_url(request.user, platform)
+            from apps.common.ownership import get_tenant_owner_profile
+            tenant_owner = get_tenant_owner_profile(request.user)
+            if not tenant_owner:
+                return Response({"error": "No tenant owner found for user."}, status=status.HTTP_400_BAD_REQUEST)
+                
+            url = OAuthService.generate_auth_url(tenant_owner, platform)
             
             # Check if API client expects JSON
             accept_header = request.META.get('HTTP_ACCEPT', '')
@@ -95,8 +99,9 @@ class SocialConnectionViewSet(viewsets.ModelViewSet):
         Validates if the connection's token is still active.
         """
         connection = self.get_object()
-        # Ensure we pass the MAUser
-        is_valid = OAuthService.validate_connection(str(connection.id), connection.user)
+        from apps.common.ownership import get_tenant_owner_profile
+        tenant_owner = get_tenant_owner_profile(request.user)
+        is_valid = OAuthService.validate_connection(str(connection.id), tenant_owner)
         
         # Refresh from db to get updated status
         connection.refresh_from_db()
@@ -111,7 +116,9 @@ class SocialConnectionViewSet(viewsets.ModelViewSet):
         """
         connection = self.get_object()
         try:
-            OAuthService.disconnect_account(str(connection.id), connection.user)
+            from apps.common.ownership import get_tenant_owner_profile
+            tenant_owner = get_tenant_owner_profile(request.user)
+            OAuthService.disconnect_account(str(connection.id), tenant_owner)
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Exception as e:
             logger.exception("Failed to disconnect account.")
