@@ -1,6 +1,7 @@
 import os
 import requests
 from typing import Dict, Any
+import urllib.parse
 from .base import BaseSocialProvider
 
 class LinkedInProvider(BaseSocialProvider):
@@ -11,14 +12,27 @@ class LinkedInProvider(BaseSocialProvider):
     ME_URL = "https://api.linkedin.com/v2/userinfo"
 
     def __init__(self):
-        self.client_id = os.environ.get("LINKEDIN_CLIENT_ID", "")
-        self.client_secret = os.environ.get("LINKEDIN_CLIENT_SECRET", "")
+        self.client_id = os.environ.get("LINKEDIN_CLIENT_ID")
+        self.client_secret = os.environ.get("LINKEDIN_CLIENT_SECRET")
 
     def get_authorization_url(self, state: str, redirect_uri: str) -> str:
+        if not self.client_id:
+            raise ValueError("LINKEDIN_CLIENT_ID environment variable is missing.")
+            
         scopes = "openid profile email w_member_social"
-        return f"{self.AUTHORIZE_URL}?response_type=code&client_id={self.client_id}&redirect_uri={redirect_uri}&state={state}&scope={scopes}"
+        params = {
+            "response_type": "code",
+            "client_id": self.client_id,
+            "redirect_uri": redirect_uri,
+            "state": state,
+            "scope": scopes
+        }
+        return f"{self.AUTHORIZE_URL}?{urllib.parse.urlencode(params)}"
 
     def exchange_code(self, code: str, redirect_uri: str) -> Dict[str, Any]:
+        if not self.client_id or not self.client_secret:
+            raise ValueError("LinkedIn client credentials are missing in environment variables.")
+
         response = requests.post(self.ACCESS_TOKEN_URL, data={
             "grant_type": "authorization_code",
             "code": code,
