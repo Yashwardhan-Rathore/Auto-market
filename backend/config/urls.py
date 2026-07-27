@@ -16,7 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from apps.accounts.views import ListAdminsView, ListUsersView
+from apps.accounts.views import ListAdminsView, ListUsersView, AdminDetailView
 
 # ── Inline asset library view (avoids sub-module reload timing issues) ─────────
 import os, uuid as _uuid
@@ -82,6 +82,7 @@ urlpatterns = [
     
     # List endpoints
     path("api/admins/", ListAdminsView.as_view(), name="list-admins"),
+    path("api/admins/<int:user_id>/", AdminDetailView.as_view(), name="admin-detail"),
     path("api/users/", ListUsersView.as_view(), name="list-users"),
 
 

@@ -344,7 +344,7 @@ function SegmentBuilder({ editing, form, setForm, availableFields, previewCount,
                     <div className="relative my-3 flex justify-center">
                       <div className="absolute top-1/2 h-px w-full bg-slate-200" />
                       <button
-                        className="relative rounded-lg bg-violet-100 px-5 py-1 text-xs font-bold text-violet-700"
+                        className="dn-btn relative rounded-lg bg-violet-100 px-5 py-1 text-xs font-bold text-violet-700"
                         onClick={() => setForm({ ...form, groups_operator: form.groups_operator === "OR" ? "AND" : "OR" })}
                       >
                         {form.groups_operator}
@@ -496,7 +496,7 @@ function SegmentBuilder({ editing, form, setForm, availableFields, previewCount,
                   <button
                     onClick={onFetchFull}
                     disabled={fetchingFull}
-                    className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-blue-700 disabled:opacity-60"
+                    className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white dn-btn disabled:opacity-60"
                   >
                     <UsersRound size={13} />
                     {fetchingFull ? "Loading…" : "Full Contacts"}

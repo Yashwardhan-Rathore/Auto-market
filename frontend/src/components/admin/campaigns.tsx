@@ -210,32 +210,32 @@ export function AdminCampaigns() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[860px] text-left text-sm">
-              <thead className="border-b border-slate-100 bg-slate-50/60">
-                <tr className="text-xs font-bold text-slate-700">
-                  <th className="px-6 py-4">Title</th>
-                  <th className="px-4 py-4">Status</th>
-                  <th className="px-4 py-4">Start Date</th>
-                  <th className="px-4 py-4">Assigned To</th>
-                  <th className="px-4 py-4">Channels</th>
-                  <th className="px-4 py-4">Contacts</th>
-                  <th className="px-4 py-4">Actions</th>
+              <thead className="border-b border-slate-100 bg-slate-50/50 text-[11px] font-semibold uppercase tracking-widest text-slate-400">
+                <tr>
+                  <th className="px-5 py-3.5">Title</th>
+                  <th className="px-4 py-3.5">Status</th>
+                  <th className="px-4 py-3.5">Start Date</th>
+                  <th className="px-4 py-3.5">Assigned To</th>
+                  <th className="px-4 py-3.5">Channels</th>
+                  <th className="px-4 py-3.5">Contacts</th>
+                  <th className="px-4 py-3.5 w-40 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map(row => (
-                  <tr key={row.id} className="border-b border-slate-100 transition last:border-0 hover:bg-blue-50/30">
+                  <tr key={row.id} className="border-t border-slate-100 transition last:border-0 hover:bg-blue-50/30">
                     {/* Title */}
-                    <td className="px-6 py-4 font-semibold text-slate-800">{row.campaign_name}</td>
+                    <td className="px-5 py-3.5 font-semibold text-slate-800">{row.campaign_name}</td>
 
                     {/* Status */}
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-3.5">
                       <span className={`rounded-md px-2.5 py-1 text-xs font-bold ${statusStyle[row.status] ?? "bg-slate-100 text-slate-600"}`}>
                         {pretty(row.status)}
                       </span>
                     </td>
 
                     {/* Start Date */}
-                    <td className="px-4 py-4 text-slate-600">
+                    <td className="px-4 py-3.5 text-slate-600">
                       <span className="flex items-center gap-1.5">
                         <span className="text-slate-400">📅</span>
                         {new Date(row.scheduled_at || row.submitted_at || row.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
@@ -243,7 +243,7 @@ export function AdminCampaigns() {
                     </td>
 
                     {/* Assigned To */}
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-3.5">
                       {row.submitted_by_name ? (
                         <span className="flex items-center gap-2">
                           <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-[11px] font-bold ${avatarColor(row.submitted_by_name)}`}>
@@ -255,24 +255,24 @@ export function AdminCampaigns() {
                     </td>
 
                     {/* Channels */}
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-3.5">
                       <div className="flex gap-1">
                         {row.channels.length ? row.channels.map(ch => <ChannelIcon key={ch} name={ch} />) : <span className="text-slate-400">—</span>}
                       </div>
                     </td>
 
                     {/* Contacts */}
-                    <td className="px-4 py-4 font-semibold text-slate-700">{fmt(row.contacts)}</td>
+                    <td className="px-4 py-3.5 font-semibold text-slate-700">{fmt(row.contacts)}</td>
 
                     {/* Actions */}
-                    <td className="px-4 py-4">
-                      <div className="flex items-center gap-1">
+                    <td className="px-4 py-3.5 w-40 text-center">
+                      <div className="inline-flex items-center gap-1.5">
                         {/* Approve */}
                         <button
                           title="Approve"
                           disabled={approve.isPending || !row.available_actions.includes("approve")}
                           onClick={() => approve.mutate(row.id)}
-                          className={`grid h-7 w-7 place-items-center rounded-md transition ${row.available_actions.includes("approve") ? "text-emerald-500 hover:bg-emerald-50" : "cursor-not-allowed text-slate-300"}`}>
+                          className={`tbl-action ${row.available_actions.includes("approve") ? "tbl-action-approve text-emerald-500" : "cursor-not-allowed text-slate-300 opacity-40"}`}>
                           <Check size={15} />
                         </button>
                         {/* Reject */}
@@ -280,21 +280,21 @@ export function AdminCampaigns() {
                           title="Reject"
                           disabled={!row.available_actions.includes("reject")}
                           onClick={() => { setRejectId(row.id); setRejectReason(""); }}
-                          className={`grid h-7 w-7 place-items-center rounded-md transition ${row.available_actions.includes("reject") ? "text-red-500 hover:bg-red-50" : "cursor-not-allowed text-slate-300"}`}>
+                          className={`tbl-action ${row.available_actions.includes("reject") ? "tbl-action-reject text-red-400" : "cursor-not-allowed text-slate-300 opacity-40"}`}>
                           <X size={15} />
                         </button>
                         {/* View */}
                         <button
                           title="View"
                           onClick={() => setDetails(row)}
-                          className="grid h-7 w-7 place-items-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
+                          className="tbl-action tbl-action-view text-slate-400">
                           <Eye size={15} />
                         </button>
                         {/* Analytics */}
                         <button
                           title="Analytics"
                           onClick={() => setAnalyticsId(row.id)}
-                          className="grid h-7 w-7 place-items-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
+                          className="tbl-action tbl-action-chart text-slate-400">
                           <BarChart2 size={15} />
                         </button>
                       </div>
@@ -317,7 +317,9 @@ export function AdminCampaigns() {
             </span>
             <div className="flex items-center gap-1">
               <button
-                className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-slate-500 transition hover:border-blue-400 hover:text-blue-600 disabled:opacity-40"
+                className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-slate-500
+                  transition-all duration-200 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50
+                  hover:shadow-[0_4px_12px_rgba(37,99,235,.15)] hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-none"
                 disabled={page <= 1}
                 onClick={() => setPage(p => p - 1)}>
                 <ChevronLeft size={15} />
@@ -326,13 +328,20 @@ export function AdminCampaigns() {
                 const p = totalPages <= 5 ? i + 1 : page <= 3 ? i + 1 : page >= totalPages - 2 ? totalPages - 4 + i : page - 2 + i;
                 return (
                   <button key={p} onClick={() => setPage(p)}
-                    className={`grid h-8 w-8 place-items-center rounded-lg border text-xs font-bold transition ${p === page ? "border-blue-500 bg-blue-500 text-white" : "border-slate-200 text-slate-600 hover:border-blue-400 hover:text-blue-600"}`}>
+                    className={`grid h-8 w-8 place-items-center rounded-lg border text-xs font-bold
+                      transition-all duration-200 hover:-translate-y-0.5
+                      ${p === page
+                        ? "border-blue-500 bg-blue-500 text-white shadow-[0_4px_12px_rgba(37,99,235,.35)]"
+                        : "border-slate-200 text-slate-600 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 hover:shadow-[0_4px_12px_rgba(37,99,235,.15)]"
+                      }`}>
                     {p}
                   </button>
                 );
               })}
               <button
-                className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-slate-500 transition hover:border-blue-400 hover:text-blue-600 disabled:opacity-40"
+                className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-slate-500
+                  transition-all duration-200 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50
+                  hover:shadow-[0_4px_12px_rgba(37,99,235,.15)] hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-none"
                 disabled={page >= totalPages}
                 onClick={() => setPage(p => p + 1)}>
                 <ChevronRight size={15} />
@@ -382,7 +391,10 @@ export function AdminCampaigns() {
               <div className="mt-4 flex justify-end gap-3">
                 <button className="secondary-button px-4" onClick={() => { setRejectId(null); setRejectReason(""); }}>Cancel</button>
                 <button
-                  className="rounded-xl bg-red-500 px-5 py-2 text-sm font-bold text-white hover:bg-red-600 disabled:opacity-50"
+                  className="rounded-xl bg-red-500 px-5 py-2 text-sm font-bold text-white
+                    transition-all duration-200
+                    hover:bg-red-600 hover:-translate-y-0.5 hover:shadow-[0_8px_22px_rgba(239,68,68,.35)]
+                    active:translate-y-0 active:shadow-none disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none"
                   disabled={!rejectReason.trim() || reject.isPending}
                   onClick={() => reject.mutate({ id: rejectId, reason: rejectReason })}>
                   {reject.isPending ? "Rejecting…" : "Confirm Reject"}

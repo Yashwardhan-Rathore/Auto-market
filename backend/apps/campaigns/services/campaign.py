@@ -132,9 +132,6 @@ class CampaignService:
         if campaign.created_by != user:
             raise PermissionDenied("You can only submit your own campaigns.")
 
-        if not TaskAssignment.objects.filter(task=campaign.task, user=user).exists():
-            raise PermissionDenied("You are not assigned to this task.")
-
         if campaign.status != Campaign.Status.DRAFT:
             raise ValidationError("Only draft campaigns can be submitted.")
 

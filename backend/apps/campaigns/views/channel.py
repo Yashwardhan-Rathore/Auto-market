@@ -5,7 +5,6 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 
-from apps.accounts.models import MAUser
 from apps.campaigns.models import Campaign, Channel
 from apps.campaigns.serializers import CampaignChannelSerializer, ChannelListSerializer
 from apps.campaigns.services import assign_channels
@@ -42,28 +41,7 @@ class AssignChannelsView(APIView):
             is_deleted=False,
         )
 
-        ma_user = MAUser.objects.filter(
-            user_id=request.user
-        ).first()
-
-        if not ma_user:
-            return Response(
-                {
-                    "detail": "Marketing user profile not found."
-                },
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        # Only USER can modify campaigns
-        if ma_user.role != "USER":
-            return Response(
-                {
-                    "detail": "Only marketing users can modify campaigns."
-                },
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        # USER can modify only their own campaigns
+        # Only the campaign creator can modify it
         if campaign.created_by != request.user:
             return Response(
                 {
