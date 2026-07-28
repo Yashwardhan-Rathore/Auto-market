@@ -7,8 +7,22 @@ let refreshPromise: Promise<string> | null = null;
 export const apiClient = axios.create({ baseURL, timeout: 15000, headers: { Accept: "application/json" } });
 export function resolveApiUrl(url?: string | null) { if (!url) return undefined; if (/^(https?:|data:|blob:)/i.test(url)) return url; return `${baseURL}${url.startsWith("/") ? "" : "/"}${url}`; }
 export function setAccessToken(token: string | null) { accessToken = token; }
-export function getStoredRefreshToken() { return typeof window === "undefined" ? null : sessionStorage.getItem("ma_refresh"); }
-export function storeRefreshToken(token: string | null) { if (typeof window === "undefined") return; if (token) sessionStorage.setItem("ma_refresh", token); else sessionStorage.removeItem("ma_refresh"); }
+export function getStoredRefreshToken() {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("ma_refresh") ?? sessionStorage.getItem("ma_refresh");
+}
+export function storeRefreshToken(token: string | null, persistent = false) {
+  if (typeof window === "undefined") return;
+  // Clear from both storages first to avoid stale tokens
+  localStorage.removeItem("ma_refresh");
+  sessionStorage.removeItem("ma_refresh");
+  if (!token) return;
+  if (persistent) {
+    localStorage.setItem("ma_refresh", token);
+  } else {
+    sessionStorage.setItem("ma_refresh", token);
+  }
+}
 
 apiClient.interceptors.request.use((config) => {
   if (accessToken) config.headers.Authorization = `Bearer ${accessToken}`;

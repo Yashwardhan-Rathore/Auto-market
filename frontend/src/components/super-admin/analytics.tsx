@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   Mail, MessageSquare, ArrowUpRight, ArrowDownRight,
@@ -8,12 +7,12 @@ import {
 } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Legend,
+  Tooltip, ResponsiveContainer,
 } from "recharts";
+import { useDateRange } from "@/components/ui/date-range-picker";
 
 /* ── Types ── */
 type Period = "This Week" | "This Month" | "This Year";
-
 /* ── Mock data ── */
 const DAYS = ["18 May","19 May","20 May","21 May","22 May","23 May","24 May"];
 
@@ -182,7 +181,30 @@ function MiniSelect({ label }: { label: string }) {
    MAIN COMPONENT
    ══════════════════════════════════════════════════════════ */
 export function SuperAdminAnalytics() {
-  const [period, setPeriod] = useState<Period>("This Week");
+  const { startDate, endDate, picker } = useDateRange();
+
+  // Build chart series from the selected date window (7 evenly-spaced labels)
+  const chartDays = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(startDate + "T00:00:00");
+    const range = (new Date(endDate + "T00:00:00").getTime() - d.getTime()) / 6;
+    d.setTime(d.getTime() + range * i);
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  });
+
+  // Keep chart data bound to the date labels so it visually reflects the range
+  const activeCampaignData = chartDays.map((date, i) => ({
+    date,
+    Email:    +(8 + Math.sin(i) * 1.2).toFixed(2),
+    SMS:      +(5.5 + Math.cos(i) * 0.9).toFixed(2),
+    WhatsApp: +(4.2 + Math.sin(i + 1) * 0.8).toFixed(2),
+  }));
+  const activeSocialData = chartDays.map((date, i) => ({
+    date,
+    Instagram:    12000 + Math.round(Math.sin(i) * 1500),
+    LinkedIn:      8500 + Math.round(Math.cos(i) * 800),
+    "X (Twitter)": 15000 + Math.round(Math.sin(i + 2) * 1000),
+    Facebook:      9500 + Math.round(Math.cos(i + 1) * 700),
+  }));
 
   const creditsUsed = 4680, creditsTotal = 10000;
   const creditsRemaining = creditsTotal - creditsUsed;
@@ -195,7 +217,7 @@ export function SuperAdminAnalytics() {
           <h1 className="text-2xl font-black text-slate-900">Analytics</h1>
           <p className="mt-0.5 text-sm text-slate-500">Track performance and engagement across all channels</p>
         </div>
-        <PeriodTabs active={period} onChange={setPeriod}/>
+        {picker}
       </div>
 
       {/* ══ ROW 1: Credit Usage / Campaign Overview / Social Media Overview ══ */}
@@ -308,7 +330,7 @@ export function SuperAdminAnalytics() {
           </div>
           <div className="mt-4 h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={campaignData[period]} margin={{top:4,right:4,bottom:0,left:-20}}>
+              <LineChart data={activeCampaignData} margin={{top:4,right:4,bottom:0,left:-20}}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9"/>
                 <XAxis dataKey="date" tick={{fontSize:10,fill:"#94a3b8"}} axisLine={false} tickLine={false}/>
                 <YAxis tick={{fontSize:10,fill:"#94a3b8"}} axisLine={false} tickLine={false} tickFormatter={v=>`${v}%`}/>
@@ -382,7 +404,7 @@ export function SuperAdminAnalytics() {
           </div>
           <div className="mt-4 h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={socialData[period]} margin={{top:4,right:4,bottom:0,left:-10}}>
+              <LineChart data={activeSocialData} margin={{top:4,right:4,bottom:0,left:-10}}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9"/>
                 <XAxis dataKey="date" tick={{fontSize:10,fill:"#94a3b8"}} axisLine={false} tickLine={false}/>
                 <YAxis tick={{fontSize:10,fill:"#94a3b8"}} axisLine={false} tickLine={false}

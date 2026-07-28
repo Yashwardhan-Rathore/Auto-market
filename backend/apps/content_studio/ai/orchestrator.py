@@ -72,6 +72,68 @@ class AIOrchestrator:
             logger.error(f"Failed to parse questions JSON: {raw_response}")
             raise AIProviderError("AI returned invalid JSON for the Questions.") from e
 
+    def extract_spec_and_questions(self, user_prompt: str, brand_identity: dict) -> dict:
+        """
+        Single-call optimised version: extracts the content spec AND generates
+        clarifying questions in one Gemini request, cutting latency roughly in half.
+
+        Returns: {"content_spec": {...}, "questions": [...]}
+        """
+        prompt = f"""
+You are an expert marketing strategist and creative director.
+Given the user's raw content idea, do TWO things in a SINGLE JSON response:
+
+1. Extract a structured content spec.
+2. Generate up to 8 highly relevant multiple-choice questions to collect the missing details needed to produce excellent content.
+
+USER INPUT:
+"{user_prompt}"
+
+BRAND IDENTITY:
+Tone: {brand_identity.get('tone', 'Not provided')}
+Target Audience: {brand_identity.get('target_audience', 'Not provided')}
+
+INSTRUCTIONS:
+- Be concise. Keep option text under 60 characters.
+- Return ONLY valid JSON matching the schema below. No markdown, no prose.
+
+EXPECTED JSON SCHEMA:
+{{
+  "content_spec": {{
+    "Goal": "string or null",
+    "Target Audience": "string or null",
+    "Tone": "string or null",
+    "Key Message": "string or null",
+    "Visual Preferences": "string or null",
+    "Additional Requirements": "string or null"
+  }},
+  "questions": [
+    {{
+      "question_text": "string",
+      "type": "single_select | multi_select | text",
+      "options": ["string", "string"]
+    }}
+  ]
+}}
+        """.strip()
+
+        raw_response = self.text_provider.generate_text(
+            prompt,
+            max_tokens=1500,
+            temperature=0.5,
+            json_response=True,
+        )
+        raw_response = self._clean_json_response(raw_response)
+        try:
+            parsed = json.loads(raw_response)
+            return {
+                "content_spec": parsed.get("content_spec", {}),
+                "questions": parsed.get("questions", []),
+            }
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse combined spec+questions JSON: {raw_response}")
+            raise AIProviderError("AI returned invalid JSON for spec and questions.") from e
+
     def enhance_prompt(self, content_spec: dict, user_answers: dict) -> str:
         """
         Enhances the prompt into a master generative prompt.

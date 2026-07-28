@@ -537,10 +537,7 @@ function SegmentDetails({ item, onClose, onEdit }: { item: Audience; onClose: ()
           <Detail label="Type" value={title(item.type)} />
           <Detail label="Created" value={formatDate(item.created_at)} />
         </div>
-        <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 p-4">
-          <button className="secondary-button" onClick={onClose}>Close</button>
-          <button className="primary-button min-h-10 px-5" onClick={onEdit}><Pencil size={16} />Edit segment</button>
-        </div>
+
       </motion.div>
     </div>
   );

@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { parseApiError } from "@/services/api-client";
 import { superAdminService } from "@/services/super-admin.service";
+import { useDateRange } from "@/components/ui/date-range-picker";
 
 const reveal = {
   hidden: { opacity: 0, y: 12 },
@@ -24,10 +25,15 @@ const compact = (value: number) =>
   }).format(value);
 
 export function AdminDashboard() {
+  const { startDate, endDate, picker } = useDateRange();
+
   const [dashboard, analytics] = useQueries({
     queries: [
       { queryKey: ["admin-dashboard"], queryFn: superAdminService.dashboard },
-      { queryKey: ["admin-analytics"], queryFn: superAdminService.analytics },
+      {
+        queryKey: ["admin-analytics", startDate, endDate],
+        queryFn: () => superAdminService.analyticsWithRange(startDate, endDate),
+      },
     ],
   });
 
@@ -108,8 +114,8 @@ export function AdminDashboard() {
           <h1 className="sa-title mt-3">ADMIN DASHBOARD</h1>
           <p className="sa-subtitle">Campaign, delivery and engagement performance at a glance</p>
         </div>
+        {picker}
       </div>
-
       {/* ── Stat cards ── */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((card, i) => (

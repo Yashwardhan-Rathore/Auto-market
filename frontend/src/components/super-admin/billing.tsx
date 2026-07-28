@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { useDateRange } from "@/components/ui/date-range-picker";
 
 /* ── Static mock data (replace with API calls when backend is ready) ── */
 
@@ -138,18 +139,30 @@ const noteColor: Record<string, string> = {
 
 export function SuperAdminBilling() {
   const [invoicePage, setInvoicePage] = useState(1);
-  const totalPages = Math.ceil(ALL_INVOICES.length / PAGE_SIZE);
-  const pageInvoices = ALL_INVOICES.slice(
-    (invoicePage - 1) * PAGE_SIZE,
-    invoicePage * PAGE_SIZE,
+  const { startDate, endDate, picker } = useDateRange(365);
+
+  // Filter invoices by date range
+  const filteredInvoices = ALL_INVOICES.filter((inv) => {
+    const d = new Date(inv.date);
+    return d >= new Date(startDate + "T00:00:00") && d <= new Date(endDate + "T23:59:59");
+  });
+
+  const totalPages = Math.ceil(filteredInvoices.length / PAGE_SIZE);
+  const safePage = Math.min(invoicePage, totalPages || 1);
+  const pageInvoices = filteredInvoices.slice(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE,
   );
 
   return (
     <div>
       {/* ── Heading ── */}
-      <div className="mb-7">
-        <h1 className="sa-title">BILLING &amp; USAGE</h1>
-        <p className="sa-subtitle">Real wallet and transaction data from the billing API</p>
+      <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="sa-title">BILLING &amp; USAGE</h1>
+          <p className="sa-subtitle">Real wallet and transaction data from the billing API</p>
+        </div>
+        {picker}
       </div>
 
       {/* ── Stat cards ── */}
@@ -314,13 +327,13 @@ export function SuperAdminBilling() {
         {/* Pagination */}
         <div className="flex items-center justify-between border-t border-slate-100 px-6 py-3.5">
           <p className="text-xs text-slate-400">
-            Showing {(invoicePage - 1) * PAGE_SIZE + 1} to{" "}
-            {Math.min(invoicePage * PAGE_SIZE, ALL_INVOICES.length)} of {ALL_INVOICES.length}{" "}
+            Showing {(safePage - 1) * PAGE_SIZE + 1} to{" "}
+            {Math.min(safePage * PAGE_SIZE, filteredInvoices.length)} of {filteredInvoices.length}{" "}
             invoices
           </p>
           <div className="flex items-center gap-1">
             <button
-              disabled={invoicePage <= 1}
+              disabled={safePage <= 1}
               onClick={() => setInvoicePage((p) => p - 1)}
               className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 disabled:opacity-30"
             >
@@ -333,7 +346,7 @@ export function SuperAdminBilling() {
                 onClick={() => setInvoicePage(pg)}
                 className={`grid h-8 w-8 place-items-center rounded-lg text-sm font-semibold transition
                   ${
-                    invoicePage === pg
+                    safePage === pg
                       ? "bg-slate-900 text-white"
                       : "border border-slate-200 text-slate-500 hover:bg-slate-50"
                   }`}
@@ -343,7 +356,7 @@ export function SuperAdminBilling() {
             ))}
 
             <button
-              disabled={invoicePage >= totalPages}
+              disabled={safePage >= totalPages}
               onClick={() => setInvoicePage((p) => p + 1)}
               className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 disabled:opacity-30"
             >

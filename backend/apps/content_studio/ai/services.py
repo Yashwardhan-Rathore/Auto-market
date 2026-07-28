@@ -33,46 +33,72 @@ class AILifecycleService:
     def process_content_spec_and_questions(self, user_prompt: str) -> dict:
         """
         Deducts credits, extracts the spec, and generates questions in one workflow step.
+        Uses a single combined Gemini call instead of two sequential ones for faster response.
         """
-        # Deduct credits for the combined spec + questions extraction
         BillingService.consume_credits(
             amount=5,
             description="Extracted content spec and generated questions"
         )
-        
-        # 1. Extract Spec
-        content_spec = self.orchestrator.extract_content_spec(user_prompt)
-        
-        # 2. Generate Questions
+
         brand_identity = self._get_brand_identity()
-        questions = self.orchestrator.generate_questions(content_spec, brand_identity)
-        
+        result = self.orchestrator.extract_spec_and_questions(user_prompt, brand_identity)
+
         return {
-            "content_spec": content_spec,
-            "questions": questions
+            "content_spec": result["content_spec"],
+            "questions": result["questions"],
         }
 
     @transaction.atomic
     def enhance_content_prompt(self, draft: ContentDraft, content_spec: dict, user_answers: dict, user):
         """
-        Deducts credits, enhances the prompt, and captures a new content version.
+        Merges the content spec and user answers into an enhanced prompt string.
+        Uses fast local string merging — no extra AI call needed here.
+        The expensive AI work already happened in process_content_spec_and_questions.
         """
         BillingService.consume_credits(
             amount=3,
             description=f"Enhanced prompt for ContentDraft {draft.id}",
             reference_id=str(draft.id)
         )
-        
-        enhanced_prompt = self.orchestrator.enhance_prompt(content_spec, user_answers)
-        
+
+        enhanced_prompt = self._merge_spec_and_answers(content_spec, user_answers)
+
         # Update draft
         draft.enhanced_prompt = enhanced_prompt
         draft.save(update_fields=['enhanced_prompt'])
-        
+
         # Capture Version
-        version = ContentDraftService.create_content_version(draft, user, reason="Initial Prompt Enhancement")
-        
+        version = ContentDraftService.create_content_version(draft, user, reason="Prompt Enhancement")
+
         return enhanced_prompt, version
+
+    @staticmethod
+    def _merge_spec_and_answers(content_spec: dict, user_answers: dict) -> str:
+        """
+        Deterministically merge spec fields and user answers into a concise
+        Key = Value prompt string. No AI call — instant execution.
+        """
+        lines = []
+
+        # Spec fields first
+        for key, value in content_spec.items():
+            if value is None or value == "" or value == []:
+                continue
+            clean_key = str(key).replace("_", " ").title()
+            clean_val = ", ".join(value) if isinstance(value, list) else str(value)
+            lines.append(f"{clean_key} = {clean_val}")
+
+        # User answers override / supplement
+        for question, answer in user_answers.items():
+            if not answer or answer == [] or answer == "":
+                continue
+            # Derive a short key from the question (first 4 words)
+            words = str(question).strip().rstrip("?").split()
+            short_key = " ".join(words[:5]).title() if len(words) > 3 else str(question).rstrip("?").title()
+            clean_val = ", ".join(answer) if isinstance(answer, list) else str(answer)
+            lines.append(f"{short_key} = {clean_val}")
+
+        return "\n".join(lines)
 
     @transaction.atomic
     def generate_image_for_platform(self, platform_record, user, reason="Image Generation"):

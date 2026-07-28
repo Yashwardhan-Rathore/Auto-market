@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import { parseApiError } from "@/services/api-client";
 import { superAdminService } from "@/services/super-admin.service";
+import { useDateRange } from "@/components/ui/date-range-picker";
 
 const enter = {
   hidden: { opacity: 0, y: 14 },
@@ -39,11 +40,16 @@ const iconGlow: Record<string, string> = {
 };
 
 export function SuperAdminDashboard() {
+  const { startDate, endDate, picker } = useDateRange();
+
   const [stats, dashboard, analytics, billing] = useQueries({
     queries: [
       { queryKey: ["sa-stats"],     queryFn: superAdminService.stats },
       { queryKey: ["sa-dashboard"], queryFn: superAdminService.dashboard },
-      { queryKey: ["sa-analytics"], queryFn: superAdminService.analytics },
+      {
+        queryKey: ["sa-analytics", startDate, endDate],
+        queryFn: () => superAdminService.analyticsWithRange(startDate, endDate),
+      },
       { queryKey: ["sa-billing"],   queryFn: superAdminService.billing },
     ],
   });
@@ -95,6 +101,7 @@ export function SuperAdminDashboard() {
           <h1 className="sa-title">SUPER ADMIN DASHBOARD</h1>
           <p className="sa-subtitle">Platform-wide overview · live backend data</p>
         </div>
+        {picker}
       </div>
 
       {/* ── Metric cards ── */}

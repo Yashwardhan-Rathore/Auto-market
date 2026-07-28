@@ -222,7 +222,20 @@ class MyCampaignsAPIView(generics.ListAPIView):
         status = self.request.query_params.get("status")
         if status:
             queryset = queryset.filter(status=status)
-            
+
+        date_from = self.request.query_params.get("date_from")
+        date_to = self.request.query_params.get("date_to")
+        if date_from:
+            from django.utils.dateparse import parse_date
+            parsed = parse_date(date_from)
+            if parsed:
+                queryset = queryset.filter(created_at__date__gte=parsed)
+        if date_to:
+            from django.utils.dateparse import parse_date
+            parsed = parse_date(date_to)
+            if parsed:
+                queryset = queryset.filter(created_at__date__lte=parsed)
+
         return queryset
 
 
