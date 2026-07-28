@@ -31,9 +31,9 @@ class GeminiProvider:
 
         try:
             model = getattr(settings, "GEMINI_TEXT_MODEL", None) or model
-            # The old convenience alias is not a valid Gemini REST model ID.
-            if model == "gemini-flash-latest":
-                model = "gemini-3-flash-preview"
+            # Use the fastest available Flash model for text generation
+            if model in ("gemini-flash-latest", "gemini-3-flash-preview"):
+                model = "gemini-2.0-flash"
             generation_config = {
                 "temperature": temperature,
                 "maxOutputTokens": max_tokens,
@@ -52,7 +52,7 @@ class GeminiProvider:
                     "contents": [{"parts": [{"text": prompt}]}],
                     "generationConfig": generation_config,
                 },
-                timeout=120,
+                timeout=45,
             )
             if response.status_code == 429:
                 raise AIRateLimitError("Gemini text generation rate limit exceeded.")

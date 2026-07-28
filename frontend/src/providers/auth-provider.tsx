@@ -10,7 +10,7 @@ import type { AuthUser } from "@/types/auth";
 
 interface AuthContextValue {
   user: AuthUser | null; loading: boolean;
-  login(email: string, password: string): Promise<void>;
+  login(email: string, password: string, rememberMe?: boolean): Promise<void>;
   logout(): Promise<void>;
 }
 
@@ -41,9 +41,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [restore]);
   useEffect(() => { const expired = () => { clear(); router.replace("/login"); }; window.addEventListener("auth:expired", expired); return () => window.removeEventListener("auth:expired", expired); }, [clear, router]);
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string, rememberMe = false) => {
     const response = await authService.login({ email, password });
-    setAccessToken(response.data.access); storeRefreshToken(response.data.refresh);
+    setAccessToken(response.data.access); storeRefreshToken(response.data.refresh, rememberMe);
     // Login already returns the authenticated profile. Reusing it avoids a
     // second remote database round-trip before the dashboard can open.
     const profile = response.data.user;

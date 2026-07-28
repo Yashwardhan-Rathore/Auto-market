@@ -234,8 +234,11 @@ class ContentDraftViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         from apps.common.utils import filter_by_tenant
+        from django.utils.dateparse import parse_date
+        from django.utils import timezone
+        import datetime
 
-        return filter_by_tenant(
+        qs = filter_by_tenant(
             ContentDraft.objects.select_related('owner').prefetch_related(
                 'platforms__caption',
                 'platforms__images__asset',
@@ -245,6 +248,21 @@ class ContentDraftViewSet(viewsets.ModelViewSet):
             self.request.user,
             'owner',
         )
+
+        date_from = self.request.query_params.get('date_from')
+        date_to = self.request.query_params.get('date_to')
+
+        if date_from:
+            parsed = parse_date(date_from)
+            if parsed:
+                qs = qs.filter(created_at__date__gte=parsed)
+
+        if date_to:
+            parsed = parse_date(date_to)
+            if parsed:
+                qs = qs.filter(created_at__date__lte=parsed)
+
+        return qs
 
     @action(detail=False, methods=['post'])
     def analyze_prompt(self, request):

@@ -5,30 +5,44 @@ from apps.communications.models import CommunicationEvent
 from apps.accounts.models import MAUser
 
 
-def visible_events(user):
+def visible_events(user, date_from=None, date_to=None):
     role = MAUser.objects.filter(user=user).values_list("role", flat=True).first()
     events = CommunicationEvent.objects.all()
     if user.is_superuser or role == "SUPER_ADMIN":
-        return events
-    if role == "ADMIN" and user.department_id:
-        return events.filter(
+        pass
+    elif role == "ADMIN" and user.department_id:
+        events = events.filter(
             Q(campaign__created_by__department_id=user.department_id)
             | Q(execution__automation__owner__department_id=user.department_id)
         ).distinct()
-    return events.filter(
-        Q(campaign__created_by=user)
-        | Q(execution__automation__owner=user)
-    ).distinct()
+    else:
+        events = events.filter(
+            Q(campaign__created_by=user)
+            | Q(execution__automation__owner=user)
+        ).distinct()
+
+    if date_from:
+        events = events.filter(created_at__date__gte=date_from)
+    if date_to:
+        events = events.filter(created_at__date__lte=date_to)
+    return events
 
 
-def visible_executions(user):
+def visible_executions(user, date_from=None, date_to=None):
     role = MAUser.objects.filter(user=user).values_list("role", flat=True).first()
     executions = AutomationExecution.objects.all()
     if user.is_superuser or role == "SUPER_ADMIN":
-        return executions
-    if role == "ADMIN" and user.department_id:
-        return executions.filter(automation__owner__department_id=user.department_id)
-    return executions.filter(automation__owner=user)
+        pass
+    elif role == "ADMIN" and user.department_id:
+        executions = executions.filter(automation__owner__department_id=user.department_id)
+    else:
+        executions = executions.filter(automation__owner=user)
+
+    if date_from:
+        executions = executions.filter(started_at__date__gte=date_from)
+    if date_to:
+        executions = executions.filter(started_at__date__lte=date_to)
+    return executions
 
 
 def rate(numerator, denominator):
@@ -38,8 +52,8 @@ def rate(numerator, denominator):
     return round((numerator / denominator) * 100, 2)
 
 
-def communication_metrics(user):
-    events = visible_events(user)
+def communication_metrics(user, date_from=None, date_to=None):
+    events = visible_events(user, date_from=date_from, date_to=date_to)
 
     email_sent = events.filter(
         channel="EMAIL",
@@ -95,8 +109,8 @@ def communication_metrics(user):
     }
 
 
-def workflow_metrics(user):
-    executions = visible_executions(user)
+def workflow_metrics(user, date_from=None, date_to=None):
+    executions = visible_executions(user, date_from=date_from, date_to=date_to)
     total = executions.count()
     success = executions.filter(
         status=AutomationExecution.Status.SUCCESS
@@ -129,8 +143,8 @@ def workflow_metrics(user):
     }
 
 
-def all_metrics(user):
-    data = communication_metrics(user)
-    data["workflow"] = workflow_metrics(user)
+def all_metrics(user, date_from=None, date_to=None):
+    data = communication_metrics(user, date_from=date_from, date_to=date_to)
+    data["workflow"] = workflow_metrics(user, date_from=date_from, date_to=date_to)
     return data
 

@@ -93,21 +93,23 @@ class MyTasksView(APIView):
     ]
 
     def get(self, request):
+        from django.utils.dateparse import parse_date
 
-        tasks = get_user_tasks(
-            request.user
-        )
+        tasks = get_user_tasks(request.user)
 
-        serializer = (
-            MyTaskSerializer(
-                tasks,
-                many=True,
-            )
-        )
+        date_from = request.query_params.get("date_from")
+        date_to = request.query_params.get("date_to")
+        if date_from:
+            parsed = parse_date(date_from)
+            if parsed:
+                tasks = tasks.filter(task__created_at__date__gte=parsed)
+        if date_to:
+            parsed = parse_date(date_to)
+            if parsed:
+                tasks = tasks.filter(task__created_at__date__lte=parsed)
 
-        return Response(
-            serializer.data
-        )
+        serializer = MyTaskSerializer(tasks, many=True)
+        return Response(serializer.data)
 
 
 class TaskAudiencePreviewView(APIView):

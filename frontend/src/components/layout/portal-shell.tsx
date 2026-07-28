@@ -236,6 +236,102 @@ function SidebarBg() {
   );
 }
 
+/* ─────────────────────────────────────────────
+   PREMIUM ANIMATED MAIN BACKGROUND (DARK MODE)
+   ───────────────────────────────────────────── */
+function MainBg() {
+  /* Random scattered particles */
+  const particles: [number, number, number, number][] = [
+    [12, 85, 0.2, 2], [28, 45, 1.5, 3], [45, 75, 0.8, 2],
+    [65, 35, 2.2, 3], [82, 60, 1.1, 2], [90, 20, 2.8, 2],
+    [55, 90, 3.4, 3], [15, 25, 0.5, 2], [38, 15, 1.8, 2],
+    [75, 80, 2.5, 3], [5,  55, 3.1, 2], [88, 92, 0.9, 2],
+  ];
+
+  return (
+    <div aria-hidden className="pointer-events-none fixed inset-0 z-0 hidden overflow-hidden dark:block">
+      {/* 1. Deep navy to abyss base */}
+      <div className="absolute inset-0" style={{
+        background: "linear-gradient(135deg, #050d1f 0%, #061026 50%, #030814 100%)"
+      }}/>
+
+      {/* 2. Expansive subtle dot-grid texture */}
+      <div className="absolute inset-0" style={{
+        backgroundImage: "radial-gradient(circle, rgba(96,165,250,0.04) 1px, transparent 1px)",
+        backgroundSize: "32px 32px",
+      }}/>
+
+      {/* 3. Massive ambient blue aurora (Top Right) */}
+      <motion.div className="absolute rounded-full" style={{
+        top: "-20%", right: "-10%",
+        width: "60vw", height: "60vw",
+        background: "radial-gradient(ellipse, rgba(37,99,235,0.08) 0%, rgba(29,78,216,0.03) 40%, transparent 70%)",
+        filter: "blur(60px)",
+      }}
+        animate={{ scale:[1, 1.1, 1], opacity:[0.6, 0.9, 0.6] }}
+        transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+      />
+
+      {/* 4. Deep Indigo aurora (Bottom Left) */}
+      <motion.div className="absolute rounded-full" style={{
+        bottom: "-10%", left: "-15%",
+        width: "50vw", height: "50vw",
+        background: "radial-gradient(ellipse, rgba(79,70,229,0.06) 0%, rgba(67,56,202,0.02) 50%, transparent 70%)",
+        filter: "blur(60px)",
+      }}
+        animate={{ scale:[1, 1.15, 1], opacity:[0.5, 0.8, 0.5] }}
+        transition={{ duration: 14, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+      />
+
+      {/* 5. Electric Cyan glow (Center subtle) */}
+      <motion.div className="absolute rounded-full" style={{
+        top: "40%", left: "30%",
+        width: "40vw", height: "30vw",
+        background: "radial-gradient(ellipse, rgba(14,165,233,0.03) 0%, transparent 60%)",
+        filter: "blur(50px)",
+      }}
+        animate={{ scale:[1, 1.2, 1], opacity:[0.4, 0.7, 0.4] }}
+        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 4 }}
+      />
+
+      {/* 6. Floating Particles */}
+      {particles.map(([l, t, delay, sz], i) => (
+        <motion.div key={`mp-${i}`} className="absolute rounded-full" style={{
+          left: `${l}%`, top: `${t}%`,
+          width: `${sz}px`, height: `${sz}px`,
+          background: i % 2 === 0 ? "#bfdbfe" : "#60a5fa",
+          boxShadow: i % 2 === 0 
+            ? `0 0 ${sz*3}px ${sz}px #bfdbfe, 0 0 ${sz*6}px #93c5fd` 
+            : `0 0 ${sz*2}px ${sz}px #60a5fa, 0 0 ${sz*5}px #2563eb`,
+        }}
+          animate={{
+            y: [0, -30, 0],
+            opacity: [0, 0.6, 0],
+            scale: [0.8, 1.5, 0.8],
+          }}
+          transition={{ duration: 6 + (i % 4), repeat: Infinity, ease: "easeInOut", delay }}
+        />
+      ))}
+
+      {/* 7. Animated perspective grid on the floor */}
+      <div className="absolute inset-x-0 bottom-0 h-[40vh] opacity-20" style={{
+        background: "linear-gradient(to top, rgba(37,99,235,0.05) 0%, transparent 100%)",
+        maskImage: "linear-gradient(to top, black 0%, transparent 100%)",
+      }}>
+        <motion.div className="absolute inset-0" style={{
+          transform: "perspective(500px) rotateX(60deg) scale(2)",
+          transformOrigin: "bottom center",
+          backgroundImage: "linear-gradient(rgba(59,130,246,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.15) 1px, transparent 1px)",
+          backgroundSize: "40px 40px",
+        }}
+          animate={{ backgroundPosition: ["0px 0px", "0px 40px"] }}
+          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+        />
+      </div>
+    </div>
+  );
+}
+
 /* ── PortalShell ── */
 export function PortalShell({ rolePath, children }: { rolePath: string; children: React.ReactNode }) {
   const { user, loading, logout } = useAuth();
@@ -401,9 +497,9 @@ export function PortalShell({ rolePath, children }: { rolePath: string; children
 
   /* ── Shell layout ── */
   return (
-    <div className={`min-h-screen bg-[#f5f7fb] md:grid
+    <div className={`min-h-screen bg-[#f5f7fb] dark:bg-[#050d1f] md:grid
       ${collapsed ? "md:grid-cols-[72px_1fr]" : "md:grid-cols-[260px_1fr]"}
-      transition-[grid-template-columns] duration-300`}>
+      transition-[grid-template-columns,background-color] duration-300`}>
 
       {/* desktop sidebar — sticky full height */}
       <div className="sticky top-0 hidden h-screen md:block">{sidebar}</div>
@@ -425,14 +521,19 @@ export function PortalShell({ rolePath, children }: { rolePath: string; children
       </AnimatePresence>
 
       {/* main content */}
-      <main className="min-w-0">
+      <main className="min-w-0 relative">
+        <MainBg />
         {/* mobile-only top bar */}
         <header className="sticky top-0 z-30 flex h-14 items-center
-          border-b border-slate-200/80 bg-white/90 px-4
-          shadow-[0_1px_18px_rgba(15,23,42,.04)] backdrop-blur-xl md:hidden">
+          border-b border-slate-200/80 dark:border-white/[.06]
+          bg-white/90 dark:bg-[#060d1e]/90 px-4
+          shadow-[0_1px_18px_rgba(15,23,42,.04)] dark:shadow-[0_1px_24px_rgba(0,0,0,.35)]
+          backdrop-blur-xl md:hidden">
           <button aria-label="Open navigation"
             className="group grid h-9 w-9 place-items-center rounded-xl border
-              border-slate-200 bg-white text-slate-700 shadow-sm transition
+              border-slate-200 dark:border-white/10
+              bg-white dark:bg-white/[.05]
+              text-slate-700 dark:text-slate-300 shadow-sm transition
               hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
             onClick={() => setOpen(true)}>
             <Menu size={20}/>

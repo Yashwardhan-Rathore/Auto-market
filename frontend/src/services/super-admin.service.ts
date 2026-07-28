@@ -24,6 +24,10 @@ export const superAdminService = {
   stats: async () => (await apiClient.get<{total_admins:number;total_users:number}>("/api/dashboard/stats/")).data,
   dashboard: async () => (await apiClient.get<DashboardData>("/api/dashboard/")).data,
   analytics: async () => (await apiClient.get<AnalyticsData>("/api/analytics/summary/")).data,
+  analyticsWithRange: async (dateFrom: string, dateTo: string) =>
+    (await apiClient.get<AnalyticsData>("/api/analytics/summary/", { params: { date_from: dateFrom, date_to: dateTo } })).data,
+  billingWithRange: async (dateFrom: string, dateTo: string) =>
+    (await apiClient.get<BillingData>("/api/billing/summary/", { params: { date_from: dateFrom, date_to: dateTo } })).data,
   admins: async (params: {page:number;search:string}) => (await apiClient.get<Paginated<AdminRecord>>("/api/admins/", {params})).data,
   getAdmin: async (id: number) => (await apiClient.get<AdminRecord>(`/api/admins/${id}/`)).data,
   toggleAdminStatus: async (id: number, is_active: boolean) => (await apiClient.patch<AdminRecord>(`/api/admins/${id}/`, { is_active })).data,

@@ -11,11 +11,16 @@ import {
 } from "recharts";
 import { parseApiError } from "@/services/api-client";
 import { superAdminService } from "@/services/super-admin.service";
+import { useDateRange } from "@/components/ui/date-range-picker";
 
 const money = (n: number) => new Intl.NumberFormat("en-IN").format(n);
 
 export function SuperAdminUsage({ creditsOnly = false }: { creditsOnly?: boolean }) {
-  const query = useQuery({ queryKey: ["sa-billing"], queryFn: superAdminService.billing });
+  const { startDate, endDate, picker } = useDateRange(365);
+  const query = useQuery({
+    queryKey: ["sa-billing", startDate, endDate],
+    queryFn: () => superAdminService.billingWithRange(startDate, endDate),
+  });
 
   if (query.isLoading)
     return <div className="h-96 animate-pulse rounded-2xl bg-white" />;
@@ -41,9 +46,12 @@ export function SuperAdminUsage({ creditsOnly = false }: { creditsOnly?: boolean
   return (
     <div>
       {/* ── Page heading ── */}
-      <div className="mb-7">
-        <h1 className="sa-title">{creditsOnly ? "AI CREDITS & USAGE" : "BILLING & USAGE"}</h1>
-        <p className="sa-subtitle">Real wallet and transaction data from the billing API</p>
+      <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="sa-title">{creditsOnly ? "AI CREDITS & USAGE" : "BILLING & USAGE"}</h1>
+          <p className="sa-subtitle">Real wallet and transaction data from the billing API</p>
+        </div>
+        {picker}
       </div>
 
       {/* ── Top stat cards ── */}

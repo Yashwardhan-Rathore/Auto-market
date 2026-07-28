@@ -17,13 +17,13 @@ class DashboardService:
     # ==========================================================
 
     @classmethod
-    def get_dashboard(cls, user):
+    def get_dashboard(cls, user, date_from=None, date_to=None):
         """
         Return dashboard data.
         """
 
-        campaigns = cls._get_campaigns(user)
-        deliveries = cls._get_deliveries(user)
+        campaigns = cls._get_campaigns(user, date_from=date_from, date_to=date_to)
+        deliveries = cls._get_deliveries(user, date_from=date_from, date_to=date_to)
 
         return {
             "campaigns": cls._get_campaign_stats(campaigns),
@@ -37,25 +37,32 @@ class DashboardService:
     # ==========================================================
 
     @staticmethod
-    def _get_campaigns(user):
+    def _get_campaigns(user, date_from=None, date_to=None):
         """
         Base queryset for campaigns.
         """
-
-        return filter_dashboard_queryset(Campaign.objects.all(), user, "created_by")
-
+        qs = filter_dashboard_queryset(Campaign.objects.all(), user, "created_by")
+        if date_from:
+            qs = qs.filter(created_at__date__gte=date_from)
+        if date_to:
+            qs = qs.filter(created_at__date__lte=date_to)
+        return qs
 
     @staticmethod
-    def _get_deliveries(user):
+    def _get_deliveries(user, date_from=None, date_to=None):
         """
         Base queryset for deliveries.
         """
-
-        return filter_dashboard_queryset(CampaignDelivery.objects.all(), user, "campaign__created_by").select_related(
+        qs = filter_dashboard_queryset(CampaignDelivery.objects.all(), user, "campaign__created_by").select_related(
             "campaign",
             "customer",
             "channel",
         )
+        if date_from:
+            qs = qs.filter(created_at__date__gte=date_from)
+        if date_to:
+            qs = qs.filter(created_at__date__lte=date_to)
+        return qs
     
     # ==========================================================
     # Campaign Statistics

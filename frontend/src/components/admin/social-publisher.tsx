@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { CalendarDays, Check, ChevronLeft, ChevronRight, Eye, Facebook, Instagram, Linkedin, Plus, Send, Twitter, UserPlus, X, XCircle } from "lucide-react";
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { apiClient, parseApiError } from "@/services/api-client";
 
@@ -20,6 +20,18 @@ const platformMeta: Record<PlatformName, { label: string; icon: typeof Instagram
 const platforms = Object.keys(platformMeta) as PlatformName[];
 const initialForm: CreateForm = { prompt: "", platforms: ["INSTAGRAM"], schedule: "" };
 
+/** Return today's date as yyyy-mm-dd */
+function toInputDate(d: Date) { return d.toISOString().slice(0, 10); }
+/** Format a yyyy-mm-dd string for display */
+function fmtRange(iso: string) { return new Date(iso + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }); }
+
+function getDefaultRange() {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(end.getDate() - 29); // default: last 30 days
+  return { start: toInputDate(start), end: toInputDate(end) };
+}
+
 export function AdminSocialPublisher() {
   const client = useQueryClient();
   const [active, setActive] = useState<PlatformName>("INSTAGRAM");
@@ -27,8 +39,33 @@ export function AdminSocialPublisher() {
   const [createOpen, setCreateOpen] = useState(false);
   const [viewing, setViewing] = useState<Draft | null>(null);
   const [form, setForm] = useState<CreateForm>(initialForm);
-  const draftsQuery = useQuery({ queryKey: ["social-drafts"], queryFn: async () => (await apiClient.get<Draft[]>("/api/content/content-drafts/")).data });
+
+  // Date range filter state
+  const defaults = useMemo(getDefaultRange, []);
+  const [startDate, setStartDate] = useState(defaults.start);
+  const [endDate, setEndDate] = useState(defaults.end);
+  const [rangeOpen, setRangeOpen] = useState(false);
+  const rangeRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!rangeOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (rangeRef.current && !rangeRef.current.contains(e.target as Node)) setRangeOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [rangeOpen]);
+
+  const draftsQuery = useQuery({
+    queryKey: ["social-drafts", startDate, endDate],
+    queryFn: async () => {
+      const params = new URLSearchParams({ date_from: startDate, date_to: endDate });
+      return (await apiClient.get<Draft[]>(`/api/content/content-drafts/?${params}`)).data;
+    },
+  });
   const drafts = useMemo(() => draftsQuery.data ?? [], [draftsQuery.data]);
+
   const activeDrafts = useMemo(() => drafts.filter((draft) => draft.platforms.some((platform) => platform.platform === active)), [drafts, active]);
   const pending = drafts.filter((draft) => draft.workflow_state === "IN_REVIEW");
   const allPlatformRows = drafts.flatMap((draft) => draft.platforms.map((platform) => ({ draft, platform })));
@@ -67,7 +104,32 @@ export function AdminSocialPublisher() {
 
   const calendar = useMemo(() => buildCalendar(month, activeDrafts, active), [month, activeDrafts, active]);
   if (draftsQuery.isError) return <div className="sa-card p-10 text-red-600">{parseApiError(draftsQuery.error)}</div>;
-  return <div><div className="mb-7 flex flex-wrap items-end justify-between gap-4"><div><h1 className="sa-title normal-case">Social Publisher</h1><p className="sa-subtitle">Manage and publish content across all your social media channels.</p></div><div className="flex gap-3"><span className="secondary-button flex min-h-12 items-center gap-2 px-5"><CalendarDays size={17} />{displayDateRange()}</span><button className="primary-button min-h-12 px-5" onClick={() => setCreateOpen(true)}><Plus size={18} />Create Post</button></div></div>
+  return <div><div className="mb-7 flex flex-wrap items-end justify-between gap-4"><div><h1 className="sa-title normal-case">Social Publisher</h1><p className="sa-subtitle">Manage and publish content across all your social media channels.</p></div><div className="flex gap-3">
+    {/* Date range picker */}
+    <div className="relative" ref={rangeRef}>
+      <button className="secondary-button flex min-h-12 items-center gap-2 px-5" onClick={() => setRangeOpen((v) => !v)}>
+        <CalendarDays size={17} />
+        {fmtRange(startDate)} – {fmtRange(endDate)}
+      </button>
+      {rangeOpen && (
+        <div className="absolute right-0 z-10 mt-2 w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
+          <h3 className="mb-3 text-sm font-bold text-slate-700">Filter by Date Range</h3>
+          <label className="field mb-3">
+            <span className="text-xs">Start Date</span>
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} max={endDate} />
+          </label>
+          <label className="field">
+            <span className="text-xs">End Date</span>
+            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} min={startDate} />
+          </label>
+          <div className="mt-4 flex justify-end gap-2">
+            <button className="secondary-button text-xs" onClick={() => { setStartDate(defaults.start); setEndDate(defaults.end); }}>Reset</button>
+            <button className="primary-button text-xs" onClick={() => setRangeOpen(false)}>Apply</button>
+          </div>
+        </div>
+      )}
+    </div>
+    <button className="primary-button min-h-12 px-5" onClick={() => setCreateOpen(true)}><Plus size={18} />Create Post</button></div></div>
     <div className="sa-card mb-6 grid overflow-hidden sm:grid-cols-2 xl:grid-cols-4">{platforms.map((name) => { const meta = platformMeta[name]; const Icon = meta.icon; return <button className={`flex min-h-16 items-center justify-center gap-3 border-b border-slate-200 px-4 font-bold transition sm:border-r ${active === name ? "bg-blue-50/60 text-blue-700 shadow-[inset_0_-3px_#2563eb]" : "hover:bg-slate-50"}`} key={name} onClick={() => setActive(name)}><Icon className={meta.color} size={20} />{meta.label}</button>; })}</div>
     <section className="sa-card mb-6 grid divide-y divide-slate-200 p-5 sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-5">{metricCards.map(({label,value,icon:Icon,tone}) => <div className="px-6 py-3" key={label}><div className="flex items-center gap-3 text-sm font-bold text-slate-600"><Icon className={tone} size={21} />{label}</div><strong className="mt-4 block text-3xl text-slate-950">{value.toLocaleString()}</strong><span className="mt-2 block text-xs text-emerald-600">Live platform data</span></div>)}</section>
     <section className="sa-card mb-6 overflow-hidden"><div className="flex items-center justify-between border-b border-slate-100 p-6"><h2 className="text-lg font-black">Pending Approvals <span className="ml-2 rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-600">{pending.length}</span></h2></div>{draftsQuery.isLoading ? <div className="space-y-3 p-5">{[1,2,3].map((item) => <div className="h-16 animate-pulse rounded-xl bg-slate-100" key={item} />)}</div> : <div className="overflow-x-auto"><table className="w-full min-w-[850px] text-left text-sm"><thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="px-6 py-4">Post</th><th>Requested By</th><th>Requested On</th><th className="text-center">Actions</th></tr></thead><tbody>{pending.map((draft) => <tr className="border-t border-slate-100" key={draft.id}><td className="px-6 py-4"><div className="flex items-center gap-3"><Thumb draft={draft} /><div><p className="font-bold">{postTitle(draft)}</p><p className="max-w-72 truncate text-xs text-slate-500">{draft.enhanced_prompt || draft.original_prompt}</p></div></div></td><td><p className="font-semibold">{draft.owner_name}</p><p className="text-xs text-slate-500">Marketing Team</p></td><td>{formatDate(draft.approvals[0]?.created_at || draft.updated_at)}</td><td><div className="flex justify-center gap-2"><button className="icon-button !border !border-slate-200 !text-blue-600" onClick={() => setViewing(draft)}><Eye size={17} /></button><button className="icon-button !border !border-slate-200 !text-emerald-600" onClick={() => action.mutate({ id: draft.id, name: "approve" })}><Check size={17} /></button><button className="icon-button !border !border-slate-200 !text-red-500" onClick={() => action.mutate({ id: draft.id, name: "reject" })}><X size={17} /></button></div></td></tr>)}</tbody></table>{!pending.length && <div className="p-12 text-center text-slate-500">No posts are waiting for approval.</div>}</div>}</section>
@@ -81,4 +143,3 @@ function Thumb({ draft }: { draft: Draft }) { const image=draft.platforms.flatMa
 function buildCalendar(month: Date, drafts: Draft[], active: PlatformName) { const first=new Date(month.getFullYear(),month.getMonth(),1); const start=new Date(first);start.setDate(1-first.getDay());return Array.from({length:42},(_,index)=>{const date=new Date(start);date.setDate(start.getDate()+index);const posts=drafts.flatMap((draft)=>draft.platforms.filter((platform)=>{const value=platform.scheduled_datetime||platform.published_datetime;return platform.platform===active&&value&&new Date(value).toDateString()===date.toDateString();}).map((platform)=>({draft,platform})));return{key:date.toISOString(),date,current:date.getMonth()===month.getMonth(),posts};}); }
 function postTitle(draft: Draft){return (draft.original_prompt||draft.enhanced_prompt||"Untitled post").split(/[.!?\n]/)[0].slice(0,55);}
 function formatDate(value:string){return new Date(value).toLocaleString("en-GB",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});}
-function displayDateRange(){const end=new Date();const start=new Date();start.setDate(end.getDate()-6);return `${start.toLocaleDateString("en-US",{month:"short",day:"numeric"})} – ${end.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}`;}
