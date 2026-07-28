@@ -44,28 +44,46 @@ class DeliveryService:
         campaign = Campaign.objects.select_for_update().get(id=campaign.id)
 
         cls._validate_campaign(campaign)
-        cls._validate_no_existing_deliveries(campaign)
 
         cls._mark_campaign_sending(campaign)
 
-        recipients = cls._load_recipients(campaign)
-        templates = cls._load_templates(campaign)
+        try:
+            recipients = cls._load_recipients(campaign)
+            templates = cls._load_templates(campaign)
 
-        logger.info(
-            "Campaign %s loaded %s recipients and %s templates.",
-            campaign.id,
-            recipients.count(),
-            templates.count(),
-        )
-
-        for recipient in recipients:
-            cls._process_recipient(
-                campaign=campaign,
-                recipient=recipient,
-                templates=templates,
+            logger.info(
+                "Campaign %s loaded %s recipients and %s templates.",
+                campaign.id,
+                recipients.count(),
+                templates.count(),
             )
 
-        cls._mark_campaign_completed(campaign)
+            for recipient in recipients.iterator(chunk_size=500):
+                cls._process_recipient(
+                    campaign=campaign,
+                    recipient=recipient,
+                    templates=templates,
+                )
+
+            failed = CampaignDelivery.objects.filter(
+                campaign=campaign,
+                status=CampaignDelivery.Status.FAILED,
+            ).exists()
+
+            if failed:
+                cls._mark_campaign_failed(campaign)
+            else:
+                cls._mark_campaign_completed(campaign)
+        except Exception:
+            cls._mark_campaign_failed(campaign)
+            logger.exception(
+                "Campaign %s crashed during execution.",
+                campaign.id,
+            )
+            raise
+
+
+
 
         return campaign
 
@@ -89,26 +107,7 @@ class DeliveryService:
                 "Campaign cannot be sent."
             )
 
-    @staticmethod
-    def _validate_no_existing_deliveries(
-        campaign: Campaign,
-    ):
-        """
-        Prevent sending a campaign more than once.
-        """
-
-        if CampaignDelivery.objects.filter(
-            campaign=campaign,
-        ).exists():
-
-            logger.warning(
-                "Duplicate send prevented for campaign %s.",
-                campaign.id,
-            )
-
-            raise ValidationError(
-                "Campaign has already been sent."
-            )
+    
 
     # ==========================================================
     # Campaign Status
@@ -157,6 +156,19 @@ class DeliveryService:
             campaign.id,
         )
 
+    @staticmethod
+    def _mark_campaign_failed(campaign):
+        from apps.campaigns.services.campaign import CampaignService
+
+        CampaignService.change_status(
+            campaign,
+            Campaign.Status.FAILED,
+        )
+
+        logger.error(
+            "Campaign %s finished with failed deliveries.",
+            campaign.id,
+        )
 
     # ==========================================================
     # Data Loading
@@ -242,27 +254,58 @@ class DeliveryService:
         # Create Delivery Record
         # -------------------------
 
-        delivery = CampaignDelivery.objects.create(
+        delivery, created = CampaignDelivery.objects.get_or_create(
             campaign=campaign,
             customer=customer,
             channel=campaign_template.channel,
-            rendered_message=message,
-            status=CampaignDelivery.Status.PENDING,
+            defaults={
+                "rendered_message": message,
+                "status": CampaignDelivery.Status.PENDING,
+            },
         )
+
+        if not created:
+            logger.info(
+                "Delivery already exists. Skipping. "
+                "Campaign=%s Customer=%s Channel=%s",
+                campaign.id,
+                customer.id,
+                campaign_template.channel.code,
+            )
+            return
 
         # -------------------------
         # Dispatch
         # -------------------------
 
-        result = Dispatcher.send(
-            delivery=delivery,
-        )
+        try:
+            result = Dispatcher.send(
+                delivery=delivery,
+            )
+        except Exception as exc:
+            logger.exception(
+                "Dispatcher crashed for campaign %s customer %s",
+                campaign.id,
+                customer.id,
+            )
+
+            delivery.status = CampaignDelivery.Status.FAILED
+            delivery.error_message = str(exc)
+
+            delivery.save(
+                update_fields=[
+                    "status",
+                    "error_message",
+                ]
+            )
+
+            return
 
         # -------------------------
         # Update Delivery Status
         # -------------------------
 
-        if result["success"]:
+        if result.get("success"):
 
             delivery.status = CampaignDelivery.Status.SENT
             delivery.provider_message_id = result[

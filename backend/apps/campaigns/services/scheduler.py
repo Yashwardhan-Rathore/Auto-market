@@ -2,7 +2,9 @@ from django.utils import timezone
 
 from apps.campaigns.models import Campaign
 from apps.campaigns.services.delivery import DeliveryService
+import logging
 
+logger = logging.getLogger(__name__)
 
 class SchedulerService:
     """
@@ -35,12 +37,12 @@ class SchedulerService:
 
                 success += 1
 
-            except Exception as exc:
-
+            except Exception:
                 failed += 1
 
-                print(
-                    f"Campaign {campaign.id} failed: {exc}"
+                logger.exception(
+                    "Campaign %s failed",
+                    campaign.id,
                 )
 
         return {
@@ -72,10 +74,6 @@ class SchedulerService:
 
     @staticmethod
     def _process_campaign(campaign):
-        """
-        Execute one campaign.
-        """
+        from apps.campaigns.tasks import send_campaign_background
 
-        DeliveryService.send_campaign(
-            campaign=campaign,
-        )
+        send_campaign_background.delay(campaign.id)

@@ -28,7 +28,15 @@ def send_campaign_background(self, campaign_id):
     logger.info(f"Sending campaign {campaign_id} in background")
     try:
         campaign = Campaign.objects.get(id=campaign_id)
-        DeliveryService.send_campaign(campaign=campaign)
+
+        logger.info(
+            "Worker picked campaign %s",
+            campaign.id,
+        )
+
+        DeliveryService.send_campaign(
+            campaign=campaign
+        )
     except Exception as exc:
         logger.error(f"Error dispatching campaign {campaign_id}, retrying: {exc}")
         raise self.retry(exc=exc, countdown=60)
