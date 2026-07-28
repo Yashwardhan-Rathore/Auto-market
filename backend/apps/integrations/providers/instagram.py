@@ -2,6 +2,7 @@ import os
 import requests
 from typing import Dict, Any
 from .base import BaseSocialProvider
+from urllib.parse import urlencode
 
 class InstagramProvider(BaseSocialProvider):
     """
@@ -17,9 +18,17 @@ class InstagramProvider(BaseSocialProvider):
         self.client_secret = os.environ.get("INSTAGRAM_CLIENT_SECRET", "")
 
     def get_authorization_url(self, state: str, redirect_uri: str) -> str:
-        # Scopes required for Business/Creator accounts for publishing
         scopes = "instagram_business_basic,instagram_business_content_publish"
-        return f"{self.AUTHORIZE_URL}?client_id={self.client_id}&redirect_uri={redirect_uri}&response_type=code&scope={scopes}&state={state}"
+
+        params = {
+            "client_id": self.client_id,
+            "redirect_uri": redirect_uri,
+            "response_type": "code",
+            "scope": scopes,
+            "state": state,
+        }
+
+        return f"{self.AUTHORIZE_URL}?{urlencode(params)}"
 
     def exchange_code(self, code: str, redirect_uri: str) -> Dict[str, Any]:
         # 1. Exchange code for short-lived access token

@@ -25,6 +25,21 @@ def is_super_admin(user):
     profile = get_admin_profile(user)
     return profile is not None and profile.role == "SUPER_ADMIN"
 
+def get_tenant_owner_profile(user):
+    """
+    Returns the MAUser profile representing the tenant owner for the given user.
+    - If user is SUPER_ADMIN or ADMIN, returns their MAUser profile.
+    - If user is USER, returns their managing ADMIN's MAUser profile.
+    """
+    profile = get_admin_profile(user)
+    if not profile:
+        return None
+        
+    if profile.role == "USER" and profile.managed_by_id:
+        return profile.managed_by
+        
+    return profile
+
 def get_managed_users_queryset(admin_user):
     """
     Returns a queryset of User objects managed by this admin_user.
@@ -103,8 +118,9 @@ def _filter_resource_for_admin(queryset, admin_user, user_field="created_by"):
         # A user can access their own resources
         q = Q(**{user_field: admin_user})
         # If they need to access resources from their admin (e.g. Audiences)
-        if admin_profile.managed_by_id:
-            q |= Q(**{f"{user_field}": admin_profile.managed_by.user})
+        tenant_profile = get_tenant_owner_profile(admin_user)
+        if tenant_profile and tenant_profile != admin_profile:
+            q |= Q(**{f"{user_field}": tenant_profile.user})
         return queryset.filter(q).distinct()
         
     return queryset.none()

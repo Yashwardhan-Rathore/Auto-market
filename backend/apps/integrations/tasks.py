@@ -32,14 +32,25 @@ def publish_social_post_task(self, platform_record_id: str, user_id: str):
     )
 
     try:
-        # Find connection for this user and platform
+        # Resolve the tenant owner
+        from django.contrib.auth import get_user_model
+        from apps.common.ownership import get_tenant_owner_profile
+        User = get_user_model()
+        user = User.objects.filter(id=user_id).first()
+        if not user:
+            raise ValueError(f"User {user_id} not found")
+            
+        tenant_owner = get_tenant_owner_profile(user)
+        if not tenant_owner:
+            raise ValueError(f"No tenant owner found for user {user_id}")
+
         connection = SocialConnection.objects.filter(
-            user__user_id=user_id, 
+            user=tenant_owner, 
             platform=platform_record.platform
         ).first()
 
         if not connection:
-            raise ValueError(f"No SocialConnection found for user {user_id} and platform {platform_record.platform}")
+            raise ValueError(f"No SocialConnection found for tenant owner {tenant_owner.id} and platform {platform_record.platform}")
 
         log.connection = connection
         log.save(update_fields=['connection'])
