@@ -45,7 +45,41 @@ class AssetListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        qs = Asset.objects.filter(uploaded_by=request.user).select_related("uploaded_by").prefetch_related("tags")
+        from django.db.models import Q
+        from apps.common.ownership import get_admin_profile, is_super_admin
+
+        user = request.user
+
+        if is_super_admin(user):
+            # Super Admin sees everything
+            qs = Asset.objects.all()
+        else:
+            profile = get_admin_profile(user)
+
+            if profile and profile.role == "ADMIN":
+                # Admin sees:
+                # 1. Their own assets (regardless of is_personal)
+                # 2. Non-personal assets uploaded by their managed users
+                managed_q = Q(uploaded_by__ma_users__managed_by=profile, is_personal=False)
+                own_q = Q(uploaded_by=user)
+                qs = Asset.objects.filter(own_q | managed_q)
+
+            elif profile and profile.role == "USER":
+                # Regular user sees:
+                # 1. Their own assets (regardless of is_personal)
+                # 2. Non-personal assets uploaded by their managing Admin
+                own_q = Q(uploaded_by=user)
+                shared_q = Q(is_personal=False)
+                if profile.managed_by_id:
+                    # Assets from the admin who manages them
+                    shared_q &= Q(uploaded_by=profile.managed_by.user)
+                    qs = Asset.objects.filter(own_q | shared_q)
+                else:
+                    qs = Asset.objects.filter(own_q)
+            else:
+                qs = Asset.objects.filter(uploaded_by=user)
+
+        qs = qs.select_related("uploaded_by").prefetch_related("tags").distinct()
 
         # Optional filters
         asset_type = request.query_params.get("type")

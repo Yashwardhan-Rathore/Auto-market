@@ -94,6 +94,7 @@ api_catalog.md
 landing-page.zip
 landing_page.zip
 *landing*.zip
+*.csv
 
 # Python bytecode
 __pycache__/
