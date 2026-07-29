@@ -90,8 +90,13 @@ USER INPUT:
 "{user_prompt}"
 
 BRAND IDENTITY:
-Tone: {brand_identity.get('tone', 'Not provided')}
-Target Audience: {brand_identity.get('target_audience', 'Not provided')}
+- Brand Description: {brand_identity.get('brand_description', 'Not provided')}
+- Target Audience: {brand_identity.get('target_audience', 'Not provided')}
+- Brand Tone: {brand_identity.get('tone', 'Not provided')}
+- Content Pillars/Topics: {brand_identity.get('content_pillars', 'Not provided')}
+- Unique Value / Differentiator: {brand_identity.get('unique_value', 'Not provided')}
+- Content Guidelines (Do's & Don'ts): {brand_identity.get('guidelines', 'Not provided')}
+- Desired Call to Action: {brand_identity.get('call_to_action', 'Not provided')}
 
 INSTRUCTIONS:
 - Be concise. Keep option text under 60 characters.

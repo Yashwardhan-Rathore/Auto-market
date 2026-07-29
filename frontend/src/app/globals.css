@@ -227,6 +227,16 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .sa-card:hover { border-color:#c7d9f5; transform:translateY(-2px); box-shadow:0 12px 36px rgb(15 23 42 / .10), 0 0 0 1px rgba(37,99,235,.08); }
 .sa-title { font-size:clamp(1.7rem,3vw,2.35rem); line-height:1; font-weight:900; letter-spacing:-.045em; color:#0b1426; }
 .sa-subtitle { margin-top:.55rem; color:#64748b; font-size:.95rem; }
+.bi-question { border-bottom:1px solid #f1f5f9; padding-bottom:2rem; }
+.bi-question:last-child { border-bottom:none; padding-bottom:0; }
+.bi-label { display:block; font-size:.95rem; font-weight:700; color:#1e293b; margin-bottom:.35rem; }
+.bi-hint { font-size:.8rem; color:#94a3b8; margin-bottom:.75rem; }
+.bi-textarea { width:100%; border-radius:.75rem; border:1px solid #e2e8f0; background:#f8fafc; padding:.75rem 1rem; font-size:.9rem; color:#1e293b; resize:vertical; outline:none; transition:border-color .2s,box-shadow .2s; }
+.bi-textarea:focus { border-color:#a855f7; box-shadow:0 0 0 3px rgb(168 85 247 / .12); }
+html.dark .bi-label { color:#f1f5f9; }
+html.dark .bi-question { border-color:rgb(255 255 255 / .06); }
+html.dark .bi-textarea { background:rgb(255 255 255 / .04); border-color:rgb(255 255 255 / .1); color:#f1f5f9; }
+html.dark .bi-textarea:focus { border-color:#a855f7; box-shadow:0 0 0 3px rgb(168 85 247 / .18); }
 .metric-icon { display:grid; height:2.75rem; width:2.75rem; place-items:center; border-radius:999px; background:#eaf2ff; color:#1670f8; }
 
 /* ═══════════════════════════════════════════════════════════

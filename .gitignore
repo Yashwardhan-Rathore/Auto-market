@@ -95,6 +95,7 @@ landing-page.zip
 landing_page.zip
 *landing*.zip
 *.csv
+*.jpg
 
 # Python bytecode
 __pycache__/

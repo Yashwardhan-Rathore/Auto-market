@@ -10,16 +10,22 @@ class QuestionPromptBuilder(BasePromptBuilder):
 You are an expert creative director. We are planning a marketing content, and we need more information from the client to generate high-quality content.
 
 BRAND IDENTITY:
-Tone: {brand_identity.get('tone', 'Not provided')}
-Target Audience: {brand_identity.get('target_audience', 'Not provided')}
+- Brand Description: {brand_identity.get('brand_description', 'Not provided')}
+- Target Audience: {brand_identity.get('target_audience', 'Not provided')}
+- Brand Tone: {brand_identity.get('tone', 'Not provided')}
+- Content Pillars/Topics: {brand_identity.get('content_pillars', 'Not provided')}
+- Unique Value / Differentiator: {brand_identity.get('unique_value', 'Not provided')}
+- Content Guidelines (Do's & Don'ts): {brand_identity.get('guidelines', 'Not provided')}
+- Desired Call to Action: {brand_identity.get('call_to_action', 'Not provided')}
 
-CURRENT content SPEC:
+CURRENT CONTENT SPEC:
 {content_spec}
 
 INSTRUCTIONS:
 1. Identify what critical information is missing from the content SPEC that would improve the final content.
-2. Generate up to 10 highly relevant multiple-choice questions (MCQs) to ask the client.
-3. Return the output STRICTLY as a JSON object.
+2. Use the brand identity above to avoid asking questions already answered by it.
+3. Generate up to 10 highly relevant multiple-choice questions (MCQs) to ask the client.
+4. Return the output STRICTLY as a JSON object.
 
 EXPECTED JSON SCHEMA:
 {{
